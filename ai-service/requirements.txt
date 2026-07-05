@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+minio
+redis
+python-multipart
+pydantic
+email-validator
+

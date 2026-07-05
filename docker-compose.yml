@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://user:password@postgres:5432/db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - minio
+      - redis
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: ../Dockerfile.ai
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://user:password@postgres:5432/db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - minio
+      - redis
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  minio:
+    image: minio/minio
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+    volumes:
+      - minio_data:/data
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+volumes:
+  postgres_data:
+  minio_data:
