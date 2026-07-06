@@ -1,0 +1,257 @@
+const { Tag, User } = require("../models");
+const { Op } = require('sequelize');
+
+// Create a new version for an asset
+exports.createVersion = async (req, res) => {
+  try {
+    const assetId = req.params.id;
+    const asset = await Asset.findByPk(assetId);
+    if (!asset) {
+      return res.status(404).json({ message: 'Asset not found' });
+    }
+    // Permission check: only the owner can create a version (or adjust as needed)
+    if (asset.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to create a version for this asset' });
+    }
+    // Determine the next version number
+    const versionCount = await Version.count({ where: { assetId: asset.id } });
+    const versionNumber = versionCount + 1;
+    // Create a version record with placeholder file info (we'll update after copying the file)
+    const version = await Version.create({
+      assetId: asset.id,
+      versionNumber: versionNumber,
+      fileName: '', // temporary
+      originalName: '',
+      mimeType: '',
+      size: 0,
+      createdBy: req.user.id,      changeLog: req.body.changeLog,      changeLog: req.body.changeLog,
+    });
+    // Create directory for this version: uploads/versions/{assetId}/{version.id}
+    const versionDir = path.join(__dirname, '..', 'uploads', 'versions', asset.id.toString(), version.id.toString());
+    if (!fs.existsSync(versionDir)) {
+      fs.mkdirSync(versionDir, { recursive: true });
+    }
+    // Source file path
+    const sourcePath = path.join(__dirname, '..', 'uploads', asset.filename);
+    // Destination file path (keep the same filename)
+    const destPath = path.join(versionDir, asset.filename);
+    // Copy the file
+    fs.copyFileSync(sourcePath, destPath);
+    // Update the version record with the file metadata
+    version.fileName = asset.filename;
+    version.originalName = asset.originalname;
+    version.mimeType = asset.mimetype;
+    version.size = asset.size;
+    await version.save();
+    // Return the version record
+    res.status(201).json({
+      message: 'Version created successfully',
+      version: {
+        id: version.id,
+        assetId: version.assetId,
+        versionNumber: version.versionNumber,
+        fileName: version.fileName,
+        originalName: version.originalName,
+        mimeType: version.mimeType,
+        size: version.size,
+        createdAt: version.createdAt,     changeLog: version.changeLog,      changeLog: version.changeLog,
+        createdBy: version.createdBy
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get version history for an asset
+exports.getVersionHistory = async (req, res) => {
+  try {
+    const assetId = req.params.id;
+    const asset = await Asset.findByPk(assetId);
+    if (!asset) {
+      return res.status(404).json({ message: 'Asset not found' });
+    }
+    // Permission check: only the owner can view version history? We'll allow any authenticated user for now.
+    // If you want to restrict to owner, uncomment the next line.
+    // if (asset.userId !== req.user.id) {
+    //   return res.status(403).json({ message: 'Forbidden: You do not have permission to view this asset' });
+    // }
+    const versions = await Version.findAll({
+      where: { assetId: asset.id },
+      order: [['versionNumber', 'ASC']],
+      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog']
+    });
+    res.json(versions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get a specific version by ID
+exports.getVersion = async (req, res) => {
+  try {
+    const { assetId, versionId } = req.params;
+    const version = await Version.findOne({
+      where: { id: versionId, assetId: assetId },
+      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog']
+    });
+    if (!version) {
+      return res.status(404).json({ message: 'Version not found' });
+    }
+    // Permission check: only the owner can view the version? We'll allow any authenticated user for now.
+    // If you want to restrict to owner, uncomment the next lines.
+    // const asset = await Asset.findByPk(assetId);
+    // if (asset.userId !== req.user.id) {
+    //   return res.status(403).json({ message: 'Forbidden: You do not have permission to view this version' });
+    // }
+    res.json(version);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Download a specific version
+exports.downloadVersion = async (req, res) => {
+  try {
+// Search assets with filtering and pagination
+exports.searchAssets = async (req, res) => {
+  try {
+    const { 
+      filename, 
+      metadata, 
+      tags, 
+      type, 
+      date, 
+      creator,
+      page = 1, 
+      pageSize = 10 
+    } = req.query;
+
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page));
+    const size = Math.min(100, Math.max(1, parseInt(pageSize)));
+    const offset = (pageNum - 1) * size;
+    const limit = size;
+
+    let where = {};
+
+    if (filename) {
+      where.filename = { [Op.like]: `%${filename}%` };
+    }
+
+    if (metadata) {
+      // Search in JSON string representation (not efficient for large datasets)
+      where.metadata = { [Op.like]: `%${metadata}%` };
+    }
+
+    if (tags) {
+      // Split comma-separated tags and match any
+      const tagArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      if (tagArray.length > 0) {
+        // We'll handle this in the include section below
+      }
+    }
+
+    if (type) {
+      const typeMap = {
+        image: ['image/jpeg', 'image/png', 'image/gif'],
+        audio: ['audio/mpeg', 'audio/wav'],
+        video: ['video/mp4', 'video/quicktime'],
+        text: ['text/plain', 'application/json', 'text/xml'],
+        model: ['model/obj', 'model/fbx', 'model/gltf-binary']
+      };
+      if (typeMap[type]) {
+        where.mimetype = { [Op.in]: typeMap[type] };
+      }
+    }
+
+    if (date) {
+      const start = new Date(date + 'T00:00:00.000Z');
+      const end = new Date(date + 'T23:59:59.999Z');
+      where.uploadedAt = { [Op.between]: [start, end] };
+    }
+
+    if (creator) {
+      if (!isNaN(creator)) {
+        // Treat as user ID
+        include.push({
+          model: User,
+          as: 'uploader',
+          where: { id: parseInt(creator) }
+        });
+      } else {
+        // Treat as username substring match
+        include.push({
+          model: User,
+          as: 'uploader',
+          where: { username: { [Op.like]: `%${creator}%` } }
+        });
+      }
+    }
+
+    // Build include array for associations
+    const include = [];
+
+    if (tags) {
+      const tagArray = tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag);
+
+      if (tagArray.length > 0) {
+        include.push({
+          model: Tag,
+          as: 'tags',
+          where: {
+            [Op.or]: tagArray.map(t => ({
+              name: {
+                [Op.like]: `%${t}%`
+              }
+            }))
+          }
+        });
+      }
+    }
+    if (creator) {
+      if (!isNaN(creator)) {
+        // Treat as user ID
+        include.push({
+          model: User,
+          as: 'uploader',
+          where: { id: parseInt(creator) }
+        });
+      } else {
+        // Treat as username substring match
+        include.push({
+          model: User,
+          as: 'uploader',
+          where: { username: { [Op.like]: `%${creator}%` } }
+        });
+      }
+    }
+
+    // Use findAndCountAll for pagination with total count
+    const { count, rows } = await Asset.findAndCountAll({
+      where: where,
+      include: include,
+      distinct: true, // To avoid duplicate assets due to joins
+      limit: limit,
+      offset: offset,
+      order: [['uploadedAt', 'DESC']]
+    });
+
+    res.json({
+      totalItems: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: pageNum,
+      pageSize: limit,
+      data: rows
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
