@@ -1,7 +1,6 @@
-const { Tag, User, Asset, Version, Comment } = require("../models");
+const { Tag, User, Asset, Version } = require("../models");
 
 const redisClient = require("../redisClient");
-const logger = require('../utils/logger');
 
 // Create a new version for an asset
 exports.createVersion = async (req, res) => {
@@ -61,7 +60,7 @@ exports.createVersion = async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -86,7 +85,7 @@ exports.getVersionHistory = async (req, res) => {
     });
     res.json(versions);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -110,7 +109,7 @@ exports.getVersion = async (req, res) => {
     // }
     res.json(version);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -253,7 +252,7 @@ exports.searchAssets = async (req, res) => {
       data: rows
     });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -282,163 +281,10 @@ exports.createAiJob = async (req, res) => {
     await redisClient.lPush("ai_jobs", JSON.stringify(job));
     res.status(201).json({ message: "AI job created", job });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// Store AI job result (update asset metadata with AI-generated metadata)
-exports.storeAiResult = async (req, res) => {
-  try {
-    const assetId = req.params.id;
-    const { metadata } = req.body; // Expecting { metadata: { ... } }
+}}
 
-    if (!metadata) {
-      return res.status(400).json({ message: "Metadata is required" });
-    }
-
-    const asset = await Asset.findByPk(assetId);
-    if (!asset) {
-      return res.status(404).json({ message: "Asset not found" });
-    }
-
-    // Permission check: only the owner or admin can update the asset's metadata
-    if (asset.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-    }
-
-    // Update the asset's metadata
-    asset.metadata = metadata;
-    await asset.save();
-
-    res.json({ message: "AI result stored successfully", asset });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-// Create a comment (or reply) for an asset
-exports.createComment = async (req, res) => {
-  try {
-    const { assetId } = req.params;
-    const { content, parentId } = req.body;
-
-    if (!content) {
-      return res.status(400).json({ message: "Content is required" });
-    }
-
-    const asset = await Asset.findByPk(assetId);
-    if (!asset) {
-      return res.status(404).json({ message: "Asset not found" });
-    }
-
-    // If parentId is provided, verify it belongs to the same asset
-    if (parentId) {
-      const parentComment = await Comment.findByPk(parentId);
-      if (!parentComment) {
-        return res.status(400).json({ message: "Parent comment not found" });
-      }
-      if (parentComment.assetId !== asset.id) {
-        return res.status(400).json({ message: "Parent comment does not belong to this asset" });
-      }
-    }
-
-    const comment = await Comment.create({
-      content,
-      assetId: asset.id,
-      userId: req.user.id,
-      parentId: parentId || null
-    });
-
-    // Fetch the comment with author and possibly parent info for response
-    const fullComment = await Comment.findByPk(comment.id, {
-      include: [
-        { model: User, as: 'author', attributes: ['id', 'username'] },
-        { model: Comment, as: 'parent', attributes: ['id', 'content'] }
-      ]
-    });
-
-    res.status(201).json({ message: "Comment created successfully", comment: fullComment });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// Get comment history for an asset
-exports.getCommentHistory = async (req, res) => {
-  try {
-    const { assetId } = req.params;
-    const { page = 1, pageSize = 10 } = req.query;
-
-    // Validate pagination
-    const pageNum = Math.max(1, parseInt(page));
-    const size = Math.min(100, Math.max(1, parseInt(pageSize)));
-    const offset = (pageNum - 1) * size;
-    const limit = size;
-
-    const asset = await Asset.findByPk(assetId);
-    if (!asset) {
-      return res.status(404).json({ message: "Asset not found" });
-    }
-
-    const { count, rows } = await Comment.findAndCountAll({
-      where: { assetId: asset.id },
-      include: [
-        { model: User, as: 'author', attributes: ['id', 'username'] },
-        { model: Comment, as: 'parent', attributes: ['id', 'content'] }
-      ],
-      offset: offset,
-      limit: limit,
-      order: [['createdAt', 'ASC']] // oldest first
-    });
-
-    res.json({
-      totalItems: count,
-      totalPages: Math.ceil(count / limit),
-      currentPage: pageNum,
-      pageSize: limit,
-      comments: rows
-    });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// Get dashboard statistics
-exports.getDashboardStats = async (req, res) => {
-  try {
-    const [totalAssets, totalUsers, totalComments, recentUploads, recentUsers] = await Promise.all([
-      Asset.count(),
-      User.count(),
-      Comment.count(),
-      Asset.findAll({
-        order: [['uploadedAt', 'DESC']],
-        limit: 5,
-        attributes: ['id', 'filename', 'uploadedAt'],
-        include: [{
-          model: User,
-          as: 'uploader',
-          attributes: ['id', 'username']
-        }]
-      }),
-      User.findAll({
-        order: [['createdAt', 'DESC']],
-        limit: 5,
-        attributes: ['id', 'username', 'email', 'createdAt']
-      })
-    ]);
-
-    res.json({
-      totalAssets,
-      totalUsers,
-      totalComments,
-      recentUploads,
-      recentUsers
-    });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-}

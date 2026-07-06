@@ -1,4 +1,4 @@
-﻿const { Sequelize, DataTypes } = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = new Sequelize(process.env.DATABASE_URL);
 
 const User = sequelize.define('User', {
@@ -49,6 +49,14 @@ User.prototype.generateResetToken = function() {
   // Token expires in 1 hour
   this.resetTokenExpiry = Date.now() + 3600000; // 1 hour
   return resetToken;
+};
+
+// Associations
+User.associate = (models) => {
+  User.hasMany(models.Comment, {
+    foreignKey: 'userId',
+    as: 'comments'
+  });
 };
 
 module.exports = User;

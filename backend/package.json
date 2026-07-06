@@ -1,1 +1,10 @@
-{"name":"backend","version":"1.0.0","dependencies":{"bcryptjs":"^2.4.3","jsonwebtoken":"^9.0.3","sharp":"^0.35.3"}}
+﻿{
+    "name": "backend",
+    "version": "1.0.0",
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "jsonwebtoken": "^9.0.3",
+        "sharp": "^0.35.3",
+        "redis": "^4.6.0"
+    }
+}

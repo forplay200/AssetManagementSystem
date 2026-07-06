@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express');`nconst logger = require("./utils/logger");
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
@@ -31,5 +31,11 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  logger.info(`Server running on port ${port}`);
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error(`Error: ${err.message}`, { stack: err.stack, url: req.originalUrl, method: req.method, ip: req.ip });
+  res.status(500).json({ message: "Internal Server Error" });
 });

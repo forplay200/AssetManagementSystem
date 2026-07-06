@@ -1,7 +1,6 @@
 const { Tag, User, Asset, Version, Comment } = require("../models");
 
 const redisClient = require("../redisClient");
-const logger = require('../utils/logger');
 
 // Create a new version for an asset
 exports.createVersion = async (req, res) => {
@@ -61,7 +60,7 @@ exports.createVersion = async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -86,7 +85,7 @@ exports.getVersionHistory = async (req, res) => {
     });
     res.json(versions);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -110,7 +109,7 @@ exports.getVersion = async (req, res) => {
     // }
     res.json(version);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -253,7 +252,7 @@ exports.searchAssets = async (req, res) => {
       data: rows
     });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -282,7 +281,7 @@ exports.createAiJob = async (req, res) => {
     await redisClient.lPush("ai_jobs", JSON.stringify(job));
     res.status(201).json({ message: "AI job created", job });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -313,7 +312,7 @@ exports.storeAiResult = async (req, res) => {
 
     res.json({ message: "AI result stored successfully", asset });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -360,7 +359,7 @@ exports.createComment = async (req, res) => {
 
     res.status(201).json({ message: "Comment created successfully", comment: fullComment });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -401,7 +400,7 @@ exports.getCommentHistory = async (req, res) => {
       comments: rows
     });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -438,7 +437,7 @@ exports.getDashboardStats = async (req, res) => {
       recentUsers
     });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 }

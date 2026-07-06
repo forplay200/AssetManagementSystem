@@ -1,6 +1,5 @@
-const { User } = require('../models');
+﻿const { User } = require('../models');
 const bcrypt = require('bcryptjs');
-const logger = require('../utils/logger');
 
 // Get all users
 exports.getAllUsers = async (req, res) => {
@@ -10,7 +9,7 @@ exports.getAllUsers = async (req, res) => {
     });
     res.json(users);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -26,7 +25,7 @@ exports.getUserById = async (req, res) => {
     }
     res.json(user);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -65,7 +64,7 @@ exports.createUser = async (req, res) => {
     delete userResponse.resetTokenExpiry;
     res.status(201).json(userResponse);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -110,7 +109,7 @@ exports.updateUser = async (req, res) => {
     delete userResponse.resetTokenExpiry;
     res.json(userResponse);
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -125,7 +124,7 @@ exports.deleteUser = async (req, res) => {
     await user.destroy();
     res.json({ message: 'User deleted' });
   } catch (error) {
-    logger.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };

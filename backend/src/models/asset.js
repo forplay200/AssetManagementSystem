@@ -53,6 +53,10 @@ Asset.associate = (models) => {
     as: 'tags',
     foreignKey: 'assetId'
   });
+  Asset.hasMany(models.Comment, {
+    foreignKey: 'assetId',
+    as: 'comments'
+  });
   Asset.hasMany(models.Version, {
     foreignKey: 'assetId',
     as: 'versions'

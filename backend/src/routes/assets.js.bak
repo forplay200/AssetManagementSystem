@@ -47,11 +47,3 @@ router.get('/search', auth, rbac('admin', 'developer', 'designer', 'collaborator
 
 
 router.post('/ai/job', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.createAiJob);
-
-router.post('/:id/ai-result', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.storeAiResult);
-
-router.put('/:id/tags', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.updateAssetTags);
-router.post('/:assetId/comments', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.createComment);
-router.get('/:assetId/comments', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.getCommentHistory);
-
-router.get('/dashboard/stats', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.getDashboardStats);
