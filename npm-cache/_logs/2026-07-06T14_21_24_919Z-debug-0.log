@@ -1,0 +1,43 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.16.0
+2 info using node@v24.18.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Newfolder\fyp\AssetManagementSystem\.npmrc
+5 silly config load:file:C:\Newfolder\fyp\AssetManagementSystem\npmrc
+6 silly config load:file:C:\Users\User\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install express-validator ./npm-tmp
+8 verbose argv "install" "express-validator" "--userconfig" "./npmrc" "--cache" "./npm-cache" "--tmp" "./npm-tmp"
+9 verbose logfile logs-max:10 dir:C:\Newfolder\fyp\AssetManagementSystem\npm-cache\_logs\2026-07-06T14_21_24_919Z-
+10 verbose logfile C:\Newfolder\fyp\AssetManagementSystem\npm-cache\_logs\2026-07-06T14_21_24_919Z-debug-0.log
+11 warn "./npm-tmp" is being parsed as a normal command line argument.
+12 warn Unknown cli config "--tmp". This will stop working in the next major version of npm.
+13 silly logfile done cleaning log files
+14 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+15 verbose stack Error: Could not read package.json: Error: ENOENT: no such file or directory, open 'C:\Newfolder\fyp\AssetManagementSystem\npm-tmp\package.json'
+15 verbose stack     at async open (node:internal/fs/promises:640:25)
+15 verbose stack     at async readFile (node:internal/fs/promises:1290:14)
+15 verbose stack     at async read (C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\package-json\lib\read-package.js:9:18)
+15 verbose stack     at async PackageJson.load (C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\package-json\lib\index.js:131:31)
+15 verbose stack     at async PackageJson.normalize (C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\package-json\lib\index.js:117:5)
+15 verbose stack     at async C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\build-ideal-tree.js:536:22
+15 verbose stack     at async Promise.all (index 1)
+15 verbose stack     at async #add (C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\build-ideal-tree.js:525:5)
+15 verbose stack     at async #applyUserRequestsToNode (C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\build-ideal-tree.js:496:7)
+15 verbose stack     at async #applyUserRequests (C:\Program Files\nodejs\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\build-ideal-tree.js:427:7)
+16 error code ENOENT
+17 error syscall open
+18 error path C:\Newfolder\fyp\AssetManagementSystem\npm-tmp\package.json
+19 error errno -4058
+20 error enoent Could not read package.json: Error: ENOENT: no such file or directory, open 'C:\Newfolder\fyp\AssetManagementSystem\npm-tmp\package.json'
+21 error enoent This is related to npm not being able to find a file.
+21 error enoent
+22 silly unfinished npm timer reify 1783347685565
+23 silly unfinished npm timer reify:loadTrees 1783347685566
+24 silly unfinished npm timer idealTree:userRequests 1783347685574
+25 verbose cwd C:\Newfolder\fyp\AssetManagementSystem
+26 verbose os Windows_NT 10.0.26200
+27 verbose node v24.18.0
+28 verbose npm  v11.16.0
+29 verbose exit -4058
+30 verbose code -4058
+31 error A complete log of this run can be found in: C:\Newfolder\fyp\AssetManagementSystem\npm-cache\_logs\2026-07-06T14_21_24_919Z-debug-0.log

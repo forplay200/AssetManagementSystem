@@ -15,10 +15,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 
-app.use('/api/auth', apiLimiter, authRoutes);
-app.use('/api/assets', apiLimiter, assetsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/assets', assetsRoutes);
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -40,4 +39,3 @@ app.use((err, req, res, next) => {
   logger.error(`Error: ${err.message}`, { stack: err.stack, url: req.originalUrl, method: req.method, ip: req.ip });
   res.status(500).json({ message: "Internal Server Error" });
 });
-

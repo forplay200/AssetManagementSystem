@@ -1,0 +1,74 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.16.0
+2 info using node@v24.18.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Newfolder\fyp\AssetManagementSystem\.npmrc
+5 silly config load:file:C:\Newfolder\fyp\AssetManagementSystem\npmrc
+6 silly config load:file:C:\Users\User\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install validator
+8 verbose argv "install" "validator"
+9 verbose logfile logs-max:10 dir:C:\Newfolder\fyp\AssetManagementSystem\npm-cache\_logs\2026-07-06T14_19_14_277Z-
+10 verbose logfile C:\Newfolder\fyp\AssetManagementSystem\npm-cache\_logs\2026-07-06T14_19_14_277Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest react@^18.2.0
+15 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+16 http fetch GET https://registry.npmjs.org/react attempt 1 failed with EACCES
+17 http fetch GET https://registry.npmjs.org/react attempt 2 failed with EACCES
+18 http fetch GET https://registry.npmjs.org/react attempt 3 failed with EACCES
+19 silly fetch manifest react-dom@^18.2.0
+20 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+21 http fetch GET https://registry.npmjs.org/react-dom attempt 1 failed with EACCES
+22 http fetch GET https://registry.npmjs.org/react-dom attempt 2 failed with EACCES
+23 http fetch GET https://registry.npmjs.org/react-dom attempt 3 failed with EACCES
+24 silly fetch manifest react-scripts@5.0.1
+25 silly packumentCache full:https://registry.npmjs.org/react-scripts cache-miss
+26 http fetch GET https://registry.npmjs.org/react-scripts attempt 1 failed with EACCES
+27 http fetch GET https://registry.npmjs.org/react-scripts attempt 2 failed with EACCES
+28 http fetch GET https://registry.npmjs.org/react-scripts attempt 3 failed with EACCES
+29 silly fetch manifest validator@*
+30 silly packumentCache full:https://registry.npmjs.org/validator cache-miss
+31 http fetch GET https://registry.npmjs.org/validator attempt 1 failed with EACCES
+32 http fetch GET https://registry.npmjs.org/validator attempt 2 failed with EACCES
+33 http fetch GET https://registry.npmjs.org/validator attempt 3 failed with EACCES
+34 silly placeDep ROOT react@ OK for: frontend@1.0.0 want: ^18.2.0
+35 silly placeDep ROOT react-dom@ OK for: frontend@1.0.0 want: ^18.2.0
+36 silly placeDep ROOT react-scripts@ OK for: frontend@1.0.0 want: 5.0.1
+37 silly placeDep ROOT validator@ OK for: frontend@1.0.0 want: *
+38 verbose type system
+39 verbose stack FetchError: request to https://registry.npmjs.org/react failed, reason: 
+39 verbose stack     at ClientRequest.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+39 verbose stack     at ClientRequest.emit (node:events:509:28)
+39 verbose stack     at emitErrorEvent (node:_http_client:109:11)
+39 verbose stack     at _destroy (node:_http_client:993:9)
+39 verbose stack     at onSocketNT (node:_http_client:1014:5)
+39 verbose stack     at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+40 error code EACCES
+41 error errno EACCES
+42 error FetchError: request to https://registry.npmjs.org/react failed, reason: 
+42 error     at ClientRequest.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+42 error     at ClientRequest.emit (node:events:509:28)
+42 error     at emitErrorEvent (node:_http_client:109:11)
+42 error     at _destroy (node:_http_client:993:9)
+42 error     at onSocketNT (node:_http_client:1014:5)
+42 error     at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+42 error   code: 'EACCES',
+42 error   errno: 'EACCES',
+42 error   type: 'system',
+42 error   requiredBy: '.'
+42 error }
+43 error
+43 error The operation was rejected by your operating system.
+43 error It's possible that the file was already in use (by a text editor or antivirus), or that you lack permissions to access it.
+43 error
+43 error If you believe this might be a permissions issue, please double-check the permissions of the file and its containing directories, or try running the command again as root/Administrator.
+44 silly unfinished npm timer reify 1783347555007
+45 silly unfinished npm timer reify:loadTrees 1783347555008
+46 verbose cwd C:\Newfolder\fyp\AssetManagementSystem
+47 verbose os Windows_NT 10.0.26200
+48 verbose node v24.18.0
+49 verbose npm  v11.16.0
+50 verbose exit 1
+51 verbose code 1
+52 error A complete log of this run can be found in: C:\Newfolder\fyp\AssetManagementSystem\npm-cache\_logs\2026-07-06T14_19_14_277Z-debug-0.log
