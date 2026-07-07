@@ -3,9 +3,15 @@ const router = express.Router();
 const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, getVersionHistory, getVersion, downloadVersion, searchAssets } = require("../controllers/assetsController");
 const auth = require('../middleware/auth');
 const rbac = require('../middleware/rbac');
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
 
 // POST /api/assets/upload
-router.post('/upload', auth, rbac('admin', 'developer', 'designer', 'collaborator'), uploadAsset);
+router.post('/upload', auth, rbac('admin', 'developer', 'designer', 'collaborator'), upload.single('asset'), uploadAsset);
 
 // GET /api/assets/download/:id
 router.get('/download/:id', auth, rbac('admin', 'developer', 'designer', 'collaborator'), downloadAsset);
@@ -55,3 +61,5 @@ router.post('/:assetId/comments', auth, rbac('admin', 'developer', 'designer', '
 router.get('/:assetId/comments', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.getCommentHistory);
 
 router.get('/dashboard/stats', auth, rbac('admin', 'developer', 'designer', 'collaborator'), assetsController.getDashboardStats);
+
+

@@ -2,6 +2,7 @@ const { Tag, User, Asset, Version, Comment } = require("../models");
 
 const redisClient = require("../redisClient");
 const logger = require('../utils/logger');
+const { minioClient, BUCKET_NAME } = require('../utils/minioClient');
 
 // Create a new version for an asset
 exports.createVersion = async (req, res) => {
@@ -26,7 +27,7 @@ exports.createVersion = async (req, res) => {
       originalName: '',
       mimeType: '',
       size: 0,
-      createdBy: req.user.id,      changeLog: req.body.changeLog,      changeLog: req.body.changeLog,
+      createdBy: req.user.id,      changeLog: req.body.changeLog,
     });
     // Create directory for this version: uploads/versions/{assetId}/{version.id}
     const versionDir = path.join(__dirname, '..', 'uploads', 'versions', asset.id.toString(), version.id.toString());
@@ -56,7 +57,7 @@ exports.createVersion = async (req, res) => {
         originalName: version.originalName,
         mimeType: version.mimeType,
         size: version.size,
-        createdAt: version.createdAt,     changeLog: version.changeLog,      changeLog: version.changeLog,
+        createdAt: version.createdAt,     changeLog: version.changeLog,
         createdBy: version.createdBy
       }
     });
@@ -442,3 +443,78 @@ exports.getDashboardStats = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 }
+
+exports.uploadAsset = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const { originalname, mimetype, size, buffer } = req.file;
+    const ext = path.extname(originalname);
+    const objectKey = Date.now() + "-" + Math.round(Math.random() * 1E9) + ext;
+    await minioClient.putObject(BUCKET_NAME, objectKey, buffer, size, {
+      'Content-Type': mimetype
+    });
+    const asset = await Asset.create({
+      filename: objectKey,
+      originalname: originalname,
+      mimetype: mimetype,
+      size: size,
+      path: objectKey,
+      userId: req.user.id
+    });
+    res.status(201).json({ message: "Asset uploaded successfully", asset });
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    const { originalname, mimetype, size, filename } = req.file;
+    const asset = await Asset.create({
+      filename: filename,
+      originalname: originalname,
+      mimetype: mimetype,
+      size: size,
+      path: filename,
+      userId: req.user.id
+    });
+    res.status(201).json({ message: 'Asset uploaded successfully', asset });
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.downloadAsset = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.deleteAsset = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.previewAsset = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.getAssetMetadata = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.updateAssetMetadata = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.addTagToAsset = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.removeTagFromAsset = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+exports.getAssetTags = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
