@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+const { Op } = require('sequelize');
 const { Tag, User, Asset, Version, Comment } = require("../models");
 
 const redisClient = require("../redisClient");
@@ -119,6 +122,56 @@ exports.getVersion = async (req, res) => {
 // Download a specific version
 exports.downloadVersion = async (req, res) => {
   try {
+    const { id, versionId } = req.params;
+
+    const version = await Version.findOne({
+      where: {
+        id: versionId,
+        assetId: id
+      }
+    });
+
+    if (!version) {
+      return res.status(404).json({
+        message: "Version not found"
+      });
+    }
+
+    const stream = await minioClient.getObject(
+      BUCKET_NAME,
+      version.fileName
+    );
+
+    res.setHeader(
+      "Content-Type",
+      version.mimeType
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${version.originalName}"`
+    );
+
+    stream.on("error", (err) => {
+      logger.error(err);
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Error streaming file"
+        });
+      }
+    });
+
+    stream.pipe(res);
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
 // Search assets with filtering and pagination
 exports.searchAssets = async (req, res) => {
   try {
@@ -176,25 +229,6 @@ exports.searchAssets = async (req, res) => {
       const end = new Date(date + 'T23:59:59.999Z');
       where.uploadedAt = { [Op.between]: [start, end] };
     }
-
-    if (creator) {
-      if (!isNaN(creator)) {
-        // Treat as user ID
-        include.push({
-          model: User,
-          as: 'uploader',
-          where: { id: parseInt(creator) }
-        });
-      } else {
-        // Treat as username substring match
-        include.push({
-          model: User,
-          as: 'uploader',
-          where: { username: { [Op.like]: `%${creator}%` } }
-        });
-      }
-    }
-
     // Build include array for associations
     const include = [];
 
@@ -469,52 +503,332 @@ exports.uploadAsset = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-      return res.status(400).json({ message: 'No file uploaded' });
+
+
+exports.downloadAsset = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
     }
-    const { originalname, mimetype, size, filename } = req.file;
-    const asset = await Asset.create({
-      filename: filename,
-      originalname: originalname,
-      mimetype: mimetype,
-      size: size,
-      path: filename,
-      userId: req.user.id
+
+    const stream = await minioClient.getObject(
+      BUCKET_NAME,
+      asset.filename
+    );
+
+    res.setHeader(
+      "Content-Type",
+      asset.mimetype
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${asset.originalname}"`
+    );
+
+    stream.on("error", (err) => {
+      logger.error(err);
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Error streaming file"
+        });
+      }
     });
-    res.status(201).json({ message: 'Asset uploaded successfully', asset });
+
+    stream.pipe(res);
+
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: 'Server error' });
+
+    res.status(500).json({
+      message: "Server error"
+    });
   }
 };
 
-exports.downloadAsset = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
 exports.deleteAsset = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    // 权限检查
+    if (
+      asset.userId !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        message: "Forbidden"
+      });
+    }
+
+    try {
+      await minioClient.removeObject(
+        BUCKET_NAME,
+        asset.filename
+      );
+    } catch (minioError) {
+      logger.error(minioError);
+
+      return res.status(500).json({
+        message: "Failed to remove file from storage"
+      });
+    }
+
+    await asset.destroy();
+
+    res.json({
+      message: "Asset deleted successfully"
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
 
 exports.previewAsset = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    const stream = await minioClient.getObject(
+      BUCKET_NAME,
+      asset.filename
+    );
+
+    res.setHeader(
+      "Content-Type",
+      asset.mimetype
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${asset.originalname}"`
+    );
+
+    stream.on("error", (err) => {
+      logger.error(err);
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Error streaming preview"
+        });
+      }
+    });
+
+    stream.pipe(res);
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
 
 exports.getAssetMetadata = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    res.json({
+      assetId: asset.id,
+      filename: asset.originalname,
+      metadata: asset.metadata || {}
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
 
 exports.updateAssetMetadata = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+    const { metadata } = req.body;
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    if (
+      asset.userId !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        message: "Forbidden"
+      });
+    }
+
+    asset.metadata = metadata;
+
+    await asset.save();
+
+    res.json({
+      message: "Metadata updated successfully",
+      metadata: asset.metadata
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
 
 exports.addTagToAsset = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+    const { tag } = req.body;
+
+    if (!tag) {
+      return res.status(400).json({
+        message: "Tag is required"
+      });
+    }
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    const [tagRecord] = await Tag.findOrCreate({
+      where: {
+        name: tag.trim()
+      }
+    });
+
+    await asset.addTag(tagRecord);
+
+    res.json({
+      message: "Tag added successfully",
+      tag: tagRecord
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
 
 exports.removeTagFromAsset = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+    const { tag } = req.body;
+
+    if (!tag) {
+      return res.status(400).json({
+        message: "Tag is required"
+      });
+    }
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    const tagRecord = await Tag.findOne({
+      where: {
+        name: tag.trim()
+      }
+    });
+
+    if (!tagRecord) {
+      return res.status(404).json({
+        message: "Tag not found"
+      });
+    }
+
+    await asset.removeTag(tagRecord);
+
+    res.json({
+      message: "Tag removed successfully"
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
 
 exports.getAssetTags = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+
+    const asset = await Asset.findByPk(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    const tags = await asset.getTags();
+
+    res.json({
+      assetId: asset.id,
+      tags
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
 };
