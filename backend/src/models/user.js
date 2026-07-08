@@ -1,62 +1,69 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize(process.env.DATABASE_URL);
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define('User', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
 
-const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  username: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
-  },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
-  },
-  passwordHash: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  resetToken: {
-    type: DataTypes.STRING
-  },
-  resetTokenExpiry: {
-    type: DataTypes.DATE
-  },
-  role: {
-    type: DataTypes.ENUM('admin', 'developer', 'designer', 'collaborator'),
-    defaultValue: 'collaborator'
-  }
-}, {
-  timestamps: true
-});
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
 
-// Instance method to validate password
-User.prototype.validPassword = function(password) {
-  const bcrypt = require('bcryptjs');
-  return bcrypt.compareSync(password, this.passwordHash);
-};
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
 
-// Generate a password reset token (using crypto)
-User.prototype.generateResetToken = function() {
-  const crypto = require('crypto');
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  this.resetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-  // Token expires in 1 hour
-  this.resetTokenExpiry = Date.now() + 3600000; // 1 hour
-  return resetToken;
-};
+    passwordHash: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
 
-// Associations
-User.associate = (models) => {
-  User.hasMany(models.Comment, {
-    foreignKey: 'userId',
-    as: 'comments'
+    resetToken: DataTypes.STRING,
+
+    resetTokenExpiry: DataTypes.DATE,
+
+    role: {
+      type: DataTypes.ENUM(
+        'admin',
+        'developer',
+        'designer',
+        'collaborator'
+      ),
+      defaultValue: 'collaborator'
+    }
   });
-};
 
-module.exports = User;
+  User.prototype.validPassword = function(password) {
+    const bcrypt = require('bcryptjs');
+    return bcrypt.compareSync(password, this.passwordHash);
+  };
+
+  User.prototype.generateResetToken = function() {
+    const crypto = require('crypto');
+
+    const token = crypto.randomBytes(32).toString('hex');
+
+    this.resetToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    this.resetTokenExpiry = Date.now() + 3600000;
+
+    return token;
+  };
+
+  User.associate = models => {
+    User.hasMany(models.Comment, {
+      foreignKey: 'userId',
+      as: 'comments'
+    });
+  };
+
+  return User;
+};

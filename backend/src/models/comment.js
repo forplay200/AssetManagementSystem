@@ -1,5 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize(process.env.DATABASE_URL);
+module.exports = (sequelize, DataTypes) => {
 
 const Comment = sequelize.define('Comment', {
   id: {
@@ -37,5 +36,5 @@ Comment.associate = (models) => {
     as: 'replies'
   });
 };
-
-module.exports = Comment;
+  return Comment;
+};

@@ -1,5 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize(process.env.DATABASE_URL);
+module.exports = (sequelize, DataTypes) => {
 
 const Version = sequelize.define('Version', {
   id: {
@@ -57,5 +56,5 @@ Version.associate = (models) => {
     as: 'creator'
   });
 };
-
-module.exports = Version;
+ return Version;
+};

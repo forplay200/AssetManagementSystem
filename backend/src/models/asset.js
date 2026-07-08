@@ -1,5 +1,5 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize(process.env.DATABASE_URL);
+module.exports = (sequelize, DataTypes) => {
+
 
 const Asset = sequelize.define('Asset', {
   filename: {
@@ -62,5 +62,5 @@ Asset.associate = (models) => {
     as: 'versions'
   });
 };
-
-module.exports = Asset;
+  return Asset;
+};

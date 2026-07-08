@@ -33,21 +33,43 @@ exports.createVersion = async (req, res) => {
       createdBy: req.user.id,      changeLog: req.body.changeLog,
     });
     // Create directory for this version: uploads/versions/{assetId}/{version.id}
-    const versionDir = path.join(__dirname, '..', 'uploads', 'versions', asset.id.toString(), version.id.toString());
-    if (!fs.existsSync(versionDir)) {
-      fs.mkdirSync(versionDir, { recursive: true });
-    }
-    // Source file path
-    const sourcePath = path.join(__dirname, '..', 'uploads', asset.filename);
-    // Destination file path (keep the same filename)
-    const destPath = path.join(versionDir, asset.filename);
-    // Copy the file
-    fs.copyFileSync(sourcePath, destPath);
-    // Update the version record with the file metadata
-    version.fileName = asset.filename;
+    const versionObjectKey =
+  `versions/${asset.id}/${version.id}/${asset.filename}`;
+
+    // 读取原始对象
+    const stream = await minioClient.getObject(
+      BUCKET_NAME,
+      asset.filename
+    );
+
+    // 转 Buffer
+    const chunks = [];
+
+    await new Promise((resolve, reject) => {
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('end', resolve);
+      stream.on('error', reject);
+    });
+
+    const buffer = Buffer.concat(chunks);
+
+    // 存为版本对象
+    await minioClient.putObject(
+      BUCKET_NAME,
+      versionObjectKey,
+      buffer,
+      buffer.length,
+      {
+        'Content-Type': asset.mimetype
+      }
+    );
+
+    // 更新 Version 记录
+    version.fileName = versionObjectKey;
     version.originalName = asset.originalname;
     version.mimeType = asset.mimetype;
     version.size = asset.size;
+
     await version.save();
     // Return the version record
     res.status(201).json({
@@ -720,7 +742,7 @@ exports.updateAssetMetadata = async (req, res) => {
 
 exports.addTagToAsset = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { assetId } = req.params;
     const { tag } = req.body;
 
     if (!tag) {
@@ -729,7 +751,7 @@ exports.addTagToAsset = async (req, res) => {
       });
     }
 
-    const asset = await Asset.findByPk(id);
+    const asset = await Asset.findByPk(assetId);
 
     if (!asset) {
       return res.status(404).json({
@@ -761,7 +783,7 @@ exports.addTagToAsset = async (req, res) => {
 
 exports.removeTagFromAsset = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { assetId } = req.params;
     const { tag } = req.body;
 
     if (!tag) {
@@ -770,7 +792,7 @@ exports.removeTagFromAsset = async (req, res) => {
       });
     }
 
-    const asset = await Asset.findByPk(id);
+    const asset = await Asset.findByPk(assetId);
 
     if (!asset) {
       return res.status(404).json({
@@ -805,11 +827,12 @@ exports.removeTagFromAsset = async (req, res) => {
   }
 };
 
+
 exports.getAssetTags = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { assetId } = req.params;
 
-    const asset = await Asset.findByPk(id);
+    const asset = await Asset.findByPk(assetId);
 
     if (!asset) {
       return res.status(404).json({

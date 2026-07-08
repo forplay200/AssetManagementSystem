@@ -1,6 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize(process.env.DATABASE_URL);
-
+module.exports = (sequelize, DataTypes) => {
 const Tag = sequelize.define('Tag', {
   name: {
     type: DataTypes.STRING,
@@ -18,5 +16,5 @@ Tag.associate = (models) => {
     foreignKey: 'tagId'
   });
 };
-
-module.exports = Tag;
+ return Tag;
+};

@@ -1,1 +1,37 @@
-const logger = {\n  info: (message, meta = {}) => {\n    console.log([INFO]  - , meta);\n  },\n  warn: (message, meta = {}) => {\n    console.warn([WARN]  - , meta);\n  },\n  error: (messageOrError, meta = {}) => {\n    let message = '';\n    let error = {};\n    if (messageOrError instanceof Error) {\n      message = messageOrError.message;\n      error = { ...messageOrError, stack: messageOrError.stack };\n    } else {\n      message = messageOrError;\n      error = {};\n    }\n    console.error([ERROR]  - , { error, ...meta });\n  },\n  debug: (message, meta = {}) => {\n    if (process.env.NODE_ENV !== 'production') {\n      console.debug([DEBUG]  - , meta);\n    }\n  }\n};\n\nmodule.exports = logger;
+const logger = {
+  info: (message, meta = {}) => {
+    console.log(`[INFO] ${message}`, meta);
+  },
+
+  warn: (message, meta = {}) => {
+    console.warn(`[WARN] ${message}`, meta);
+  },
+
+  error: (messageOrError, meta = {}) => {
+    if (messageOrError instanceof Error) {
+      console.error(
+        `[ERROR] ${messageOrError.message}`,
+        {
+          stack: messageOrError.stack,
+          ...meta
+        }
+      );
+    } else {
+      console.error(
+        `[ERROR] ${messageOrError}`,
+        meta
+      );
+    }
+  },
+
+  debug: (message, meta = {}) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(
+        `[DEBUG] ${message}`,
+        meta
+      );
+    }
+  }
+};
+
+module.exports = logger;
