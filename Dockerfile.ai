@@ -1,7 +1,13 @@
 FROM python:3.11-slim
+
 WORKDIR /app
-COPY ai-service/requirements.txt ./ai-service/
-RUN pip install --no-cache-dir -r ai-service/requirements.txt
-COPY ai-service/ ./ai-service/
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
 EXPOSE 8000
-CMD ["uvicorn", "ai-service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
