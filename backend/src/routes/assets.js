@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, createComment, getCommentHistory, getDashboardStats } = require("../controllers/assetsController");
+const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, createComment, getCommentHistory, getDashboardStats, getAssetInfo } = require("../controllers/assetsController");
 const auth = require('../middleware/auth');
 const { authorize } = require("../middleware/rbac");
 const multer = require('multer');
@@ -54,7 +54,11 @@ router.get('/search', auth, authorize('admin', 'developer', 'designer', 'collabo
 
 router.post('/ai/job', auth, authorize('admin', 'developer', 'designer', 'collaborator'), createAiJob);
 
-router.post('/:id/ai-result', auth, authorize('admin', 'developer', 'designer', 'collaborator'), storeAiResult);
+//router.post('/:id/ai-result', auth, authorize('admin', 'developer', 'designer', 'collaborator'), storeAiResult);
+router.post('/:id/ai-result', storeAiResult);
+
+router.get('/:id/info',getAssetInfo);
+
 
 router.post('/:assetId/comments', auth, authorize('admin', 'developer', 'designer', 'collaborator'), createComment);
 router.get('/:assetId/comments', auth, authorize('admin', 'developer', 'designer', 'collaborator'), getCommentHistory);

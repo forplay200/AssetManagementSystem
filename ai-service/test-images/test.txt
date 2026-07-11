@@ -1,0 +1,3 @@
+
+This project uses Redis, PostgreSQL and MinIO.
+It provides AI tagging for game development assets.

@@ -200,10 +200,12 @@ exports.searchAssets = async (req, res) => {
     const { 
       filename, 
       metadata, 
+      aiTag,
       tags, 
       type, 
       date, 
       creator,
+      q,
       page = 1, 
       pageSize = 10 
     } = req.query;
@@ -293,7 +295,7 @@ exports.searchAssets = async (req, res) => {
     }
 
     // Use findAndCountAll for pagination with total count
-    const { count, rows } = await Asset.findAndCountAll({
+    const result = await Asset.findAndCountAll({
       where: where,
       include: include,
       distinct: true, // To avoid duplicate assets due to joins
@@ -301,6 +303,75 @@ exports.searchAssets = async (req, res) => {
       offset: offset,
       order: [['uploadedAt', 'DESC']]
     });
+    
+    let rows = result.rows;
+    let count = result.count;
+
+    if (q) {
+
+    rows = rows.map(asset => {
+
+      const ai = asset.metadata?.ai || {};
+
+      let matchSource = "";
+      let score = 0;
+
+      if (
+        (ai.imageTags || [])
+          .join(" ")
+          .toLowerCase()
+          .includes(q.toLowerCase())
+      ) {
+        matchSource = "imageTags";
+        score += 10;
+      }
+
+      else if (
+        (ai.keywords || [])
+          .join(" ")
+          .toLowerCase()
+          .includes(q.toLowerCase())
+      ) {
+        matchSource = "keywords";
+        score += 8;
+      }
+
+      else if (
+        (ai.summary || "")
+          .toLowerCase()
+          .includes(q.toLowerCase())
+      ) {
+        matchSource = "summary";
+        score += 5;
+      }
+
+      else if (
+        (ai.transcript || "")
+          .toLowerCase()
+          .includes(q.toLowerCase())
+      ) {
+        matchSource = "transcript";
+        score += 1;
+      }
+
+      return {
+        ...asset.toJSON(),
+        matchSource,
+        score
+      };
+
+    }).filter(asset =>
+        asset.matchSource !== ""
+    );
+
+    count = rows.length;
+    
+    rows.sort(
+      (a, b) => b.score - a.score
+    );
+
+    }
+
 
     res.json({
       totalItems: count,
@@ -360,12 +431,17 @@ exports.storeAiResult = async (req, res) => {
     }
 
     // Permission check: only the owner or admin can update the asset's metadata
-    if (asset.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-    }
+    //if (asset.userId !== req.user.id && req.user.role !== 'admin') {
+    //  return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+    //}
 
     // Update the asset's metadata
-    asset.metadata = metadata;
+    
+    asset.metadata = {
+      ...(asset.metadata || {}),
+      ...metadata
+    };
+
     await asset.save();
 
     res.json({ message: "AI result stored successfully", asset });
@@ -502,29 +578,94 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.uploadAsset = async (req, res) => {
   try {
+
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({
+        message: "No file uploaded"
+      });
     }
-    const { originalname, mimetype, size, buffer } = req.file;
+
+    const {
+      originalname,
+      mimetype,
+      size,
+      buffer
+    } = req.file;
+
     const ext = path.extname(originalname);
-    const objectKey = Date.now() + "-" + Math.round(Math.random() * 1E9) + ext;
-    await minioClient.putObject(BUCKET_NAME, objectKey, buffer, size, {
-      'Content-Type': mimetype
-    });
+
+    const objectKey =
+      Date.now() +
+      "-" +
+      Math.round(Math.random() * 1E9) +
+      ext;
+
+    await minioClient.putObject(
+      BUCKET_NAME,
+      objectKey,
+      buffer,
+      size,
+      {
+        "Content-Type": mimetype
+      }
+    );
+
     const asset = await Asset.create({
       filename: objectKey,
-      originalname: originalname,
-      mimetype: mimetype,
-      size: size,
+      originalname,
+      mimetype,
+      size,
       path: objectKey,
       userId: req.user.id
     });
-    res.status(201).json({ message: "Asset uploaded successfully", asset });
+
+    try {
+
+      const axios = require("axios");
+
+      await axios.post(
+        "http://ai-service:8000/jobs",
+        {
+          assetId: asset.id,
+          jobType: "auto_tag"
+        }
+      );
+
+      console.log(
+        `AI Job queued for asset ${asset.id}`
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Failed to create AI job:",
+        err.message
+      );
+
+    }
+
+    res.status(201).json({
+      message: "Asset uploaded successfully",
+      asset
+    });
+
+    
+    console.log(
+      "Uploaded MIME type:",
+      mimetype
+    );
+
   } catch (error) {
+
     logger.error(error);
-    res.status(500).json({ message: "Server error" });
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
   }
 };
+
 
 
 exports.downloadAsset = async (req, res) => {
@@ -848,6 +989,37 @@ exports.getAssetTags = async (req, res) => {
     });
 
   } catch (error) {
+    logger.error(error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+
+exports.getAssetInfo = async (req, res) => {
+  try {
+
+    const asset = await Asset.findByPk(
+      req.params.id
+    );
+
+    if (!asset) {
+      return res.status(404).json({
+        message: "Asset not found"
+      });
+    }
+
+    res.json({
+      id: asset.id,
+      filename: asset.filename,
+      originalname: asset.originalname,
+      mimetype: asset.mimetype,
+      size: asset.size
+    });
+
+  } catch (error) {
+
     logger.error(error);
 
     res.status(500).json({

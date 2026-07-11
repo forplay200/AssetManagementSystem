@@ -1,10 +1,17 @@
 FROM python:3.11-slim
 
+RUN apt-get update && \
+    apt-get install -y ffmpeg
+
 WORKDIR /app
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN python -c "from transformers import pipeline; pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')"
+
+RUN python -c "from keybert import KeyBERT; KeyBERT()"
 
 COPY . .
 

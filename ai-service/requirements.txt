@@ -7,6 +7,16 @@ redis
 python-multipart
 pydantic
 email-validator
+requests
+torch
+transformers
+pillow
+keybert
+sentence-transformers
+openai-whisper
+ffmpeg-python
+
+
 
 flake8
 black
