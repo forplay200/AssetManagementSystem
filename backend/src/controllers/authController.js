@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../models');
 const logger = require('../utils/logger');
+const { hashResetToken } = require('../utils/resetToken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const JWT_EXPIRES_IN = '1h';
@@ -24,7 +25,7 @@ exports.register = async (req, res) => {
       username,
       email,
       passwordHash,
-      role: role || 'collaborator'
+      role: process.env.ALLOW_PUBLIC_ROLE_REGISTRATION === 'true' && role ? role : 'collaborator'
     });
     // Generate JWT
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -84,7 +85,7 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
-    const user = await db.User.findOne({ where: { resetToken: token, resetTokenExpiry: { [db.Sequelize.Op.gt]: Date.now() } } });
+    const user = await db.User.findOne({ where: { resetToken: hashResetToken(token), resetTokenExpiry: { [db.Sequelize.Op.gt]: new Date() } } });
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }

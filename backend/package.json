@@ -22,6 +22,6 @@
     },
     "scripts": {
         "start": "node src/index.js",
-        "test": "node -e \"console.log('Tests passed')\""
+        "test": "node --test __tests__/validate.test.js __tests__/rbac.test.js __tests__/routes.test.js __tests__/resetToken.test.js __tests__/assetsController.test.js __tests__/searchQuery.test.js"
     }
 }

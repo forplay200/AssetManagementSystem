@@ -1,6 +1,7 @@
 const { User } = require('../models');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
+const VALID_ROLES = ['admin', 'developer', 'designer', 'collaborator'];
 
 // Get all users
 exports.getAllUsers = async (req, res) => {
@@ -35,6 +36,9 @@ exports.getUserById = async (req, res) => {
 exports.createUser = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
+    if (role && !VALID_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
     // Validate input
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'Username, email, and password are required' });
@@ -78,6 +82,9 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     const { username, email, password, role } = req.body;
+    if (role && !VALID_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
     // If username is being changed, check it's not taken
     if (username && username !== user.username) {
       const existingUser = await User.findOne({ where: { username } });
@@ -118,6 +125,9 @@ exports.updateUser = async (req, res) => {
 // Delete user
 exports.deleteUser = async (req, res) => {
   try {
+    if (Number(req.user.id) === Number(req.params.id)) {
+      return res.status(400).json({ message: 'Administrators cannot delete their own active account' });
+    }
     const user = await User.findByPk(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

@@ -1,0 +1,235 @@
+# Frontend Development Progress
+
+## Session Summary
+
+- Date/Time: 2026-07-12 21:19 MYT (UTC+08:00)
+- Scope: Hybrid 3D tagging with representative software rendering and CLIP semanticTags.
+
+### Completed
+- Preserved deterministic 3D `vertexCount`, `faceCount`, and `modelTags` extraction.
+- Added OBJ/FBX render-geometry extraction and an in-memory, dependency-light isometric 2D software renderer.
+- Reused the existing loaded CLIP pipeline to produce separately stored `metadata.ai.semanticTags`.
+- Isolated semantic failures so technical 3D metadata still persists when rendering or CLIP inference cannot complete.
+- Added `semanticTags` search-source ranking and a separate CLIP Semantic Tags section in the frontend AI panel.
+- Added geometry-rendering, semantic search, and frontend display regression coverage.
+- Verified nine AI unit cases, all 16 backend tests, all 32 frontend tests, frontend lint, and the optimized production build.
+- Replaced OBJ source and FBX placeholder states with a reusable interactive Three.js viewer.
+- Added authenticated OBJ and FBX loading through the existing preview endpoint with rotate, pan, zoom, automatic centering, technical lighting, and responsive resizing.
+- Added protected-loading, WebGL/parser failure fallback, GPU resource cleanup, and interaction guidance states.
+- Preserved the existing image, audio, text, and unsupported-file preview paths.
+- Added OBJ parsing, OBJ/FBX routing, loading, and failure regression coverage.
+- Lazy-loaded the Three.js viewer so the 164.6 kB gzip rendering chunk is downloaded only when a 3D asset is opened; the main bundle remains 105.73 kB gzip.
+- Verified all 32 frontend tests, frontend lint, and the optimized production build.
+- No backend APIs or backend files were changed in this increment.
+- Added the requested 3D Metadata readout with Vertex Count and Face Count labels for `ai.type === "3d"` only.
+- Rendered Generated Model Tags through the same enrichment collection UI and controls used by image and audio tags.
+- Preserved existing image, audio, and text AI metadata rendering and suppressed the pending state when count-only 3D metadata is available.
+- Added an Asset Detail integration test using the persisted 3D API response shape and production-scale example counts.
+- Verified all 27 frontend tests, frontend lint, and the optimized production build.
+- Added OBJ and FBX detection to the automatic AI worker pipeline.
+- Added dependency-light OBJ, ASCII FBX, and binary FBX geometry extraction for vertex and face counts.
+- Added `metadata.ai.type = "3d"`, generated `modelTags`, canonical search matching, and Asset Detail geometry display.
+- Added extraction, search-source, and frontend display regression coverage.
+- Created the requested 3D processing architecture and test document.
+- Verified five OBJ/FBX extractor cases, all 16 backend tests, all 26 frontend tests, frontend lint, and the optimized production build.
+- Extended the existing audio AI pipeline with YAMNet classification while preserving Whisper transcription, KeyBERT keywords, and summary fields.
+- Added `metadata.ai.audioTags` storage, AI Metadata display, and canonical AI search matching.
+- Added YAMNet/TensorFlow runtime dependencies and build-time model preparation to the existing AI worker image.
+- Verified worker syntax and tag selection, all 16 backend tests, all 25 frontend tests, frontend lint/build, and Docker Compose configuration.
+- Refactored Metadata Text search so PostgreSQL searches scalar metadata values without serializing or matching JSON keys.
+- Verified expected matches for `button`, `project one`, and `UI`, and prevented key-only matches for `type`.
+- Preserved the existing frontend parameter and paginated API response contract.
+- Verified the generated PostgreSQL 15 SQL and all 16 backend regression tests.
+- Audited every frontend Search field against the live backend parameter contract.
+- Corrected original filename search, PostgreSQL JSON metadata search, and pre-pagination AI metadata filtering.
+- Added a dedicated AI Metadata field for image tags, keywords, transcripts, and summaries.
+- Added case-insensitive filename, tag, creator, metadata, and AI text matching.
+- Added regression cases for `dashboard`, `redis`, `postgresql`, and `digital formats`.
+- Created the requested Search Integration Audit.
+- Verified all 15 backend tests, all 24 frontend tests, frontend lint, and the optimized production build.
+- Audited login response handling, localStorage persistence, AuthContext restoration, Axios interception, and every Asset Service request path.
+- Centralized the `aether.session` storage contract and synchronized Axios authorization defaults across login, registration, refresh, logout, and session expiry.
+- Hardened authenticated request headers to consistently send `Authorization: Bearer <token>` through Axios header objects.
+- Added backward-compatible `accessToken` normalization and rejected successful-looking authentication responses without a JWT.
+- Added authentication propagation and response-contract tests.
+- Verified frontend lint, all 23 frontend tests, and the optimized production build after the authentication fix.
+- Created the requested frontend authentication audit document.
+- No backend code or API behavior was changed in this increment.
+- Re-audited Asset Upload, Delete, Download, Detail, Metadata, Search Results, Comments, and Version History from the user-facing React workflows.
+- Completed Search Results pagination using the existing backend response contract and active filter values.
+- Added result-page position, accessible Previous/Next navigation, boundary disabling, loading behavior, and regression coverage.
+- No backend files or APIs were changed in this increment.
+- Verified frontend lint, all 16 frontend tests, and the optimized production build.
+- Audited Asset Upload, Delete, Download, Detail, Metadata, Search Results, Comments, and Version History against the PRD, architecture, and design system.
+- Confirmed Upload, Delete, Download, Detail, AI Metadata, Search Results, and Comments integrations were complete.
+- Backend dependency discovered: the existing version endpoint could preserve the active file but could not accept the PRD-required replacement file.
+- Backend fix completed: added an isolated multipart replacement endpoint without changing the established snapshot endpoint.
+- Completed the remaining Version History gap by adding an owner/Administrator replacement-file workflow.
+- Preserved the previous current file as a downloadable history entry before making the replacement current.
+- Retained the existing snapshot workflow and API contract for backward compatibility.
+- Preserved user-entered metadata, cleared stale AI output, and queued replacement files for fresh AI processing.
+- Added upload progress, supported-file validation, change notes, success/error states, and silent Asset Detail refresh after replacement.
+- Verified 12 backend regression tests, 15 frontend tests, frontend lint, and the optimized production build.
+- Added optional Description, Category, and Project fields to the Upload Asset workflow.
+- Added trimming and empty-field removal before initial metadata submission.
+- Merged initial metadata with current backend metadata to preserve any existing nested or AI values.
+- Added partial-success handling so a completed file upload is never reported as failed when only metadata saving fails.
+- Added an Asset Detail warning with a direct recovery path through the Metadata panel.
+- Added initial-metadata normalization tests.
+- Verified the production build, lint check, and all 15 frontend tests after upload metadata integration.
+- Added real authenticated image thumbnails to Asset Library and Search result cards.
+- Added viewport-aware lazy preview fetching with a 160px preload margin to avoid unnecessary API traffic.
+- Added thumbnail loading, protected-preview failure, non-image type, and image fallback states.
+- Added object-URL cleanup and subtle design-system hover treatment.
+- Removed the misleading non-interactive overflow icon from asset cards.
+- Added thumbnail MIME-type tests.
+- Verified the production build, lint check, and all 14 frontend tests after gallery thumbnail integration.
+- Expanded authenticated asset previews to scripts, TXT, JSON, XML, and OBJ source files.
+- Added automatic JSON pretty-printing and keyboard-scrollable read-only source previews.
+- Added 2 MB fetch and 100,000-character display limits for responsive, safe text rendering.
+- Added explicit oversized, unsupported, empty-file, loading, and protected-preview error states.
+- Moved preview lifecycle and object-URL cleanup into a modular Asset Preview component.
+- Added preview-type classification tests covering image, audio, data, OBJ, and FBX assets.
+- Verified the production build, lint check, and all 13 frontend tests after the preview expansion.
+- Added a keyboard-visible skip link on every public and authenticated route.
+- Added route-aware document titles and polite screen-reader announcements.
+- Added automatic main-content focus movement after navigation without scrolling.
+- Added accessible focus targets to public and authenticated main regions.
+- Added route-title and announcement tests.
+- Completed the previously deferred production build, lint check, and 10-test suite successfully.
+- Verified the final production build, lint check, and all 12 frontend tests after the accessibility addition.
+- Completed a read-only Git whitespace and workspace consistency check successfully.
+- Added proactive JWT expiry validation when restoring browser sessions.
+- Added automatic cleanup and sign-in redirection for expired or unauthorized authenticated requests.
+- Added a clear session-expired message on the Login Page.
+- Added automated active, expired, and malformed token coverage.
+- Added an authenticated not-found screen that preserves application navigation instead of silently redirecting.
+- Added dashboard, search, and browser-history recovery actions with the unresolved path displayed safely.
+- Added automated not-found coverage.
+- Replaced the static sidebar service claim with live health status from the existing backend health API.
+- Added operational, degraded, offline, and checking states with manual refresh and 60-second updates.
+- Added compact database, Redis, and MinIO status details through the status tooltip.
+- Added an application-level error boundary around the authenticated and public React interface.
+- Added a responsive Aether fallback screen for unexpected rendering failures.
+- Added a safe reload action and development-only diagnostic message.
+- Added automated coverage for the error fallback.
+
+### Created Files
+- `ai-service/clip_tags.py`
+- `ai-service/tests/test_clip_tags.py`
+- `ai-service/model_render.py`
+- `frontend/src/components/assets/ThreeModelPreview.jsx`
+- `frontend/src/components/assets/ThreeModelPreview.test.jsx`
+- `frontend/src/pages/AssetDetailPage.test.jsx`
+- `ai-service/model_metadata.py`
+- `ai-service/tests/test_model_metadata.py`
+- `docs/3d-processing.md`
+- `ai-service/audio_tags.py`
+- `ai-service/tests/test_audio_tags.py`
+- `frontend/src/components/metadata/MetadataPanel.test.jsx`
+- `backend/src/utils/searchQuery.js`
+- `backend/__tests__/searchQuery.test.js`
+- `docs/search-integration-audit.md`
+- `frontend/src/auth/authStorage.js`
+- `frontend/src/auth/authStorage.test.js`
+- `frontend/src/services/api.test.js`
+- `frontend/src/services/authService.test.js`
+- `docs/frontend-auth-audit.md`
+- `frontend/src/pages/SearchPage.test.jsx`
+- `frontend/src/utils/metadata.js`
+- `frontend/src/utils/metadata.test.js`
+- `frontend/src/components/assets/AssetThumbnail.jsx`
+- `frontend/src/components/assets/AssetThumbnail.test.js`
+- `frontend/src/components/assets/AssetPreview.jsx`
+- `frontend/src/components/assets/AssetPreview.test.js`
+- `frontend/src/components/common/RouteAccessibility.jsx`
+- `frontend/src/components/common/RouteAccessibility.test.jsx`
+- `frontend/src/context/AuthContext.test.js`
+- `frontend/src/pages/NotFoundPage.jsx`
+- `frontend/src/pages/NotFoundPage.test.jsx`
+- `frontend/src/services/healthService.js`
+- `frontend/src/components/common/SystemStatus.jsx`
+- `frontend/src/components/common/ErrorBoundary.jsx`
+- `frontend/src/components/common/ErrorBoundary.test.jsx`
+
+### Modified Files
+- `ai-service/model_metadata.py`
+- `ai-service/tags.py`
+- `frontend/src/components/assets/AssetPreview.jsx`
+- `frontend/src/components/assets/AssetPreview.test.js`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `backend/swagger.yaml`
+- `ai-service/worker.py`
+- `ai-service/requirements.txt`
+- `Dockerfile.ai`
+- `backend/src/utils/searchQuery.js`
+- `backend/__tests__/searchQuery.test.js`
+- `frontend/src/components/metadata/MetadataPanel.jsx`
+- `docs/ai-service-runtime.md`
+- `docs/search-integration-audit.md`
+- `backend/src/controllers/assetsController.js`
+- `backend/package.json`
+- `backend/swagger.yaml`
+- `frontend/src/pages/SearchPage.jsx`
+- `docs/backend-gap-fixes.md`
+- `frontend/src/services/api.js`
+- `frontend/src/services/authService.js`
+- `frontend/src/context/AuthContext.jsx`
+- `frontend/src/pages/SearchPage.jsx`
+- `backend/src/controllers/assetsController.js` (PRD-required frontend dependency only)
+- `backend/src/routes/assets.js` (PRD-required frontend dependency only)
+- `backend/swagger.yaml`
+- `backend/__tests__/assetsController.test.js`
+- `frontend/src/services/assetService.js`
+- `frontend/src/components/versions/VersionHistory.jsx`
+- `frontend/src/pages/UploadPage.jsx`
+- `frontend/src/pages/AssetDetailPage.jsx`
+- `frontend/src/components/assets/AssetCard.jsx`
+- `frontend/src/pages/AssetDetailPage.jsx`
+- `frontend/src/components/auth/PublicAuthShell.jsx`
+- `frontend/src/context/AuthContext.jsx`
+- `frontend/src/services/api.js`
+- `frontend/src/pages/LoginPage.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/index.js`
+- `docs/frontend-progress.md`
+
+### Implemented Screens
+- Interactive OBJ/FBX viewer on Asset Detail with rotate, pan, zoom, loading, and fallback states
+- Paginated Search Results on Search Assets Page
+- Version History replacement-file upload on Asset Detail Page
+- Initial organization fields on Upload Asset Page
+- Post-upload metadata warning state on Asset Detail Page
+- Protected image thumbnails in Asset Library and Search cards
+- Image, audio, script, JSON, XML, and TXT Asset Preview states
+- Global keyboard skip navigation
+- Route announcements and page-title management
+- Login session-expiry status state
+- Authenticated 404 Not Found Page
+- Live System Status component in desktop and mobile navigation
+- Global Frontend Error Recovery screen
+
+### Integrated APIs
+- Reused authenticated `GET /api/assets/preview/:id` for OBJ and FBX model bytes.
+- Expanded existing `GET /api/assets/search` integration to send `page` and `pageSize` and consume `currentPage` and `totalPages`.
+- New API endpoint added: `POST /api/assets/:id/versions/upload` for PRD-required new-version uploads.
+- Retained existing `POST /api/assets/:id/versions` snapshot integration.
+- Existing `GET /api/assets/:id/metadata` and `PUT /api/assets/:id/metadata` integrations added to the upload completion flow.
+- `GET /api/health`
+- Existing authenticated `GET /api/assets/preview/:id` integration expanded to additional PRD asset types.
+- Existing authenticated `GET /api/assets/preview/:id` integration added to visible image gallery cards.
+
+### Remaining Work
+- Run end-to-end OBJ/FBX queue processing against rebuilt AI containers when the local Docker daemon is available.
+- Rebuild the AI image and run an end-to-end MP3/WAV inference check when the local Docker daemon is available.
+- No blockers remain for the audited Asset Repository features.
+- Browser-based end-to-end accessibility verification with the complete service stack.
+- Browser/GPU end-to-end verification remains pending for representative production-size OBJ and FBX assets.
+
+### Next Steps
+- Upload representative OBJ, ASCII FBX, and binary FBX fixtures through the UI and compare persisted counts with known geometry totals.
+- Run `docker compose up -d --build ai-service ai-worker`, upload a representative audio sample, and confirm persisted `metadata.ai.audioTags` values.
+- Run browser-based replacement upload, version download, keyboard, responsive, and API-integration verification with the complete Docker Compose stack.
+- Continue frontend-only completion; do not add backend features unless required by an existing PRD requirement.

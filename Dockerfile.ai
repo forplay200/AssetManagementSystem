@@ -13,6 +13,8 @@ RUN python -c "from transformers import pipeline; pipeline('zero-shot-image-clas
 
 RUN python -c "from keybert import KeyBERT; KeyBERT()"
 
+RUN python -c "import tensorflow_hub as hub; hub.load('https://tfhub.dev/google/yamnet/1')"
+
 COPY . .
 
 EXPOSE 8000

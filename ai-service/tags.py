@@ -34,3 +34,17 @@ GAME_TAGS = [
     "sound effect",
     "music"
 ]
+
+MODEL_SEMANTIC_TAGS = GAME_TAGS + [
+    "car",
+    "transportation",
+    "building",
+    "furniture",
+    "tree",
+    "creature",
+    "robot",
+    "aircraft",
+    "boat",
+    "tool",
+    "game prop"
+]

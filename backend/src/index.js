@@ -10,6 +10,7 @@ const db = require('./models');
 const authRoutes = require('./routes/auth');
 const assetsRoutes = require('./routes/assets');
 const healthRoutes = require('./routes/health');
+const userRoutes = require('./routes/users');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,11 +19,12 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 const rateLimit = require('express-rate-limit');
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10000 });
 
 app.use('/api/auth', apiLimiter, authRoutes);
 app.use('/api/assets', apiLimiter, assetsRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/users', apiLimiter, userRoutes);
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -31,7 +31,212 @@ paths:
       responses:
         '200':
           description: Successful login
+  /auth/forgot-password:
+    post:
+      summary: Create a password reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Recovery request accepted
+  /auth/reset-password:
+    post:
+      summary: Reset a password using a valid token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password reset successfully
+  /users:
+    get:
+      summary: List users (Administrator only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User list
+    post:
+      summary: Create a user (Administrator only)
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: User created
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Get a user (Administrator only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User details
+    put:
+      summary: Update a user or role (Administrator only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User updated
+    delete:
+      summary: Delete a user (Administrator only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User deleted
+  /assets/{id}/details:
+    get:
+      summary: Get authenticated asset details including ownership
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Asset details
+  /assets/search:
+    get:
+      summary: Search and filter assets
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: filename
+          schema: { type: string }
+          description: Original upload name, with generated storage name as a compatibility fallback
+        - in: query
+          name: metadata
+          schema: { type: string }
+          description: Text contained anywhere in asset metadata
+        - in: query
+          name: q
+          schema: { type: string }
+          description: AI metadata text in imageTags, semanticTags, modelTags, audioTags, keywords, transcript, or summary
+        - in: query
+          name: aiTag
+          schema: { type: string }
+          description: Legacy AI metadata search alias
+        - in: query
+          name: tags
+          schema: { type: string }
+          description: Comma-separated repository tags
+        - in: query
+          name: type
+          schema: { type: string, enum: [image, audio, video, text, model] }
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+        - in: query
+          name: creator
+          schema: { type: string }
+          description: User ID or username text
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+      responses:
+        '200':
+          description: Paginated matching assets
+  /assets/{assetId}/tags:
+    parameters:
+      - in: path
+        name: assetId
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: List repository tags
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Asset tags
+    post:
+      summary: Add a repository tag
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tag added
+    delete:
+      summary: Remove a repository tag
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tag removed
+  /assets/{id}/versions/upload:
+    post:
+      summary: Upload a replacement file and preserve the previous current file in version history
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [asset]
+              properties:
+                asset:
+                  type: string
+                  format: binary
+                changeLog:
+                  type: string
+                  maxLength: 500
+      responses:
+        '201':
+          description: Previous file preserved and replacement made current
+        '400':
+          description: Missing or unsupported replacement file
+        '403':
+          description: Only the asset owner or an Administrator can replace the file
+        '404':
+          description: Asset not found
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     UserRegister:
       type: object

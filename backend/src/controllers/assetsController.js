@@ -6,6 +6,19 @@ const { Tag, User, Asset, Version, Comment } = require("../models");
 const redisClient = require("../redisClient");
 const logger = require('../utils/logger');
 const { minioClient, BUCKET_NAME } = require('../utils/minioClient');
+const { buildAssetSearchWhere, findAiMatch } = require('../utils/searchQuery');
+
+const SUPPORTED_VERSION_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.mp3', '.wav', '.fbx', '.obj', '.cs', '.js', '.txt', '.json', '.xml']);
+
+const streamToBuffer = async (stream) => {
+  const chunks = [];
+  await new Promise((resolve, reject) => {
+    stream.on('data', chunk => chunks.push(chunk));
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+  return Buffer.concat(chunks);
+};
 
 // Create a new version for an asset
 exports.createVersion = async (req, res) => {
@@ -15,8 +28,8 @@ exports.createVersion = async (req, res) => {
     if (!asset) {
       return res.status(404).json({ message: 'Asset not found' });
     }
-    // Permission check: only the owner can create a version (or adjust as needed)
-    if (asset.userId !== req.user.id) {
+    // Owners and administrators can preserve a version.
+    if (asset.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to create a version for this asset' });
     }
     // Determine the next version number
@@ -120,9 +133,9 @@ exports.getVersionHistory = async (req, res) => {
 // Get a specific version by ID
 exports.getVersion = async (req, res) => {
   try {
-    const { assetId, versionId } = req.params;
+    const { id, versionId } = req.params;
     const version = await Version.findOne({
-      where: { id: versionId, assetId: assetId },
+      where: { id: versionId, assetId: id },
       attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog']
     });
     if (!version) {
@@ -216,16 +229,7 @@ exports.searchAssets = async (req, res) => {
     const offset = (pageNum - 1) * size;
     const limit = size;
 
-    let where = {};
-
-    if (filename) {
-      where.filename = { [Op.like]: `%${filename}%` };
-    }
-
-    if (metadata) {
-      // Search in JSON string representation (not efficient for large datasets)
-      where.metadata = { [Op.like]: `%${metadata}%` };
-    }
+    const where = buildAssetSearchWhere({ filename, metadata, aiTag, q, type, date });
 
     if (tags) {
       // Split comma-separated tags and match any
@@ -235,24 +239,6 @@ exports.searchAssets = async (req, res) => {
       }
     }
 
-    if (type) {
-      const typeMap = {
-        image: ['image/jpeg', 'image/png', 'image/gif'],
-        audio: ['audio/mpeg', 'audio/wav'],
-        video: ['video/mp4', 'video/quicktime'],
-        text: ['text/plain', 'application/json', 'text/xml'],
-        model: ['model/obj', 'model/fbx', 'model/gltf-binary']
-      };
-      if (typeMap[type]) {
-        where.mimetype = { [Op.in]: typeMap[type] };
-      }
-    }
-
-    if (date) {
-      const start = new Date(date + 'T00:00:00.000Z');
-      const end = new Date(date + 'T23:59:59.999Z');
-      where.uploadedAt = { [Op.between]: [start, end] };
-    }
     // Build include array for associations
     const include = [];
 
@@ -269,7 +255,7 @@ exports.searchAssets = async (req, res) => {
           where: {
             [Op.or]: tagArray.map(t => ({
               name: {
-                [Op.like]: `%${t}%`
+                [Op.iLike]: `%${t}%`
               }
             }))
           }
@@ -289,7 +275,7 @@ exports.searchAssets = async (req, res) => {
         include.push({
           model: User,
           as: 'uploader',
-          where: { username: { [Op.like]: `%${creator}%` } }
+          where: { username: { [Op.iLike]: `%${creator}%` } }
         });
       }
     }
@@ -305,71 +291,13 @@ exports.searchAssets = async (req, res) => {
     });
     
     let rows = result.rows;
-    let count = result.count;
+    const count = result.count;
 
     if (q) {
-
-    rows = rows.map(asset => {
-
-      const ai = asset.metadata?.ai || {};
-
-      let matchSource = "";
-      let score = 0;
-
-      if (
-        (ai.imageTags || [])
-          .join(" ")
-          .toLowerCase()
-          .includes(q.toLowerCase())
-      ) {
-        matchSource = "imageTags";
-        score += 10;
-      }
-
-      else if (
-        (ai.keywords || [])
-          .join(" ")
-          .toLowerCase()
-          .includes(q.toLowerCase())
-      ) {
-        matchSource = "keywords";
-        score += 8;
-      }
-
-      else if (
-        (ai.summary || "")
-          .toLowerCase()
-          .includes(q.toLowerCase())
-      ) {
-        matchSource = "summary";
-        score += 5;
-      }
-
-      else if (
-        (ai.transcript || "")
-          .toLowerCase()
-          .includes(q.toLowerCase())
-      ) {
-        matchSource = "transcript";
-        score += 1;
-      }
-
-      return {
-        ...asset.toJSON(),
-        matchSource,
-        score
-      };
-
-    }).filter(asset =>
-        asset.matchSource !== ""
-    );
-
-    count = rows.length;
-    
-    rows.sort(
-      (a, b) => b.score - a.score
-    );
-
+      rows = rows.map(asset => {
+        const value = typeof asset.toJSON === 'function' ? asset.toJSON() : asset;
+        return { ...value, ...findAiMatch(value.metadata, q) };
+      }).sort((a, b) => b.score - a.score);
     }
 
 
@@ -900,6 +828,10 @@ exports.addTagToAsset = async (req, res) => {
       });
     }
 
+    if (asset.userId !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const [tagRecord] = await Tag.findOrCreate({
       where: {
         name: tag.trim()
@@ -939,6 +871,10 @@ exports.removeTagFromAsset = async (req, res) => {
       return res.status(404).json({
         message: "Asset not found"
       });
+    }
+
+    if (asset.userId !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
     }
 
     const tagRecord = await Tag.findOne({
@@ -1025,5 +961,106 @@ exports.getAssetInfo = async (req, res) => {
     res.status(500).json({
       message: "Server error"
     });
+  }
+};
+
+// Upload a new current file while preserving the previous current file in history.
+exports.uploadNewVersion = async (req, res) => {
+  let version;
+  let versionObjectKey;
+  let newObjectKey;
+
+  try {
+    const asset = await Asset.findByPk(req.params.id);
+    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    if (asset.userId !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to upload a version for this asset' });
+    }
+    if (!req.file) return res.status(400).json({ message: 'A replacement asset file is required' });
+
+    const extension = path.extname(req.file.originalname).toLowerCase();
+    if (!SUPPORTED_VERSION_EXTENSIONS.has(extension)) {
+      return res.status(400).json({ message: `Unsupported asset type: ${extension || 'unknown'}` });
+    }
+
+    const versionNumber = await Version.count({ where: { assetId: asset.id } }) + 1;
+    version = await Version.create({
+      assetId: asset.id,
+      versionNumber,
+      fileName: '',
+      originalName: asset.originalname,
+      mimeType: asset.mimetype,
+      size: asset.size,
+      createdBy: req.user.id,
+      changeLog: req.body.changeLog || `Replaced by ${req.file.originalname}`
+    });
+
+    versionObjectKey = `versions/${asset.id}/${version.id}/${asset.filename}`;
+    const previousBuffer = await streamToBuffer(await minioClient.getObject(BUCKET_NAME, asset.filename));
+    await minioClient.putObject(BUCKET_NAME, versionObjectKey, previousBuffer, previousBuffer.length, { 'Content-Type': asset.mimetype });
+    version.fileName = versionObjectKey;
+    await version.save();
+
+    newObjectKey = `${Date.now()}-${Math.round(Math.random() * 1E9)}${extension}`;
+    await minioClient.putObject(BUCKET_NAME, newObjectKey, req.file.buffer, req.file.size, { 'Content-Type': req.file.mimetype });
+
+    const previousObjectKey = asset.filename;
+    const { ai: _staleAi, ...preservedMetadata } = asset.metadata || {};
+    asset.filename = newObjectKey;
+    asset.originalname = req.file.originalname;
+    asset.mimetype = req.file.mimetype;
+    asset.size = req.file.size;
+    asset.path = newObjectKey;
+    asset.uploadedAt = new Date();
+    asset.metadata = preservedMetadata;
+    await asset.save();
+
+    try { await minioClient.removeObject(BUCKET_NAME, previousObjectKey); } catch (cleanupError) { logger.error(cleanupError); }
+    try {
+      await redisClient.lPush('ai_jobs', JSON.stringify({ assetId: asset.id, jobType: 'auto_tag', createdAt: new Date().toISOString() }));
+    } catch (queueError) { logger.error(queueError); }
+
+    return res.status(201).json({
+      message: 'New asset version uploaded successfully',
+      version,
+      asset: {
+        id: asset.id,
+        filename: asset.filename,
+        originalname: asset.originalname,
+        mimetype: asset.mimetype,
+        size: asset.size,
+        userId: asset.userId,
+        uploadedAt: asset.uploadedAt
+      }
+    });
+  } catch (error) {
+    logger.error(error);
+    if (newObjectKey) try { await minioClient.removeObject(BUCKET_NAME, newObjectKey); } catch (cleanupError) { logger.error(cleanupError); }
+    if (versionObjectKey) try { await minioClient.removeObject(BUCKET_NAME, versionObjectKey); } catch (cleanupError) { logger.error(cleanupError); }
+    if (version?.destroy) try { await version.destroy(); } catch (cleanupError) { logger.error(cleanupError); }
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getAssetDetails = async (req, res) => {
+  try {
+    const asset = await Asset.findByPk(req.params.id);
+
+    if (!asset) {
+      return res.status(404).json({ message: "Asset not found" });
+    }
+
+    res.json({
+      id: asset.id,
+      filename: asset.filename,
+      originalname: asset.originalname,
+      mimetype: asset.mimetype,
+      size: asset.size,
+      userId: asset.userId,
+      uploadedAt: asset.uploadedAt
+    });
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 };
