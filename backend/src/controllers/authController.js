@@ -7,6 +7,40 @@ const { hashResetToken } = require('../utils/resetToken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const JWT_EXPIRES_IN = '1h';
+const PUBLIC_ACCOUNT_ROLES = new Set(['user', 'admin', 'developer', 'designer', 'collaborator']);
+
+async function preferredMembership(userId) {
+  if (!db.TeamMember || !db.Team) return null;
+  return db.TeamMember.findOne({
+    where: { userId },
+    include: [{ model: db.Team, as: 'team', attributes: ['id', 'name'] }],
+    order: [['createdAt', 'ASC']]
+  });
+}
+
+async function authResponse(user) {
+  const membership = await preferredMembership(user.id);
+  const team = membership?.team ? { id: membership.team.id, name: membership.team.name } : null;
+  const teamRole = membership?.role || null;
+  const token = jwt.sign({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    ...(team ? { teamId: team.id, workspaceId: team.id } : {})
+  }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return {
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      accountRole: user.role,
+      role: teamRole || user.role,
+      teamRole,
+      team
+    }
+  };
+}
 
 // Register a new user
 exports.register = async (req, res) => {
@@ -21,15 +55,14 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     // Create user
+    const requestedRole = process.env.ALLOW_PUBLIC_ROLE_REGISTRATION === 'true' && PUBLIC_ACCOUNT_ROLES.has(role) ? role : 'user';
     user = await db.User.create({
       username,
       email,
       passwordHash,
-      role: process.env.ALLOW_PUBLIC_ROLE_REGISTRATION === 'true' && role ? role : 'collaborator'
+      role: requestedRole
     });
-    // Generate JWT
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.status(201).json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+    res.status(201).json(await authResponse(user));
   } catch (error) {
     logger.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -48,8 +81,7 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+    res.json(await authResponse(user));
   } catch (error) {
     logger.error(error);
     res.status(500).json({ message: 'Server error' });

@@ -7,8 +7,10 @@ function pageName(pathname) {
   if (/^\/assets\/[^/]+$/.test(pathname)) return 'Asset Details';
   if (pathname === '/upload') return 'Upload Asset';
   if (pathname === '/search') return 'Search Assets';
+  if (pathname === '/workspace') return 'Workspace Setup';
+  if (pathname === '/team') return 'Team Workspace';
   if (pathname === '/profile') return 'User Profile';
-  if (pathname === '/admin/users') return 'Team Management';
+  if (pathname === '/admin/users') return 'System User Administration';
   if (pathname === '/login') return 'Sign In';
   if (pathname === '/register') return 'Create Account';
   if (pathname === '/forgot-password') return 'Password Recovery';

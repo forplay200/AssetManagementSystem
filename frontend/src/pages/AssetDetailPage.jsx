@@ -54,7 +54,10 @@ export default function AssetDetailPage() {
 
   const { info } = state;
   const ownsAsset = Number(info.userId) === Number(user?.id);
-  const canManageAsset = user?.role === 'admin' || ownsAsset;
+  const assetWorkspaceId = info.workspaceId || info.teamId;
+  const isWorkspaceAsset = Boolean(assetWorkspaceId && Number(assetWorkspaceId) === Number(user?.team?.id));
+  const canManageAsset = isWorkspaceAsset ? ['owner', 'manager'].includes(user?.teamRole) : user?.role === 'admin' || ownsAsset;
+  const canDeleteAsset = isWorkspaceAsset ? user?.teamRole === 'owner' : user?.role === 'admin' || ownsAsset;
   return (
     <>
       {location.state?.uploaded && <div className="mb-5 rounded border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">Asset uploaded successfully. AI processing has been queued.</div>}
@@ -70,7 +73,7 @@ export default function AssetDetailPage() {
             <AssetPreview assetId={assetId} info={info} />
             <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.08] p-4"><span className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Repository tags</span>{state.tags.length ? state.tags.map((tag) => <span key={tag.id || tag.name} className="tag-chip">{tag.name}</span>) : <span className="text-xs text-zinc-600">No manual tags</span>}</div>
           </section>
-          <section className="panel flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="font-display text-sm font-semibold text-zinc-100">Asset actions</h2><p className="mt-1 text-xs text-zinc-500">Download the current file{can('deleteAsset') && canManageAsset ? ' or permanently remove this asset' : ''}.</p></div><div className="flex gap-2"><button className="secondary-button" onClick={download}><Download size={15} /> Download</button>{can('deleteAsset') && canManageAsset && <button className="danger-button" onClick={remove}><Trash2 size={15} /> Delete</button>}</div></section>
+          <section className="panel flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="font-display text-sm font-semibold text-zinc-100">Asset actions</h2><p className="mt-1 text-xs text-zinc-500">Download the current file{can('deleteAsset') && canDeleteAsset ? ' or permanently remove this asset' : ''}.</p></div><div className="flex gap-2"><button className="secondary-button" onClick={download}><Download size={15} /> Download</button>{can('deleteAsset') && canDeleteAsset && <button className="danger-button" onClick={remove}><Trash2 size={15} /> Delete</button>}</div></section>
         </div>
         <MetadataPanel assetId={assetId} metadata={state.metadata} repositoryTags={state.tags} canEdit={can('manageMetadata') && canManageAsset} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
       </div>}

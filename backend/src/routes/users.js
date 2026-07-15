@@ -2,7 +2,7 @@
 const router = express.Router();
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authorizeAccountPermission } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
 
 const createUserSchema = {
@@ -25,7 +25,9 @@ const updateUserSchema = {
 
 // All routes require authentication and admin role
 router.use(auth);
-router.use(authorize('admin')); // Only admin can access these routes
+// Legacy system-user administration remains restricted to the global admin
+// account role. Workspace Owners manage only their own team via /api/teams.
+router.use(authorizeAccountPermission('manageUsers'));
 
 // GET /api/users
 router.get('/', userController.getAllUsers);

@@ -21,6 +21,10 @@ from model_metadata import extract_model_geometry, extract_model_metadata
 from model_render import render_model_preview
 from clip_tags import classify_with_clip
 
+BACKEND_HEADERS = {
+    "X-AI-Service-Token": os.environ["AI_SERVICE_TOKEN"]
+}
+
 minio_client = Minio(
     "minio:9000",
     access_key="minioadmin",
@@ -82,7 +86,8 @@ while True:
     
     
     asset_response = requests.get(
-        f"http://backend:3000/api/assets/{asset_id}/info"
+        f"http://backend:3000/api/assets/{asset_id}/info",
+        headers=BACKEND_HEADERS
     )
 
 
@@ -132,6 +137,7 @@ while True:
 
         api_response = requests.post(
             f"http://backend:3000/api/assets/{asset_id}/ai-result",
+            headers=BACKEND_HEADERS,
             json={                
                 "metadata": {
                 "ai": {
@@ -175,6 +181,7 @@ while True:
 
         api_response = requests.post(
             f"http://backend:3000/api/assets/{asset_id}/ai-result",
+            headers=BACKEND_HEADERS,
             json={
                 "metadata": {             
                 "ai": {
@@ -253,6 +260,7 @@ while True:
 
         api_response = requests.post(
             f"http://backend:3000/api/assets/{asset_id}/ai-result",
+            headers=BACKEND_HEADERS,
             json={
                 "metadata": {
                 "ai": {
@@ -309,6 +317,7 @@ while True:
 
         api_response = requests.post(
             f"http://backend:3000/api/assets/{asset_id}/ai-result",
+            headers=BACKEND_HEADERS,
             json={
                 "metadata": {
                     "ai": model_metadata

@@ -28,13 +28,11 @@ module.exports = (sequelize, DataTypes) => {
     resetTokenExpiry: DataTypes.DATE,
 
     role: {
-      type: DataTypes.ENUM(
-        'admin',
-        'developer',
-        'designer',
-        'collaborator'
-      ),
-      defaultValue: 'collaborator'
+      // Account roles remain separate from workspace membership roles. Legacy
+      // values stay valid while `user` represents a new account with no team.
+      type: DataTypes.ENUM('user', 'admin', 'developer', 'designer', 'collaborator'),
+      allowNull: false,
+      defaultValue: 'user'
     }
   });
 
@@ -62,6 +60,16 @@ module.exports = (sequelize, DataTypes) => {
     User.hasMany(models.Comment, {
       foreignKey: 'userId',
       as: 'comments'
+    });
+    User.hasMany(models.TeamMember, {
+      foreignKey: 'userId',
+      as: 'teamMemberships'
+    });
+    User.belongsToMany(models.Team, {
+      through: models.TeamMember,
+      foreignKey: 'userId',
+      otherKey: 'teamId',
+      as: 'teams'
     });
   };
 

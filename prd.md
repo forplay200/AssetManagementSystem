@@ -16,25 +16,28 @@ Game development projects produce a large volume of digital assets including ima
 
 ## 2. Target Users
 
-### Administrator
-- Manage users and roles
-- Configure permissions
-- Monitor platform activity
+### User (No Team)
+- Manage their own account
+- Create a team
+- Join a team with an invite code
+- Cannot access team assets before joining a team
 
-### Developer
-- Upload and manage assets
-- Track versions
-- Collaborate with team members
+### Owner
+- Manage team members, roles, settings, projects, and assets
+- Invite and remove members
+- Assign Owner, Manager, and Collaborator roles
 
-### Designer
-- Upload visual assets
-- Review AI-generated tags
-- Manage asset metadata
+### Manager
+- Upload, preview, download, search, and manage assets
+- Edit metadata, manage versions, approve assets, and participate in discussions
+- Cannot manage team membership or settings
 
 ### Collaborator
-- View assets
-- Provide feedback
-- Participate in discussions
+- View, preview, download, and search assets
+- View metadata and participate in discussions
+- Cannot upload, delete, edit metadata, manage versions, or administer the team
+
+Legacy Administrator, Developer, and Designer roles remain supported during migration. Developer and Designer capabilities map to Manager; Administrator remains a system-level role where required.
 
 ---
 
@@ -88,13 +91,17 @@ Game development projects produce a large volume of digital assets including ima
 - Profile management
 
 ### Role-Based Access Control (RBAC)
-- Administrator role
-- Developer role
-- Designer role
+- User account lifecycle state
+- Team Owner role
+- Team Manager role
 - Collaborator role
+- Team creation and invite-code joining
+- Team-scoped permission enforcement
+- Legacy role compatibility during migration
 - Permission enforcement
 
 ### Asset Repository
+- Workspace-isolated asset ownership
 - Upload assets
 - Download assets
 - Asset preview
@@ -163,6 +170,9 @@ Users can edit, accept, or remove generated tags.
 - FR-006 Update users
 - FR-007 Delete users
 - FR-008 Assign roles
+- FR-008A Create a team and assign its creator as Owner
+- FR-008B Join a team using an invite code as Collaborator
+- FR-008C Promote, demote, or remove team members while preserving at least one Owner
 
 ### Asset Management
 - FR-009 Upload assets

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../auth/authStorage';
 import { setAuthorizationToken } from '../services/api';
 import { authService } from '../services/authService';
+import { teamService } from '../services/teamService';
 
 const AuthContext = createContext(null);
 
@@ -56,6 +57,38 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const activateTeam = useCallback((team, teamRole) => {
+    setSession((current) => {
+      if (!current) return current;
+      const nextSession = {
+        ...current,
+        user: { ...current.user, team, teamRole, role: teamRole },
+      };
+      writeStoredSession(nextSession);
+      return nextSession;
+    });
+  }, []);
+
+  const refreshTeam = useCallback(async () => {
+    if (!session?.user?.team?.id) return null;
+    try {
+      const result = await teamService.current();
+      activateTeam({ id: result.team.id, name: result.team.name }, result.role);
+      return result;
+    } catch (error) {
+      if ([403, 404].includes(error.response?.status)) {
+        setSession((current) => {
+          if (!current) return current;
+          const accountRole = current.user.accountRole || 'user';
+          const nextSession = { ...current, user: { ...current.user, team: null, teamRole: null, role: accountRole } };
+          writeStoredSession(nextSession);
+          return nextSession;
+        });
+      }
+      return null;
+    }
+  }, [session?.user?.team?.id, activateTeam]);
+
   const value = useMemo(
     () => ({
       isAuthenticated: Boolean(session?.token),
@@ -63,9 +96,11 @@ export function AuthProvider({ children }) {
       user: session?.user || null,
       login,
       register,
+      activateTeam,
+      refreshTeam,
       logout,
     }),
-    [session, login, register, logout],
+    [session, login, register, activateTeam, refreshTeam, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

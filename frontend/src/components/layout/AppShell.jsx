@@ -1,29 +1,34 @@
-import { useState } from 'react';
-import { FolderOpen, LayoutDashboard, LogOut, Menu, Search, Upload, UserRound, UsersRound, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Building2, FolderOpen, LayoutDashboard, LogOut, Menu, Search, Upload, UserRound, UsersRound, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import BrandMark from '../common/BrandMark';
 import SystemStatus from '../common/SystemStatus';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 
 const navigation = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Assets', to: '/assets', icon: FolderOpen },
-  { label: 'Search', to: '/search', icon: Search },
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, permission: 'viewAsset' },
+  { label: 'Assets', to: '/assets', icon: FolderOpen, permission: 'viewAsset' },
+  { label: 'Search', to: '/search', icon: Search, permission: 'viewAsset' },
   { label: 'Upload', to: '/upload', icon: Upload, permission: 'uploadAsset' },
-  { label: 'Team', to: '/admin/users', icon: UsersRound, permission: 'manageUsers' },
+  { label: 'Team', to: '/team', icon: UsersRound, teamOnly: true },
+  { label: 'Workspace setup', to: '/workspace', icon: Building2 },
+  { label: 'System users', to: '/admin/users', icon: UsersRound, permission: 'manageUsers' },
 ];
 
 function Sidebar({ onNavigate }) {
   const { can } = usePermissions();
+  const { user } = useAuth();
   return (
     <>
       <div className="border-b border-white/[0.08] px-5 py-[18px]">
         <BrandMark />
       </div>
+      <WorkspaceSwitcher onNavigate={onNavigate} />
       <nav className="flex-1 space-y-1 px-3 py-5" aria-label="Main navigation">
         <p className="mb-3 px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-600">Workspace</p>
-        {navigation.filter((item) => !item.permission || can(item.permission)).map(({ label, to, icon: Icon }) => (
+        {navigation.filter((item) => (!item.permission || can(item.permission)) && (!item.teamOnly || user?.team)).map(({ label, to, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -46,8 +51,12 @@ function Sidebar({ onNavigate }) {
 export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const { user, logout } = useAuth();
+  const { user, logout, refreshTeam } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.team?.id) refreshTeam();
+  }, [user?.team?.id, refreshTeam]);
 
   const submitSearch = (event) => {
     event.preventDefault();
@@ -95,7 +104,7 @@ export default function AppShell() {
             </Link>
             <Link to="/profile" className="hidden min-w-0 sm:block">
               <p className="max-w-32 truncate text-sm font-medium text-zinc-200">{user?.username || 'User'}</p>
-              <p className="font-mono text-[10px] uppercase text-zinc-500">{user?.role || 'member'}</p>
+              <p className="font-mono text-[10px] uppercase text-zinc-500">{user?.teamRole || user?.role || 'user'}</p>
             </Link>
             <button className="p-2 text-zinc-500 transition hover:text-zinc-200" onClick={logout} aria-label="Log out" title="Log out">
               <LogOut size={17} />

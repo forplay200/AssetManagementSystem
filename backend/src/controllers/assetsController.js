@@ -1,14 +1,29 @@
 const fs = require('fs');
 const path = require('path');
 const { Op } = require('sequelize');
-const { Tag, User, Asset, Version, Comment } = require("../models");
+const { Tag, User, Asset, Version, Comment, TeamMember } = require("../models");
 
 const redisClient = require("../redisClient");
 const logger = require('../utils/logger');
 const { minioClient, BUCKET_NAME } = require('../utils/minioClient');
 const { buildAssetSearchWhere, findAiMatch } = require('../utils/searchQuery');
+const { workspaceAssetWhere, belongsToWorkspace } = require('../utils/workspaceScope');
 
 const SUPPORTED_VERSION_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.mp3', '.wav', '.fbx', '.obj', '.cs', '.js', '.txt', '.json', '.xml']);
+
+function workspaceAssetScope(req) {
+  return workspaceAssetWhere(req.user);
+}
+
+function canManageAsset(req, asset) {
+  return belongsToWorkspace(asset, req.user)
+    && ['owner', 'manager'].includes(req.user.teamRole);
+}
+
+function canDeleteAsset(req, asset) {
+  return belongsToWorkspace(asset, req.user)
+    && req.user.teamRole === 'owner';
+}
 
 const streamToBuffer = async (stream) => {
   const chunks = [];
@@ -29,7 +44,7 @@ exports.createVersion = async (req, res) => {
       return res.status(404).json({ message: 'Asset not found' });
     }
     // Owners and administrators can preserve a version.
-    if (asset.userId !== req.user.id && req.user.role !== 'admin') {
+    if (!canManageAsset(req, asset)) {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to create a version for this asset' });
     }
     // Determine the next version number
@@ -230,6 +245,7 @@ exports.searchAssets = async (req, res) => {
     const limit = size;
 
     const where = buildAssetSearchWhere({ filename, metadata, aiTag, q, type, date });
+    where[Op.and] = [...(where[Op.and] || []), workspaceAssetScope(req)];
 
     if (tags) {
       // Split comma-separated tags and match any
@@ -471,10 +487,11 @@ exports.getCommentHistory = async (req, res) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const [totalAssets, totalUsers, totalComments, recentUploads, recentUsers] = await Promise.all([
-      Asset.count(),
-      User.count(),
-      Comment.count(),
+      Asset.count({ where: workspaceAssetScope(req) }),
+      TeamMember.count({ where: { teamId: req.user.workspaceId } }),
+      Comment.count({ include: [{ model: Asset, as: 'asset', where: workspaceAssetScope(req), attributes: [] }] }),
       Asset.findAll({
+        where: workspaceAssetScope(req),
         order: [['uploadedAt', 'DESC']],
         limit: 5,
         attributes: ['id', 'filename', 'uploadedAt'],
@@ -485,6 +502,7 @@ exports.getDashboardStats = async (req, res) => {
         }]
       }),
       User.findAll({
+        include: [{ model: TeamMember, as: 'teamMemberships', where: { teamId: req.user.workspaceId }, attributes: [] }],
         order: [['createdAt', 'DESC']],
         limit: 5,
         attributes: ['id', 'username', 'email', 'createdAt']
@@ -544,7 +562,9 @@ exports.uploadAsset = async (req, res) => {
       mimetype,
       size,
       path: objectKey,
-      userId: req.user.id
+      userId: req.user.id,
+      workspaceId: req.user.workspaceId,
+      teamId: req.user.workspaceId
     });
 
     try {
@@ -657,10 +677,7 @@ exports.deleteAsset = async (req, res) => {
     }
 
     // 权限检查
-    if (
-      asset.userId !== req.user.id &&
-      req.user.role !== "admin"
-    ) {
+    if (!canDeleteAsset(req, asset)) {
       return res.status(403).json({
         message: "Forbidden"
       });
@@ -782,10 +799,7 @@ exports.updateAssetMetadata = async (req, res) => {
       });
     }
 
-    if (
-      asset.userId !== req.user.id &&
-      req.user.role !== "admin"
-    ) {
+    if (!canManageAsset(req, asset)) {
       return res.status(403).json({
         message: "Forbidden"
       });
@@ -828,7 +842,7 @@ exports.addTagToAsset = async (req, res) => {
       });
     }
 
-    if (asset.userId !== req.user.id && req.user.role !== "admin") {
+    if (!canManageAsset(req, asset)) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -873,7 +887,7 @@ exports.removeTagFromAsset = async (req, res) => {
       });
     }
 
-    if (asset.userId !== req.user.id && req.user.role !== "admin") {
+    if (!canManageAsset(req, asset)) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -973,7 +987,7 @@ exports.uploadNewVersion = async (req, res) => {
   try {
     const asset = await Asset.findByPk(req.params.id);
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
-    if (asset.userId !== req.user.id && req.user.role !== 'admin') {
+    if (!canManageAsset(req, asset)) {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to upload a version for this asset' });
     }
     if (!req.file) return res.status(400).json({ message: 'A replacement asset file is required' });
@@ -1057,6 +1071,7 @@ exports.getAssetDetails = async (req, res) => {
       mimetype: asset.mimetype,
       size: asset.size,
       userId: asset.userId,
+      workspaceId: asset.workspaceId,
       uploadedAt: asset.uploadedAt
     });
   } catch (error) {

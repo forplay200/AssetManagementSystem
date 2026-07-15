@@ -13,6 +13,7 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-local-ai-service-token}
     depends_on:
       - postgres
       - minio
@@ -41,6 +42,7 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-local-ai-service-token}
     depends_on:
       - postgres
       - minio
@@ -58,6 +60,7 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-local-ai-service-token}
     depends_on:
       - backend
       - minio

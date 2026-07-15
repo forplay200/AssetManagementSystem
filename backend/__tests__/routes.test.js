@@ -33,6 +33,21 @@ test('user router exposes protected CRUD routes and is mounted by the app', () =
 
 test('asset router exposes the backward-compatible replacement upload route', () => {
   const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/assets.js'), 'utf8');
+  assert.match(routeSource, /const workspaceAuth = \[auth, requireWorkspace\]/);
+  assert.match(routeSource, /workspaceAssetAccess/);
+  assert.match(routeSource, /router\.post\('\/:id\/ai-result', internalAiAuth, storeAiResult\)/);
+  assert.match(routeSource, /router\.get\('\/:id\/info', internalAiAuth, getAssetInfo\)/);
   assert.match(routeSource, /router\.post\('\/:id\/versions\/upload'.*upload\.single\('asset'\).*uploadNewVersion\)/);
   assert.match(routeSource, /router\.post\('\/:id\/versions'.*createVersion\)/);
+});
+
+test('team router exposes onboarding and owner-management routes', () => {
+  const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/teams.js'), 'utf8');
+  assert.match(routeSource, /router\.post\('\/'/);
+  assert.match(routeSource, /router\.post\('\/join'/);
+  assert.match(routeSource, /router\.get\('\/current'/);
+  assert.match(routeSource, /router\.patch\('\/current\/members\/:userId'/);
+  assert.match(routeSource, /router\.delete\('\/current\/members\/:userId'/);
+  const indexSource = fs.readFileSync(path.join(__dirname, '../src/index.js'), 'utf8');
+  assert.match(indexSource, /app\.use\('\/api\/teams', apiLimiter, teamRoutes\)/);
 });

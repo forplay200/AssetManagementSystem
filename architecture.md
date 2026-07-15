@@ -51,6 +51,8 @@ Upload -> MinIO -> Redis Job -> FastAPI Processing -> PostgreSQL Metadata
 ## 6. Storage Architecture
 ### PostgreSQL
 - Users
+- Teams
+- Team Memberships
 - Roles
 - Assets
 - Versions
@@ -68,11 +70,21 @@ Upload -> MinIO -> Redis Job -> FastAPI Processing -> PostgreSQL Metadata
 - Password Hashing
 - RBAC Authorization
 
-Roles:
-- Administrator
-- Developer
-- Designer
+Workspace roles:
+- Owner
+- Manager
 - Collaborator
+
+Account lifecycle:
+- A newly registered User has no repository access until they create or join a team.
+- Team membership roles are independent from account identity.
+- Legacy Administrator, Developer, and Designer account roles remain supported during migration; Developer and Designer map to Manager capabilities.
+
+Authorization context:
+- JWT identifies the account.
+- `X-Workspace-Id` selects an active workspace and is validated against membership on every protected request. `X-Team-Id` remains a temporary client compatibility alias.
+- Newly uploaded assets store `workspaceId` and are visible only inside that workspace.
+- Legacy assets without a reviewed workspace assignment are quarantined from user-facing repository APIs during migration.
 
 ## 8. Version Management
 Each asset maintains version history with metadata snapshots.

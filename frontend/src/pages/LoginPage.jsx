@@ -22,8 +22,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(form);
-      navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+      const session = await login(form);
+      const fallback = session.user?.role === 'user' && !session.user?.team ? '/workspace' : '/dashboard';
+      navigate(location.state?.from?.pathname || fallback, { replace: true });
     } catch (requestError) {
       setError(getApiError(requestError, 'Unable to sign in. Check your details and try again.'));
     } finally { setLoading(false); }

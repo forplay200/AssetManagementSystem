@@ -14,10 +14,10 @@ test('renders the login screen for signed-out users', () => {
   expect(screen.getByRole('button', { name: /sign in to aether/i })).toBeInTheDocument();
 });
 
-test('renders collaborator registration fields', () => {
+test('renders unassigned user registration fields', () => {
   localStorage.clear();
   renderAt('/register');
-  expect(screen.getByRole('heading', { name: /join the workspace/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /build with your team/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled();
 });

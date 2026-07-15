@@ -67,6 +67,89 @@ paths:
       responses:
         '200':
           description: Password reset successfully
+  /teams:
+    get:
+      summary: List teams for the authenticated account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team memberships
+    post:
+      summary: Create a team; the creator becomes Owner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2 }
+      responses:
+        '201':
+          description: Team created
+  /teams/join:
+    post:
+      summary: Join a team as Collaborator using an invite code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inviteCode]
+              properties:
+                inviteCode: { type: string, minLength: 6 }
+      responses:
+        '201':
+          description: Team joined
+  /teams/current:
+    get:
+      summary: Get the active team and its members
+      description: Requires X-Workspace-Id for the selected workspace.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Active team details
+  /teams/current/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/WorkspaceId'
+      - in: path
+        name: userId
+        required: true
+        schema: { type: integer }
+    patch:
+      summary: Change a member workspace role (Owner only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team role updated
+    delete:
+      summary: Remove a team member (Owner only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team member removed
+  /teams/current/invite-code:
+    post:
+      summary: Rotate the active team invite code (Owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Invite code rotated
   /users:
     get:
       summary: List users (Administrator only)
@@ -237,6 +320,14 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    WorkspaceId:
+      in: header
+      name: X-Workspace-Id
+      required: true
+      description: Active workspace membership selected by the client. X-Team-Id remains accepted as a temporary compatibility alias.
+      schema:
+        type: integer
   schemas:
     UserRegister:
       type: object
@@ -258,8 +349,9 @@ components:
           example: secret123
         role:
           type: string
-          enum: [admin, developer, designer, collaborator]
-          default: collaborator
+          enum: [user]
+          default: user
+          description: Public registration always creates an unassigned User unless the legacy deployment override is explicitly enabled.
     UserLogin:
       type: object
       required:

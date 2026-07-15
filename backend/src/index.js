@@ -6,11 +6,13 @@ const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
 const db = require('./models');
+const { backfillKnownWorkspaceOwnership } = require('./utils/workspaceMigration');
 
 const authRoutes = require('./routes/auth');
 const assetsRoutes = require('./routes/assets');
 const healthRoutes = require('./routes/health');
 const userRoutes = require('./routes/users');
+const teamRoutes = require('./routes/teams');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -25,6 +27,7 @@ app.use('/api/auth', apiLimiter, authRoutes);
 app.use('/api/assets', apiLimiter, assetsRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/users', apiLimiter, userRoutes);
+app.use('/api/teams', apiLimiter, teamRoutes);
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -40,8 +43,10 @@ app.get('/', (req, res) => {
 });
 
 db.sequelize.sync({ alter: true })
-  .then(() => {
+  .then(async () => {
+    const backfilledAssets = await backfillKnownWorkspaceOwnership(db.sequelize);
     logger.info('Database synced');
+    if (backfilledAssets) logger.info(`Assigned ${backfilledAssets} assets to known workspaces`);
 
     app.listen(port, () => {
       logger.info(`Server running on port ${port}`);

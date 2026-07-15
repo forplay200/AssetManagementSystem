@@ -5,6 +5,9 @@ import RouteAccessibility, { pageName } from './RouteAccessibility';
 test('maps workspace paths to concise page names', () => {
   expect(pageName('/dashboard')).toBe('Dashboard');
   expect(pageName('/assets/42')).toBe('Asset Details');
+  expect(pageName('/workspace')).toBe('Workspace Setup');
+  expect(pageName('/team')).toBe('Team Workspace');
+  expect(pageName('/admin/users')).toBe('System User Administration');
   expect(pageName('/unknown')).toBe('Page Not Found');
 });
 

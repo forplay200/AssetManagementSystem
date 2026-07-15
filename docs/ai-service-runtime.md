@@ -63,6 +63,10 @@ docker compose logs ai-worker
 
 The worker log should show model loading followed by `Worker started...`. Newly uploaded supported assets should then receive an `ai` object in their metadata after processing completes.
 
+## Internal Service Authentication
+
+Workspace isolation keeps the worker's asset-ID workflow but removes unauthenticated access to its backend callbacks. Docker Compose supplies the same `AI_SERVICE_TOKEN` to the backend and worker. The worker sends it as `X-AI-Service-Token` when reading `/api/assets/:id/info` and posting `/api/assets/:id/ai-result`; the backend uses a constant-time comparison before allowing either call. Set a deployment-specific `AI_SERVICE_TOKEN` outside local development.
+
 ## YAMNet Audio Classification
 
 The audio worker preserves the existing Whisper transcription, KeyBERT keyword, and summary pipeline. It now also loads Google YAMNet once at worker startup and classifies the same audio as a mono 16 kHz waveform.

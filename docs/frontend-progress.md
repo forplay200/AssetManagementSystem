@@ -2,10 +2,45 @@
 
 ## Session Summary
 
-- Date/Time: 2026-07-12 21:19 MYT (UTC+08:00)
-- Scope: Hybrid 3D tagging with representative software rendering and CLIP semanticTags.
+- Date/Time: 2026-07-14 19:54 MYT (UTC+08:00)
+- Scope: True workspace-level asset repository isolation with additive migration and preserved AI processing.
 
 ### Completed
+- Added canonical `workspaceId` ownership to assets while retaining deprecated `teamId` for non-destructive migration compatibility.
+- Added an indexed migration and startup backfill for assets with already-known team ownership; no columns were dropped and null legacy records were not reassigned automatically.
+- Required a validated active workspace membership for every user-facing Asset API.
+- Strictly scoped Asset List, Search, Dashboard, Detail, Metadata, AI Metadata, Preview, Download, Versions, and Comments to exact `workspaceId` equality.
+- Removed the global/null asset visibility fallback; unassigned legacy assets are quarantined until reviewed.
+- Ensured new workspaces start with zero assets, no recent uploads, and zero comments.
+- Added canonical `X-Workspace-Id` frontend propagation while retaining `X-Team-Id` as a temporary compatibility alias.
+- Protected internal AI worker information and result callbacks with `X-AI-Service-Token` while preserving every existing image, text, audio, and 3D pipeline.
+- Added strict predicate, upload ownership, empty dashboard, cross-workspace denial, null quarantine, worker authentication, and startup backfill regression coverage.
+- Verified all 29 backend tests and all 36 frontend tests.
+- Verified frontend lint, the optimized production build, Docker Compose configuration, Swagger parsing, backend JavaScript syntax, and AI worker Python syntax.
+- Backend dependency discovered: existing assets need an explicit workspace assignment before ownership can safely become mandatory.
+- Backend fixes completed: additive `workspaceId` ownership, validated workspace context, exact repository predicates, direct-asset access guards, and protected AI worker callbacks.
+- Audited remaining explicit role checks, permission routes, navigation entries, profile copy, asset actions, and administration UI.
+- Added correct document titles and screen-reader route announcements for Workspace Setup and Team Workspace.
+- Renamed the legacy Administrator route to System User Administration so it is not confused with team Owner membership management.
+- Updated system-user headings, actions, notices, role labels, and unavailable-service copy while retaining the legacy API behavior.
+- Confirmed the full-stack browser verification remains blocked because Docker, the frontend, and the backend are not currently running.
+- Added route-name and system-administration regression coverage; verified 36 frontend tests and frontend lint.
+- Added an active-workspace selector to desktop and mobile navigation.
+- Loaded every workspace membership and displayed its workspace-specific role.
+- Persisted the selected team and role before navigating, ensuring subsequent Axios requests immediately send the correct `X-Team-Id`.
+- Returned users to the Dashboard after switching to prevent stale asset-detail state from the previous workspace.
+- Added loading, empty, retry, active-role, and Add Workspace states consistent with the Aether design system.
+- Added workspace loading and switching regression coverage; verified 35 frontend tests and frontend lint.
+- Replaced automatic Collaborator registration with an unassigned User account lifecycle state.
+- Added Create Team and Join Team onboarding; creators become Owner and invite-code members become Collaborator.
+- Added Team Owner member management, role assignment, invite-code copying/rotation, and final-Owner protection.
+- Centralized Owner, Manager, Collaborator, User, and legacy role permissions in the frontend and backend.
+- Added active-team propagation through `X-Team-Id` and server-side membership validation on every protected request.
+- Scoped new uploads to the active team and blocked cross-team direct access while retaining null-team legacy assets during migration.
+- Scoped search and dashboard results to the active team plus transitional legacy assets.
+- Preserved legacy Administrator system-user management and Developer/Designer asset behavior.
+- Updated the PRD, architecture, Swagger contract, and RBAC implementation guide.
+- Verified 19 backend tests, 33 frontend tests, frontend lint, backend syntax, and the optimized production build.
 - Preserved deterministic 3D `vertexCount`, `faceCount`, and `modelTags` extraction.
 - Added OBJ/FBX render-geometry extraction and an in-memory, dependency-light isometric 2D software renderer.
 - Reused the existing loaded CLIP pipeline to produce separately stored `metadata.ai.semanticTags`.
@@ -115,6 +150,28 @@
 - Added automated coverage for the error fallback.
 
 ### Created Files
+- `backend/migrations/20260714010000-add-workspace-id-to-assets.js`
+- `backend/src/middleware/requireWorkspace.js`
+- `backend/src/middleware/workspaceAssetAccess.js`
+- `backend/src/middleware/internalAiAuth.js`
+- `backend/src/utils/workspaceScope.js`
+- `backend/src/utils/workspaceMigration.js`
+- `backend/__tests__/workspaceIsolation.test.js`
+- `docs/workspace-asset-isolation.md`
+- `frontend/src/pages/UserManagementPage.test.jsx`
+- `frontend/src/components/layout/WorkspaceSwitcher.jsx`
+- `frontend/src/components/layout/WorkspaceSwitcher.test.jsx`
+- `backend/src/models/team.js`
+- `backend/src/models/teamMember.js`
+- `backend/src/controllers/teamController.js`
+- `backend/src/routes/teams.js`
+- `backend/src/middleware/assetTeamAccess.js`
+- `backend/migrations/20260714000000-create-teams-and-scope-assets.js`
+- `frontend/src/components/auth/WorkspaceRoute.jsx`
+- `frontend/src/pages/WorkspaceSetupPage.jsx`
+- `frontend/src/pages/TeamPage.jsx`
+- `frontend/src/services/teamService.js`
+- `docs/rbac-redesign.md`
 - `ai-service/clip_tags.py`
 - `ai-service/tests/test_clip_tags.py`
 - `ai-service/model_render.py`
@@ -153,6 +210,57 @@
 - `frontend/src/components/common/ErrorBoundary.test.jsx`
 
 ### Modified Files
+- `backend/src/models/asset.js`
+- `backend/src/models/team.js`
+- `backend/src/middleware/auth.js`
+- `backend/src/controllers/authController.js`
+- `backend/src/controllers/assetsController.js`
+- `backend/src/routes/assets.js`
+- `backend/src/index.js`
+- `backend/__tests__/assetsController.test.js`
+- `backend/__tests__/routes.test.js`
+- `backend/package.json`
+- `backend/swagger.yaml`
+- `frontend/src/services/api.js`
+- `frontend/src/services/api.test.js`
+- `frontend/src/pages/AssetDetailPage.jsx`
+- `ai-service/worker.py`
+- `docker-compose.yml`
+- `architecture.md`
+- `prd.md`
+- `docs/ai-service-runtime.md`
+- `frontend/src/components/common/RouteAccessibility.jsx`
+- `frontend/src/components/common/RouteAccessibility.test.jsx`
+- `frontend/src/pages/UserManagementPage.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `docs/rbac-redesign.md`
+- `architecture.md`
+- `prd.md`
+- `backend/src/index.js`
+- `backend/src/models/user.js`
+- `backend/src/models/asset.js`
+- `backend/src/controllers/authController.js`
+- `backend/src/controllers/assetsController.js`
+- `backend/src/middleware/auth.js`
+- `backend/src/middleware/rbac.js`
+- `backend/src/routes/assets.js`
+- `backend/src/routes/users.js`
+- `backend/__tests__/rbac.test.js`
+- `backend/__tests__/routes.test.js`
+- `frontend/src/App.jsx`
+- `frontend/src/auth/permissions.js`
+- `frontend/src/hooks/usePermissions.js`
+- `frontend/src/context/AuthContext.jsx`
+- `frontend/src/services/api.js`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/pages/LoginPage.jsx`
+- `frontend/src/pages/RegisterPage.jsx`
+- `frontend/src/pages/ProfilePage.jsx`
+- `frontend/src/pages/AssetDetailPage.jsx`
+- `frontend/src/App.test.jsx`
+- `frontend/src/auth/permissions.test.js`
+- `frontend/src/services/api.test.js`
+- `backend/swagger.yaml`
 - `ai-service/model_metadata.py`
 - `ai-service/tags.py`
 - `frontend/src/components/assets/AssetPreview.jsx`
@@ -197,6 +305,12 @@
 - `docs/frontend-progress.md`
 
 ### Implemented Screens
+- Correctly labeled System User Administration screen for legacy Administrators
+- Accessible route announcements for Workspace Setup and Team Workspace
+- Active Workspace selector in desktop and mobile application navigation
+- Workspace Onboarding with Create Team and Join Team flows
+- Team workspace member list and Owner management controls
+- Updated Registration and Profile role states
 - Interactive OBJ/FBX viewer on Asset Detail with rotate, pan, zoom, loading, and fallback states
 - Paginated Search Results on Search Assets Page
 - Version History replacement-file upload on Asset Detail Page
@@ -212,6 +326,19 @@
 - Global Frontend Error Recovery screen
 
 ### Integrated APIs
+- Added canonical `X-Workspace-Id` to all authenticated frontend requests.
+- Kept `X-Team-Id` as a temporary request-header compatibility alias.
+- Secured internal `GET /api/assets/:id/info` and `POST /api/assets/:id/ai-result` with `X-AI-Service-Token`.
+- No new user-facing endpoint was required; all existing Asset Repository endpoints now enforce the validated active workspace.
+- Reused `GET /api/teams` to load switchable memberships and roles.
+- `GET /api/teams`
+- `POST /api/teams`
+- `POST /api/teams/join`
+- `GET /api/teams/current`
+- `PATCH /api/teams/current/members/:userId`
+- `DELETE /api/teams/current/members/:userId`
+- `POST /api/teams/current/invite-code`
+- Added validated `X-Team-Id` propagation to existing authenticated asset APIs.
 - Reused authenticated `GET /api/assets/preview/:id` for OBJ and FBX model bytes.
 - Expanded existing `GET /api/assets/search` integration to send `page` and `pageSize` and consume `currentPage` and `totalPages`.
 - New API endpoint added: `POST /api/assets/:id/versions/upload` for PRD-required new-version uploads.
@@ -222,6 +349,11 @@
 - Existing authenticated `GET /api/assets/preview/:id` integration added to visible image gallery cards.
 
 ### Remaining Work
+- Full-stack browser verification is blocked until Docker or equivalent frontend/backend services are running.
+- Remaining blocker: live PostgreSQL/MinIO verification with two populated workspaces requires the Docker service to be available.
+- Owners must assign quarantined legacy assets with null `workspaceId` before the separately approved destructive migration.
+- After assignment verification and backup, make `workspaceId` non-null and remove deprecated `teamId` in a separate migration.
+- Add project-level or asset-level Manager assignments if finer-grained management is required.
 - Run end-to-end OBJ/FBX queue processing against rebuilt AI containers when the local Docker daemon is available.
 - Rebuild the AI image and run an end-to-end MP3/WAV inference check when the local Docker daemon is available.
 - No blockers remain for the audited Asset Repository features.
@@ -229,6 +361,12 @@
 - Browser/GPU end-to-end verification remains pending for representative production-size OBJ and FBX assets.
 
 ### Next Steps
+- Rebuild the backend and AI worker with a deployment-specific `AI_SERVICE_TOKEN`.
+- Run the Workspace A/Workspace B upload, search, preview, download, comments, versions, and dashboard scenarios against PostgreSQL and MinIO.
+- Review the quarantined legacy asset report and approve explicit workspace assignments before any destructive migration.
+- Run the team creation, invite join, role change, and cross-team asset isolation flows against the Docker Compose PostgreSQL stack.
+- Plan a controlled legacy-asset ownership migration after confirming the destination team for each existing asset.
+- Add browser-level switching verification with two populated workspaces when the full service stack is running.
 - Upload representative OBJ, ASCII FBX, and binary FBX fixtures through the UI and compare persisted counts with known geometry totals.
 - Run `docker compose up -d --build ai-service ai-worker`, upload a representative audio sample, and confirm persisted `metadata.ai.audioTags` values.
 - Run browser-based replacement upload, version download, keyboard, responsive, and API-integration verification with the complete Docker Compose stack.

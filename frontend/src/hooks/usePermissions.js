@@ -4,6 +4,8 @@ import { hasPermission } from '../auth/permissions';
 
 export function usePermissions() {
   const { user } = useAuth();
-  const can = useCallback((permission) => hasPermission(user?.role, permission), [user?.role]);
-  return { can, role: user?.role || 'collaborator' };
+  const role = user?.teamRole || user?.role || 'user';
+  const can = useCallback((permission) => hasPermission(role, permission)
+    || (permission === 'manageUsers' && hasPermission(user?.accountRole, permission)), [role, user?.accountRole]);
+  return { can, role };
 }

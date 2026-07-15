@@ -14,7 +14,8 @@ export function setAuthorizationToken(token) {
 setAuthorizationToken(readStoredSession()?.token);
 
 api.interceptors.request.use((config) => {
-  const token = readStoredSession()?.token;
+  const storedSession = readStoredSession();
+  const token = storedSession?.token;
   if (token) {
     const value = `Bearer ${token}`;
     if (typeof config.headers?.set === 'function') config.headers.set('Authorization', value);
@@ -23,6 +24,13 @@ api.interceptors.request.use((config) => {
     config.headers.delete('Authorization');
   } else if (config.headers) {
     delete config.headers.Authorization;
+  }
+  const teamId = storedSession?.user?.team?.id;
+  if (teamId) {
+    if (typeof config.headers?.set === 'function') {
+      config.headers.set('X-Workspace-Id', String(teamId));
+      config.headers.set('X-Team-Id', String(teamId));
+    } else config.headers = { ...(config.headers || {}), 'X-Workspace-Id': String(teamId), 'X-Team-Id': String(teamId) };
   }
   return config;
 });

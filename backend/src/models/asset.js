@@ -34,12 +34,31 @@ const Asset = sequelize.define('Asset', {
       key: 'id'
     }
   },
+  teamId: {
+    // Deprecated compatibility column. Kept until every legacy asset has an
+    // explicitly reviewed workspace assignment.
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Teams',
+      key: 'id'
+    }
+  },
+  workspaceId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Teams',
+      key: 'id'
+    }
+  },
   uploadedAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   }
 }, {
-  timestamps: false
+  timestamps: false,
+  indexes: [{ fields: ['workspaceId'] }]
 });
 
 // Associate with User, Tags, and Versions
@@ -47,6 +66,10 @@ Asset.associate = (models) => {
   Asset.belongsTo(models.User, {
     foreignKey: 'userId',
     as: 'uploader'
+  });
+  Asset.belongsTo(models.Team, {
+    foreignKey: 'workspaceId',
+    as: 'workspace'
   });
   Asset.belongsToMany(models.Tag, {
     through: 'AssetTags',

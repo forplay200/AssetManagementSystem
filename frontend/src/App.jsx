@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PermissionRoute from './components/auth/PermissionRoute';
+import WorkspaceRoute from './components/auth/WorkspaceRoute';
 import AssetDetailPage from './pages/AssetDetailPage';
 import AssetsPage from './pages/AssetsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -13,6 +14,8 @@ import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import UploadPage from './pages/UploadPage';
 import UserManagementPage from './pages/UserManagementPage';
+import TeamPage from './pages/TeamPage';
+import WorkspaceSetupPage from './pages/WorkspaceSetupPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RouteAccessibility from './components/common/RouteAccessibility';
 
@@ -29,12 +32,16 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/assets" element={<AssetsPage />} />
-          <Route path="/assets/:assetId" element={<AssetDetailPage />} />
-          <Route path="/upload" element={<PermissionRoute permission="uploadAsset"><UploadPage /></PermissionRoute>} />
-          <Route path="/search" element={<SearchPage />} />
+          <Route path="/workspace" element={<WorkspaceSetupPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<WorkspaceRoute />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/assets/:assetId" element={<AssetDetailPage />} />
+            <Route path="/upload" element={<PermissionRoute permission="uploadAsset"><UploadPage /></PermissionRoute>} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/team" element={<TeamPage />} />
+          </Route>
           <Route path="/admin/users" element={<PermissionRoute permission="manageUsers"><UserManagementPage /></PermissionRoute>} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
