@@ -13,6 +13,7 @@ const assetsRoutes = require('./routes/assets');
 const healthRoutes = require('./routes/health');
 const userRoutes = require('./routes/users');
 const teamRoutes = require('./routes/teams');
+const commentRoutes = require('./routes/comments');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use('/api/assets', apiLimiter, assetsRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/users', apiLimiter, userRoutes);
 app.use('/api/teams', apiLimiter, teamRoutes);
+app.use('/api/comments', apiLimiter, commentRoutes);
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -145,6 +145,9 @@ Users can edit, accept, or remove generated tags.
 ### Collaboration
 - Asset comments
 - Comment replies
+- Comment editing by the author or workspace Owner
+- Soft comment deletion by the author or workspace Owner
+- Deleted-comment placeholders that preserve reply history
 - Discussion history
 - Feedback tracking
 
@@ -205,6 +208,9 @@ Users can edit, accept, or remove generated tags.
 - FR-028 Add comments
 - FR-029 Reply to comments
 - FR-030 View comment history
+- FR-030A Edit a comment when the requester is its author or the workspace Owner
+- FR-030B Soft-delete a comment when the requester is its author or the workspace Owner
+- FR-030C Preserve replies and display a deleted-comment placeholder
 
 ### Security
 - FR-031 Validate roles

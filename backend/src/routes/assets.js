@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, createComment, getCommentHistory, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
+const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
+const { createComment, getCommentHistory } = require('../controllers/commentsController');
 const auth = require('../middleware/auth');
 const { authorizePermission } = require("../middleware/rbac");
 const requireWorkspace = require('../middleware/requireWorkspace');

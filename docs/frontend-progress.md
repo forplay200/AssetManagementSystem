@@ -2,10 +2,18 @@
 
 ## Session Summary
 
-- Date/Time: 2026-07-14 19:54 MYT (UTC+08:00)
-- Scope: True workspace-level asset repository isolation with additive migration and preserved AI processing.
+- Date/Time: 2026-07-26 21:15 MYT (UTC+08:00)
+- Scope: Workspace-scoped comment editing and soft deletion with preserved discussion history.
 
 ### Completed
+- Added comment editing for the comment author and any active-workspace Owner; Managers and Collaborators remain limited to their own comments.
+- Added soft comment deletion through `isDeleted` without removing database rows or replies.
+- Preserved `createdAt`, allowed Sequelize to advance `updatedAt`, and added an Edited timestamp derived from `updatedAt > createdAt`.
+- Redacted deleted text from comment API responses and displayed the required `Comment deleted by author.` placeholder.
+- Added inline editing, authorized Edit/Delete actions, pending/error states, and an accessible design-system confirmation dialog.
+- Kept comment mutations workspace-isolated and returned not found for comments outside the active workspace.
+- Added Owner, Manager, Collaborator, unauthorized-user, edited-indicator, deleted-placeholder, soft-delete, and reply-retention regression coverage.
+- Verified all 37 backend tests, all 40 frontend tests, frontend lint, backend and migration syntax, Swagger parsing, and the optimized production build.
 - Added canonical `workspaceId` ownership to assets while retaining deprecated `teamId` for non-destructive migration compatibility.
 - Added an indexed migration and startup backfill for assets with already-known team ownership; no columns were dropped and null legacy records were not reassigned automatically.
 - Required a validated active workspace membership for every user-facing Asset API.
@@ -150,6 +158,11 @@
 - Added automated coverage for the error fallback.
 
 ### Created Files
+- `backend/migrations/20260726010000-add-comment-soft-delete.js`
+- `backend/src/controllers/commentsController.js`
+- `backend/src/routes/comments.js`
+- `backend/__tests__/commentsController.test.js`
+- `frontend/src/components/comments/CommentThread.test.jsx`
 - `backend/migrations/20260714010000-add-workspace-id-to-assets.js`
 - `backend/src/middleware/requireWorkspace.js`
 - `backend/src/middleware/workspaceAssetAccess.js`
@@ -210,6 +223,16 @@
 - `frontend/src/components/common/ErrorBoundary.test.jsx`
 
 ### Modified Files
+- `backend/src/models/comment.js`
+- `backend/src/routes/assets.js`
+- `backend/src/index.js`
+- `backend/__tests__/routes.test.js`
+- `backend/package.json`
+- `backend/swagger.yaml`
+- `frontend/src/components/comments/CommentThread.jsx`
+- `frontend/src/services/assetService.js`
+- `architecture.md`
+- `prd.md`
 - `backend/src/models/asset.js`
 - `backend/src/models/team.js`
 - `backend/src/middleware/auth.js`
@@ -305,6 +328,7 @@
 - `docs/frontend-progress.md`
 
 ### Implemented Screens
+- Asset Detail Discussion panel: inline comment editing, Edited timestamps, deleted placeholders, and confirmation dialog
 - Correctly labeled System User Administration screen for legacy Administrators
 - Accessible route announcements for Workspace Setup and Team Workspace
 - Active Workspace selector in desktop and mobile application navigation
@@ -326,6 +350,9 @@
 - Global Frontend Error Recovery screen
 
 ### Integrated APIs
+- New API endpoint: `PUT /api/comments/:id` for author-or-Owner comment editing.
+- New API endpoint: `DELETE /api/comments/:id` for author-or-Owner soft deletion.
+- Existing `GET /api/assets/:assetId/comments` now redacts deleted text while retaining comments and replies.
 - Added canonical `X-Workspace-Id` to all authenticated frontend requests.
 - Kept `X-Team-Id` as a temporary request-header compatibility alias.
 - Secured internal `GET /api/assets/:id/info` and `POST /api/assets/:id/ai-result` with `X-AI-Service-Token`.
@@ -349,6 +376,7 @@
 - Existing authenticated `GET /api/assets/preview/:id` integration added to visible image gallery cards.
 
 ### Remaining Work
+- Run live multi-user browser verification for Owner, Manager, and Collaborator comment actions when the full Docker stack is available.
 - Full-stack browser verification is blocked until Docker or equivalent frontend/backend services are running.
 - Remaining blocker: live PostgreSQL/MinIO verification with two populated workspaces requires the Docker service to be available.
 - Owners must assign quarantined legacy assets with null `workspaceId` before the separately approved destructive migration.
@@ -361,6 +389,7 @@
 - Browser/GPU end-to-end verification remains pending for representative production-size OBJ and FBX assets.
 
 ### Next Steps
+- Apply the additive `isDeleted` migration in a backup-restorable environment and verify an existing discussion with nested replies.
 - Rebuild the backend and AI worker with a deployment-specific `AI_SERVICE_TOKEN`.
 - Run the Workspace A/Workspace B upload, search, preview, download, comments, versions, and dashboard scenarios against PostgreSQL and MinIO.
 - Review the quarantined legacy asset report and approve explicit workspace assignments before any destructive migration.

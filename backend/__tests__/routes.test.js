@@ -51,3 +51,14 @@ test('team router exposes onboarding and owner-management routes', () => {
   const indexSource = fs.readFileSync(path.join(__dirname, '../src/index.js'), 'utf8');
   assert.match(indexSource, /app\.use\('\/api\/teams', apiLimiter, teamRoutes\)/);
 });
+
+test('comment router exposes workspace-protected edit and delete routes', () => {
+  mockModule('../src/controllers/commentsController', { updateComment() {}, deleteComment() {} });
+  mockModule('../src/middleware/auth', (_req, _res, next) => next());
+  mockModule('../src/middleware/requireWorkspace', (_req, _res, next) => next());
+  mockModule('../src/middleware/rbac', { authorizePermission: () => (_req, _res, next) => next() });
+  const router = require('../src/routes/comments');
+  assert.deepEqual(routeSignatures(router).sort(), ['DELETE /:id', 'PUT /:id']);
+  const indexSource = fs.readFileSync(path.join(__dirname, '../src/index.js'), 'utf8');
+  assert.match(indexSource, /app\.use\('\/api\/comments', apiLimiter, commentRoutes\)/);
+});

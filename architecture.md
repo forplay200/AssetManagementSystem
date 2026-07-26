@@ -100,6 +100,9 @@ Search by:
 ## 10. Collaboration Architecture
 - Asset Comments
 - Replies
+- Author-or-Owner comment editing
+- Soft deletion through `isDeleted`, with original rows and replies retained
+- Deleted content redaction in API responses
 - Discussion History
 
 ## 11. Deployment Architecture

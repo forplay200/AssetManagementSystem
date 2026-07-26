@@ -80,6 +80,14 @@ export const assetService = {
     const { data } = await api.post(`/assets/${assetId}/comments`, { content, parentId });
     return data;
   },
+  async updateComment(commentId, content) {
+    const { data } = await api.put(`/comments/${commentId}`, { content });
+    return data;
+  },
+  async deleteComment(commentId) {
+    const { data } = await api.delete(`/comments/${commentId}`);
+    return data;
+  },
   async getDashboardStats() {
     const { data } = await api.get('/assets/dashboard/stats');
     return data;

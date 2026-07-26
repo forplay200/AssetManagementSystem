@@ -10,6 +10,11 @@ const Comment = sequelize.define('Comment', {
     type: DataTypes.TEXT,
     allowNull: false
   },
+  isDeleted: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
   // timestamps: true will be set by sequelize
 }, {
   timestamps: true
