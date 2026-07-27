@@ -1,5 +1,6 @@
 const roleInheritance = {
-  admin: ['admin', 'developer', 'designer', 'collaborator'],
+  systemAdministrator: ['systemAdministrator'],
+  admin: ['systemAdministrator'],
   developer: ['developer', 'designer', 'collaborator'],
   designer: ['designer', 'collaborator'],
   owner: ['owner', 'manager', 'collaborator', 'admin', 'developer', 'designer'],
@@ -13,8 +14,10 @@ const rolePermissions = {
   manager: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'comment', 'approveAsset'],
   collaborator: ['viewAsset', 'downloadAsset', 'comment'],
   user: [],
-  // Legacy account roles remain active during workspace migration.
-  admin: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset', 'manageTeam', 'manageProjects', 'manageUsers'],
+  systemAdministrator: ['manageUsers'],
+  // `admin` is a compatibility alias for System Administrator and grants no
+  // workspace capability by itself.
+  admin: ['manageUsers'],
   developer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset'],
   designer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset']
 };
@@ -55,4 +58,11 @@ function authorizeAccountPermission(permission) {
   };
 }
 
-module.exports = { authorize, authorizePermission, authorizeAccountPermission, effectiveRole, rolePermissions };
+function denySystemAdministrator(req, res, next) {
+  if (['systemAdministrator', 'admin'].includes(req.user?.role)) {
+    return res.status(403).json({ message: 'Forbidden: System Administrators cannot access workspace operations' });
+  }
+  next();
+}
+
+module.exports = { authorize, authorizePermission, authorizeAccountPermission, denySystemAdministrator, effectiveRole, rolePermissions };

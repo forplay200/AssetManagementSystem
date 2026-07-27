@@ -29,10 +29,16 @@ module.exports = (sequelize, DataTypes) => {
 
     role: {
       // Account roles remain separate from workspace membership roles. Legacy
-      // values stay valid while `user` represents a new account with no team.
-      type: DataTypes.ENUM('user', 'admin', 'developer', 'designer', 'collaborator'),
+      // `admin` remains an alias for the canonical platform-level role.
+      type: DataTypes.ENUM('user', 'systemAdministrator', 'admin', 'developer', 'designer', 'collaborator'),
       allowNull: false,
       defaultValue: 'user'
+    },
+
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
     }
   });
 

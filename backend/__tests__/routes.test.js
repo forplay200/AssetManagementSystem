@@ -21,19 +21,19 @@ test('mounts password recovery routes', () => {
   assert.ok(signatures.includes('POST /reset-password'));
 });
 
-test('user router exposes protected CRUD routes and is mounted by the app', () => {
-  mockModule('../src/controllers/userController', { getAllUsers() {}, getUserById() {}, createUser() {}, updateUser() {}, deleteUser() {} });
+test('user router exposes protected System Administration routes and is mounted by the app', () => {
+  mockModule('../src/controllers/userController', { getAllUsers() {}, getUserById() {}, updateAccountStatus() {} });
   mockModule('../src/middleware/auth', (_req, _res, next) => next());
   const router = require('../src/routes/users');
   const signatures = routeSignatures(router);
-  assert.deepEqual(signatures.sort(), ['DELETE /:id', 'GET /', 'GET /:id', 'POST /', 'PUT /:id'].sort());
+  assert.deepEqual(signatures.sort(), ['GET /', 'GET /:id', 'PATCH /:id/status'].sort());
   const indexSource = fs.readFileSync(path.join(__dirname, '../src/index.js'), 'utf8');
   assert.match(indexSource, /app\.use\('\/api\/users', apiLimiter, userRoutes\)/);
 });
 
 test('asset router exposes the backward-compatible replacement upload route', () => {
   const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/assets.js'), 'utf8');
-  assert.match(routeSource, /const workspaceAuth = \[auth, requireWorkspace\]/);
+  assert.match(routeSource, /const workspaceAuth = \[auth, denySystemAdministrator, requireWorkspace\]/);
   assert.match(routeSource, /workspaceAssetAccess/);
   assert.match(routeSource, /router\.post\('\/:id\/ai-result', internalAiAuth, storeAiResult\)/);
   assert.match(routeSource, /router\.get\('\/:id\/info', internalAiAuth, getAssetInfo\)/);
@@ -56,7 +56,7 @@ test('comment router exposes workspace-protected edit and delete routes', () => 
   mockModule('../src/controllers/commentsController', { updateComment() {}, deleteComment() {} });
   mockModule('../src/middleware/auth', (_req, _res, next) => next());
   mockModule('../src/middleware/requireWorkspace', (_req, _res, next) => next());
-  mockModule('../src/middleware/rbac', { authorizePermission: () => (_req, _res, next) => next() });
+  mockModule('../src/middleware/rbac', { authorizePermission: () => (_req, _res, next) => next(), denySystemAdministrator: (_req, _res, next) => next() });
   const router = require('../src/routes/comments');
   assert.deepEqual(routeSignatures(router).sort(), ['DELETE /:id', 'PUT /:id']);
   const indexSource = fs.readFileSync(path.join(__dirname, '../src/index.js'), 'utf8');

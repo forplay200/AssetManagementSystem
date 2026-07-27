@@ -37,6 +37,14 @@ Game development projects produce a large volume of digital assets including ima
 - View metadata and participate in discussions
 - Cannot upload, delete, edit metadata, manage versions, or administer the team
 
+### System Administrator
+- Platform-level account administration only
+- View and search all registered users
+- View account details and read-only role assignments
+- Activate and deactivate accounts without deleting them
+- Cannot manage workspace roles, invitations, assets, or user passwords
+- Is not a Workspace Owner
+
 Legacy Administrator, Developer, and Designer roles remain supported during migration. Developer and Designer capabilities map to Manager; Administrator remains a system-level role where required.
 
 ---
@@ -99,6 +107,13 @@ Legacy Administrator, Developer, and Designer roles remain supported during migr
 - Team-scoped permission enforcement
 - Legacy role compatibility during migration
 - Permission enforcement
+
+### System Administration
+- Registered user list and search
+- User account detail view
+- Account status visibility
+- Account activation and deactivation
+- Strict separation from workspace administration
 
 ### Asset Repository
 - Workspace-isolated asset ownership
@@ -169,10 +184,10 @@ Users can edit, accept, or remove generated tags.
 - FR-004 JWT authentication
 
 ### User Management
-- FR-005 Create users
-- FR-006 Update users
-- FR-007 Delete users
-- FR-008 Assign roles
+- FR-005 View all registered system users
+- FR-006 Search system users by username or email
+- FR-007 View user account details and role assignments
+- FR-008 Activate or deactivate an account without deleting it
 - FR-008A Create a team and assign its creator as Owner
 - FR-008B Join a team using an invite code as Collaborator
 - FR-008C Promote, demote, or remove team members while preserving at least one Owner
@@ -266,6 +281,7 @@ The system will be accepted when:
 
 - Users can authenticate successfully.
 - RBAC functions correctly.
+- Only System Administrators can access System Administration and account activation controls.
 - All supported asset types can be uploaded.
 - AI metadata generation operates successfully.
 - Search and filtering work correctly.

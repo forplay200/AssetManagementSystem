@@ -1,10 +1,15 @@
 import { hasPermission } from './permissions';
 
-test('only administrators can manage users', () => {
+test('only System Administrators can manage system users', () => {
+  expect(hasPermission('systemAdministrator', 'manageUsers')).toBe(true);
   expect(hasPermission('admin', 'manageUsers')).toBe(true);
+  expect(hasPermission('owner', 'manageUsers')).toBe(false);
+  expect(hasPermission('manager', 'manageUsers')).toBe(false);
   expect(hasPermission('developer', 'manageUsers')).toBe(false);
   expect(hasPermission('designer', 'manageUsers')).toBe(false);
   expect(hasPermission('collaborator', 'manageUsers')).toBe(false);
+  expect(hasPermission('user', 'manageUsers')).toBe(false);
+  expect(hasPermission('systemAdministrator', 'viewAsset')).toBe(false);
 });
 
 test('collaborators cannot perform asset management actions', () => {

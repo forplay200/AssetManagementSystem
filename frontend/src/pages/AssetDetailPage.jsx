@@ -56,8 +56,8 @@ export default function AssetDetailPage() {
   const ownsAsset = Number(info.userId) === Number(user?.id);
   const assetWorkspaceId = info.workspaceId || info.teamId;
   const isWorkspaceAsset = Boolean(assetWorkspaceId && Number(assetWorkspaceId) === Number(user?.team?.id));
-  const canManageAsset = isWorkspaceAsset ? ['owner', 'manager'].includes(user?.teamRole) : user?.role === 'admin' || ownsAsset;
-  const canDeleteAsset = isWorkspaceAsset ? user?.teamRole === 'owner' : user?.role === 'admin' || ownsAsset;
+  const canManageAsset = isWorkspaceAsset ? ['owner', 'manager'].includes(user?.teamRole) : ownsAsset;
+  const canDeleteAsset = isWorkspaceAsset ? user?.teamRole === 'owner' : ownsAsset;
   return (
     <>
       {location.state?.uploaded && <div className="mb-5 rounded border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">Asset uploaded successfully. AI processing has been queued.</div>}

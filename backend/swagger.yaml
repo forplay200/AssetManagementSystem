@@ -152,19 +152,24 @@ paths:
           description: Invite code rotated
   /users:
     get:
-      summary: List users (Administrator only)
+      summary: List and search registered users (System Administrator only)
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive username or email search
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
+        - in: query
+          name: role
+          schema: { type: string }
+          description: Account-level role. systemAdministrator also matches the legacy admin alias.
       responses:
         '200':
           description: User list
-    post:
-      summary: Create a user (Administrator only)
-      security:
-        - bearerAuth: []
-      responses:
-        '201':
-          description: User created
   /users/{id}:
     parameters:
       - in: path
@@ -173,26 +178,39 @@ paths:
         schema:
           type: integer
     get:
-      summary: Get a user (Administrator only)
+      summary: Get account details and read-only workspace role assignments (System Administrator only)
       security:
         - bearerAuth: []
       responses:
         '200':
           description: User details
-    put:
-      summary: Update a user or role (Administrator only)
+  /users/{id}/status:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    patch:
+      summary: Activate or deactivate a user account (System Administrator only)
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, inactive] }
       responses:
         '200':
-          description: User updated
-    delete:
-      summary: Delete a user (Administrator only)
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: User deleted
+          description: Account status updated without deleting the user
+        '400':
+          description: Invalid status or attempted self-deactivation
+        '404':
+          description: User not found
   /assets/{id}/details:
     get:
       summary: Get authenticated asset details including ownership

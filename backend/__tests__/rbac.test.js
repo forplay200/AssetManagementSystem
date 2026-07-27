@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { authorize, authorizePermission, authorizeAccountPermission } = require('../src/middleware/rbac');
+const { authorize, authorizePermission, authorizeAccountPermission, denySystemAdministrator } = require('../src/middleware/rbac');
 
 function check(role, allowedRoles) {
   let status;
@@ -26,8 +26,9 @@ function checkAccountPermission(role, permission, teamRole) {
   return { status, nextCalled };
 }
 
-test('allows administrators through management routes', () => {
-  assert.equal(check('admin', ['admin', 'developer', 'designer']).nextCalled, true);
+test('maps the legacy admin role to System Administrator only', () => {
+  assert.equal(check('admin', ['systemAdministrator']).nextCalled, true);
+  assert.equal(check('admin', ['developer', 'designer']).status, 403);
 });
 
 test('blocks collaborators from management routes', () => {
@@ -52,4 +53,18 @@ test('enforces owner, manager, collaborator, and unassigned user permissions', (
   assert.equal(checkPermission('user', 'manageUsers', 'owner').status, 403);
   assert.equal(checkAccountPermission('admin', 'manageUsers', 'collaborator').nextCalled, true);
   assert.equal(checkAccountPermission('user', 'manageUsers', 'owner').status, 403);
+});
+
+test('isolates System Administrator from every workspace role', () => {
+  for (const role of ['systemAdministrator', 'admin']) {
+    assert.equal(checkAccountPermission(role, 'manageUsers').nextCalled, true);
+    assert.equal(checkPermission(role, 'viewAsset').status, 403);
+  }
+  for (const role of ['owner', 'manager', 'collaborator', 'user']) {
+    assert.equal(checkAccountPermission(role, 'manageUsers').status, 403);
+  }
+
+  let status;
+  denySystemAdministrator({ user: { role: 'systemAdministrator' } }, { status(code) { status = code; return this; }, json() {} }, () => {});
+  assert.equal(status, 403);
 });

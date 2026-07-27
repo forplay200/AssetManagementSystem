@@ -10,7 +10,13 @@ module.exports = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    const account = await db.User.findByPk(decoded.id, { attributes: ['id', 'role', 'isActive'] });
+    if (!account) return res.status(401).json({ message: 'Account not found.' });
+    if (account.isActive === false) return res.status(403).json({ message: 'Account is inactive.' });
     req.user = decoded;
+    // Account-level role and activation changes take effect immediately rather
+    // than waiting for the existing JWT to expire.
+    req.user.role = account.role;
     const requestedWorkspaceId = Number(
       req.header('X-Workspace-Id') || req.header('X-Team-Id') || decoded.workspaceId || decoded.teamId
     );

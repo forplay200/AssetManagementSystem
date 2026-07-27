@@ -24,7 +24,7 @@ Implemented as a backward-compatible migration increment on 2026-07-14.
 | Delete assets | Yes | No | No | No |
 | Invite/remove members and assign roles | Yes | No | No | No |
 
-Legacy Developer and Designer permissions remain compatible with the previous management behavior. Legacy Administrator retains system-user administration separately from team Owner permissions.
+Legacy Developer and Designer permissions remain compatible with the previous management behavior. `systemAdministrator` is the canonical platform role, while legacy `admin` remains a compatibility alias. Both are restricted to System Administration and receive no workspace, team-invitation, or asset permission from the platform role.
 
 ## Authentication Context
 
@@ -50,7 +50,7 @@ New uploads store the active `workspaceId`. Direct access, search, and dashboard
 
 Registration now leads to Workspace Onboarding instead of immediately granting Collaborator access. The onboarding screen supports Create Team and Join Team paths. The Team screen shows members and roles to all members, while Owner-only controls expose invite-code rotation, role assignment, and member removal. Desktop and mobile navigation include an active-workspace selector backed by `GET /api/teams`; selecting a membership persists its team and role before returning to the Dashboard. Navigation and action controls use the same centralized permission matrix as the API.
 
-The legacy `/admin/users` interface is labeled System User Administration and remains distinct from workspace membership. Only the global Administrator account permission exposes it; team Owners use `/team` instead.
+The `/admin/users` interface is the System Administration module and remains distinct from workspace membership. Only the global System Administrator account permission exposes it; team Owners use `/team` instead. Account deactivation uses `Users.isActive`, preserves related records, and blocks existing JWT sessions on their next protected request.
 
 ## Risks and Deferred Work
 

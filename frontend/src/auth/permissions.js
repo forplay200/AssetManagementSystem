@@ -3,8 +3,9 @@ const rolePermissions = {
   manager: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'createVersion', 'comment'],
   collaborator: ['viewAsset', 'downloadAsset', 'comment'],
   user: [],
-  // Legacy roles remain available while existing accounts move into teams.
-  admin: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment', 'manageUsers'],
+  systemAdministrator: ['manageUsers'],
+  // Legacy `admin` remains a compatibility alias for System Administrator.
+  admin: ['manageUsers'],
   developer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment'],
   designer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment'],
 };

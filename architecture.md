@@ -33,6 +33,7 @@ Responsibilities:
 
 Responsibilities:
 - RBAC
+- Platform-level System Administration
 - Asset APIs
 - Search APIs
 - Version Control
@@ -59,6 +60,8 @@ Upload -> MinIO -> Redis Job -> FastAPI Processing -> PostgreSQL Metadata
 - Comments
 - Tags
 
+User accounts retain an indexed `isActive` flag. Deactivation preserves the user row and related workspace, asset, and discussion history.
+
 ### MinIO
 - Images
 - Audio
@@ -75,6 +78,11 @@ Workspace roles:
 - Manager
 - Collaborator
 
+Platform role:
+- System Administrator (`systemAdministrator`; legacy `admin` is a compatibility alias)
+- May view/search accounts, inspect role assignments, and activate/deactivate accounts
+- Has no workspace or asset capability unless represented by a separate non-administrator account
+
 Account lifecycle:
 - A newly registered User has no repository access until they create or join a team.
 - Team membership roles are independent from account identity.
@@ -85,6 +93,7 @@ Authorization context:
 - `X-Workspace-Id` selects an active workspace and is validated against membership on every protected request. `X-Team-Id` remains a temporary client compatibility alias.
 - Newly uploaded assets store `workspaceId` and are visible only inside that workspace.
 - Legacy assets without a reviewed workspace assignment are quarantined from user-facing repository APIs during migration.
+- Authentication reloads account role and activation status on protected requests, so deactivation blocks existing JWT sessions immediately.
 
 ## 8. Version Management
 Each asset maintains version history with metadata snapshots.

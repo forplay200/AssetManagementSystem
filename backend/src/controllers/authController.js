@@ -7,7 +7,7 @@ const { hashResetToken } = require('../utils/resetToken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const JWT_EXPIRES_IN = '1h';
-const PUBLIC_ACCOUNT_ROLES = new Set(['user', 'admin', 'developer', 'designer', 'collaborator']);
+const PUBLIC_ACCOUNT_ROLES = new Set(['user', 'developer', 'designer', 'collaborator']);
 
 async function preferredMembership(userId) {
   if (!db.TeamMember || !db.Team) return null;
@@ -36,6 +36,7 @@ async function authResponse(user) {
       email: user.email,
       accountRole: user.role,
       role: teamRole || user.role,
+      isActive: user.isActive !== false,
       teamRole,
       team
     }
@@ -60,7 +61,8 @@ exports.register = async (req, res) => {
       username,
       email,
       passwordHash,
-      role: requestedRole
+      role: requestedRole,
+      isActive: true
     });
     res.status(201).json(await authResponse(user));
   } catch (error) {
@@ -76,6 +78,9 @@ exports.login = async (req, res) => {
     const user = await db.User.findOne({ where: { email } });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }
+    if (user.isActive === false) {
+      return res.status(403).json({ message: 'Account is inactive.' });
     }
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {

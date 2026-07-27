@@ -1,141 +1,94 @@
-const { User } = require('../models');
-const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
+const { User, TeamMember, Team } = require('../models');
 const logger = require('../utils/logger');
-const VALID_ROLES = ['admin', 'developer', 'designer', 'collaborator'];
 
-// Get all users
+const SAFE_ATTRIBUTES = { exclude: ['passwordHash', 'resetToken', 'resetTokenExpiry'] };
+const SYSTEM_ADMIN_ROLES = ['systemAdministrator', 'admin'];
+
+function systemRoleWhere(role) {
+  if (!role) return undefined;
+  return role === 'systemAdministrator' ? { [Op.in]: SYSTEM_ADMIN_ROLES } : role;
+}
+
 exports.getAllUsers = async (req, res) => {
   try {
+    const q = String(req.query.q || '').trim();
+    const status = String(req.query.status || '').toLowerCase();
+    const role = String(req.query.role || '');
+    const where = {};
+
+    if (q) {
+      where[Op.or] = [
+        { username: { [Op.iLike]: `%${q}%` } },
+        { email: { [Op.iLike]: `%${q}%` } }
+      ];
+    }
+    if (status === 'active') where.isActive = true;
+    if (status === 'inactive') where.isActive = false;
+    if (role) where.role = systemRoleWhere(role);
+
     const users = await User.findAll({
-      attributes: { exclude: ['passwordHash', 'resetToken', 'resetTokenExpiry'] }
+      where,
+      attributes: SAFE_ATTRIBUTES,
+      order: [['createdAt', 'DESC'], ['id', 'DESC']]
     });
-    res.json(users);
+    return res.json(users);
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Get user by ID
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
-      attributes: { exclude: ['passwordHash', 'resetToken', 'resetTokenExpiry'] }
+      attributes: SAFE_ATTRIBUTES,
+      include: [{
+        model: TeamMember,
+        as: 'teamMemberships',
+        attributes: ['id', 'role', 'createdAt'],
+        include: [{ model: Team, as: 'team', attributes: ['id', 'name', 'createdAt'] }]
+      }]
     });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json(user);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    return res.json(user);
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Create a new user
-exports.createUser = async (req, res) => {
+exports.updateAccountStatus = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
-    if (role && !VALID_ROLES.includes(role)) {
-      return res.status(400).json({ message: 'Invalid role' });
+    const status = String(req.body.status || '').toLowerCase();
+    if (!['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be Active or Inactive' });
     }
-    // Validate input
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Username, email, and password are required' });
+    if (status === 'inactive' && Number(req.user.id) === Number(req.params.id)) {
+      return res.status(400).json({ message: 'System Administrators cannot deactivate their own account' });
     }
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { username } });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists' });
-    }
-    const existingEmail = await User.findOne({ where: { email } });
-    if (existingEmail) {
-      return res.status(400).json({ message: 'Email already exists' });
-    }
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    // Create user
-    const user = await User.create({
-      username,
-      email,
-      passwordHash,
-      role: role || 'collaborator'
-    });
-    // Remove password hash from response
-    const userResponse = user.toJSON();
-    delete userResponse.passwordHash;
-    delete userResponse.resetToken;
-    delete userResponse.resetTokenExpiry;
-    res.status(201).json(userResponse);
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
 
-// Update user
-exports.updateUser = async (req, res) => {
-  try {
     const user = await User.findByPk(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.isActive = status === 'active';
+    if (!user.isActive) {
+      // Pending recovery tokens must not remain usable as an indirect account
+      // reactivation mechanism.
+      user.resetToken = null;
+      user.resetTokenExpiry = null;
     }
-    const { username, email, password, role } = req.body;
-    if (role && !VALID_ROLES.includes(role)) {
-      return res.status(400).json({ message: 'Invalid role' });
-    }
-    // If username is being changed, check it's not taken
-    if (username && username !== user.username) {
-      const existingUser = await User.findOne({ where: { username } });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Username already exists' });
-      }
-    }
-    // If email is being changed, check it's not taken
-    if (email && email !== user.email) {
-      const existingEmail = await User.findOne({ where: { email } });
-      if (existingEmail) {
-        return res.status(400).json({ message: 'Email already exists' });
-      }
-    }
-    // Hash password if provided
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(password, salt);
-      user.passwordHash = passwordHash;
-    }
-    // Update fields
-    if (username) user.username = username;
-    if (email) user.email = email;
-    if (role) user.role = role;
     await user.save();
-    // Remove sensitive data from response
-    const userResponse = user.toJSON();
-    delete userResponse.passwordHash;
-    delete userResponse.resetToken;
-    delete userResponse.resetTokenExpiry;
-    res.json(userResponse);
+
+    const response = user.toJSON();
+    delete response.passwordHash;
+    delete response.resetToken;
+    delete response.resetTokenExpiry;
+    return res.json({ message: `User account ${status === 'active' ? 'activated' : 'deactivated'}`, user: response });
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Delete user
-exports.deleteUser = async (req, res) => {
-  try {
-    if (Number(req.user.id) === Number(req.params.id)) {
-      return res.status(400).json({ message: 'Administrators cannot delete their own active account' });
-    }
-    const user = await User.findByPk(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    await user.destroy();
-    res.json({ message: 'User deleted' });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+exports.SYSTEM_ADMIN_ROLES = SYSTEM_ADMIN_ROLES;

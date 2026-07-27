@@ -1,11 +1,12 @@
 const express = require('express');
 const auth = require('../middleware/auth');
-const { authorizePermission } = require('../middleware/rbac');
+const { authorizePermission, denySystemAdministrator } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
 const teamController = require('../controllers/teamController');
 
 const router = express.Router();
 router.use(auth);
+router.use(denySystemAdministrator);
 
 router.get('/', teamController.listTeams);
 router.post('/', validate({ body: { name: { type: 'string', required: true, minLength: 2 } } }), teamController.createTeam);

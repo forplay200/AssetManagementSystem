@@ -41,11 +41,13 @@ api.interceptors.response.use(
     const hasSession = Boolean(readStoredSession()?.token);
     const invalidToken = error.response?.status === 400 && error.response?.data?.message === 'Invalid token.';
     const unauthorizedSession = error.response?.status === 401 && hasSession;
-    if (invalidToken || unauthorizedSession) {
+    const inactiveSession = error.response?.status === 403 && error.response?.data?.message === 'Account is inactive.';
+    if (invalidToken || unauthorizedSession || inactiveSession) {
       clearStoredSession();
       setAuthorizationToken(null);
       window.dispatchEvent(new Event('aether:session-expired'));
-      if (!window.location.pathname.startsWith('/login')) window.location.assign('/login?reason=session-expired');
+      const reason = inactiveSession ? 'account-inactive' : 'session-expired';
+      if (!window.location.pathname.startsWith('/login')) window.location.assign(`/login?reason=${reason}`);
     }
     return Promise.reject(error);
   },

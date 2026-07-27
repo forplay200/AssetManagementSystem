@@ -2,10 +2,22 @@
 
 ## Session Summary
 
-- Date/Time: 2026-07-26 21:15 MYT (UTC+08:00)
-- Scope: Workspace-scoped comment editing and soft deletion with preserved discussion history.
+- Date/Time: 2026-07-27 01:24 MYT (UTC+08:00)
+- Scope: Platform-level System Administration with user discovery, account details, and non-destructive activation controls.
 
 ### Completed
+- Audited and reused the existing Administrator-protected list/detail APIs and existing System Users screen.
+- Added canonical `systemAdministrator` role support while retaining legacy `admin` as a compatibility alias.
+- Separated platform administration from workspace permissions; System Administrator no longer inherits asset, team, invitation, or workspace-role capabilities.
+- Added indexed `isActive` account status with an additive migration; no user accounts or related history are deleted.
+- Added backend username/email search plus account-status and account-role filters.
+- Expanded user details with read-only workspace role assignments.
+- Added activation and deactivation with self-deactivation protection and reset-token invalidation.
+- Blocked inactive login attempts and existing JWT sessions by checking current account status on every protected request.
+- Replaced legacy create/edit/password/delete UI with Account Details, Active/Inactive badges, Activate, and Deactivate actions.
+- Hid all workspace navigation and asset search controls from System Administrator, and hid System Administration from Owner, Manager, Collaborator, and User.
+- Created a dedicated implementation and audit document for the module.
+- Verified all 44 backend tests, all 49 frontend tests, clean frontend lint, backend and migration syntax, Swagger parsing, Git whitespace checks, and the optimized production build.
 - Added comment editing for the comment author and any active-workspace Owner; Managers and Collaborators remain limited to their own comments.
 - Added soft comment deletion through `isDeleted` without removing database rows or replies.
 - Preserved `createdAt`, allowed Sequelize to advance `updatedAt`, and added an Edited timestamp derived from `updatedAt > createdAt`.
@@ -158,6 +170,13 @@
 - Added automated coverage for the error fallback.
 
 ### Created Files
+- `backend/migrations/20260727010000-add-user-account-status.js`
+- `backend/__tests__/userController.test.js`
+- `backend/__tests__/accountStatusAuth.test.js`
+- `frontend/src/auth/roles.js`
+- `frontend/src/components/auth/WorkspaceAccountRoute.jsx`
+- `frontend/src/components/layout/AppShell.test.jsx`
+- `docs/system-administration.md`
 - `backend/migrations/20260726010000-add-comment-soft-delete.js`
 - `backend/src/controllers/commentsController.js`
 - `backend/src/routes/comments.js`
@@ -223,6 +242,34 @@
 - `frontend/src/components/common/ErrorBoundary.test.jsx`
 
 ### Modified Files
+- `backend/src/models/user.js`
+- `backend/src/controllers/userController.js`
+- `backend/src/controllers/authController.js`
+- `backend/src/middleware/auth.js`
+- `backend/src/middleware/rbac.js`
+- `backend/src/routes/users.js`
+- `backend/src/routes/assets.js`
+- `backend/src/routes/comments.js`
+- `backend/src/routes/teams.js`
+- `backend/__tests__/rbac.test.js`
+- `backend/__tests__/routes.test.js`
+- `backend/package.json`
+- `backend/swagger.yaml`
+- `frontend/src/auth/permissions.js`
+- `frontend/src/auth/permissions.test.js`
+- `frontend/src/components/auth/WorkspaceRoute.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/pages/UserManagementPage.jsx`
+- `frontend/src/pages/UserManagementPage.test.jsx`
+- `frontend/src/pages/LoginPage.jsx`
+- `frontend/src/pages/ProfilePage.jsx`
+- `frontend/src/pages/AssetDetailPage.jsx`
+- `frontend/src/services/api.js`
+- `frontend/src/services/userService.js`
+- `frontend/src/App.jsx`
+- `architecture.md`
+- `prd.md`
+- `docs/rbac-redesign.md`
 - `backend/src/models/comment.js`
 - `backend/src/routes/assets.js`
 - `backend/src/index.js`
@@ -328,6 +375,9 @@
 - `docs/frontend-progress.md`
 
 ### Implemented Screens
+- System Administration: searchable user list, status/role filters, account details modal, role assignments, and activation controls
+- System Administrator-specific navigation and platform header state
+- Inactive-account sign-in/session notice
 - Asset Detail Discussion panel: inline comment editing, Edited timestamps, deleted placeholders, and confirmation dialog
 - Correctly labeled System User Administration screen for legacy Administrators
 - Accessible route announcements for Workspace Setup and Team Workspace
@@ -350,6 +400,10 @@
 - Global Frontend Error Recovery screen
 
 ### Integrated APIs
+- Reused and extended `GET /api/users` with `q`, `status`, and `role` filters.
+- Reused and extended `GET /api/users/:id` with read-only workspace role assignments.
+- New API endpoint: `PATCH /api/users/:id/status` for non-destructive activation and deactivation.
+- Removed legacy mounted System Administration create, arbitrary update/password, and physical-delete operations from the supported contract.
 - New API endpoint: `PUT /api/comments/:id` for author-or-Owner comment editing.
 - New API endpoint: `DELETE /api/comments/:id` for author-or-Owner soft deletion.
 - Existing `GET /api/assets/:assetId/comments` now redacts deleted text while retaining comments and replies.
@@ -376,6 +430,8 @@
 - Existing authenticated `GET /api/assets/preview/:id` integration added to visible image gallery cards.
 
 ### Remaining Work
+- Apply the additive account-status migration and run live multi-account verification against PostgreSQL.
+- Initial System Administrator provisioning remains an explicit deployment responsibility; existing legacy `admin` accounts are accepted automatically.
 - Run live multi-user browser verification for Owner, Manager, and Collaborator comment actions when the full Docker stack is available.
 - Full-stack browser verification is blocked until Docker or equivalent frontend/backend services are running.
 - Remaining blocker: live PostgreSQL/MinIO verification with two populated workspaces requires the Docker service to be available.
@@ -389,6 +445,7 @@
 - Browser/GPU end-to-end verification remains pending for representative production-size OBJ and FBX assets.
 
 ### Next Steps
+- Verify deactivation of a signed-in test account and confirm its next protected request returns the inactive-account flow.
 - Apply the additive `isDeleted` migration in a backup-restorable environment and verify an existing discussion with nested replies.
 - Rebuild the backend and AI worker with a deployment-specific `AI_SERVICE_TOKEN`.
 - Run the Workspace A/Workspace B upload, search, preview, download, comments, versions, and dashboard scenarios against PostgreSQL and MinIO.

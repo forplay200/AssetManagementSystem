@@ -3,7 +3,7 @@ const router = express.Router();
 const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
 const { createComment, getCommentHistory } = require('../controllers/commentsController');
 const auth = require('../middleware/auth');
-const { authorizePermission } = require("../middleware/rbac");
+const { authorizePermission, denySystemAdministrator } = require("../middleware/rbac");
 const requireWorkspace = require('../middleware/requireWorkspace');
 const workspaceAssetAccess = require('../middleware/workspaceAssetAccess');
 const internalAiAuth = require('../middleware/internalAiAuth');
@@ -12,7 +12,7 @@ const path = require('path');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-const workspaceAuth = [auth, requireWorkspace];
+const workspaceAuth = [auth, denySystemAdministrator, requireWorkspace];
 // POST /api/assets/upload
 router.post('/upload', workspaceAuth, authorizePermission('uploadAsset'), upload.single('asset'), uploadAsset);
 

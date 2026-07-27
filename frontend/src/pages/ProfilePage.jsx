@@ -2,12 +2,14 @@ import { CheckCircle2, Clock3, KeyRound, Mail, ShieldCheck, UserRound } from 'lu
 import PageHeader from '../components/common/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { formatDateTime } from '../utils/formatters';
+import { isSystemAdministrator } from '../auth/roles';
 
 const roleDetails = {
   user: { title: 'User', permissions: ['Update own profile', 'Create a team', 'Join a team'] },
   owner: { title: 'Team Owner', permissions: ['Manage team members and roles', 'Manage projects and assets', 'Approve assets', 'Participate in discussions'] },
   manager: { title: 'Manager', permissions: ['Upload and manage assets', 'Review AI metadata', 'Manage versions', 'Participate in discussions'] },
-  admin: { title: 'Administrator', permissions: ['Manage users and roles', 'Manage all assets', 'Monitor workspace activity', 'Participate in discussions'] },
+  systemAdministrator: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
+  admin: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
   developer: { title: 'Developer', permissions: ['Upload and manage assets', 'Preserve asset versions', 'Download repository files', 'Participate in discussions'] },
   designer: { title: 'Designer', permissions: ['Upload visual assets', 'Review AI metadata', 'Manage asset metadata', 'Participate in discussions'] },
   collaborator: { title: 'Collaborator', permissions: ['View repository assets', 'Download permitted files', 'Provide feedback', 'Reply to discussions'] },
@@ -22,13 +24,14 @@ function getTokenExpiry(token) {
 
 export default function ProfilePage() {
   const { user, token } = useAuth();
-  const role = roleDetails[user?.teamRole || user?.role] || roleDetails.user;
+  const roleKey = isSystemAdministrator(user) ? user?.accountRole || user?.role : user?.teamRole || user?.role;
+  const role = roleDetails[roleKey] || roleDetails.user;
   const expiry = getTokenExpiry(token);
   const initial = (user?.username || 'U').slice(0, 1).toUpperCase();
 
   return (
     <>
-      <PageHeader eyebrow="Account" title="User Profile" description="Your identity, workspace role, and access summary." />
+      <PageHeader eyebrow="Account" title="User Profile" description={isSystemAdministrator(user) ? 'Your identity and platform-level access summary.' : 'Your identity, workspace role, and access summary.'} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <section className="panel overflow-hidden">
@@ -41,7 +44,7 @@ export default function ProfilePage() {
               <dl className="mt-7 grid gap-4 sm:grid-cols-2">
                 <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><UserRound size={13} /> Username</dt><dd className="mt-2 text-sm text-zinc-200">{user?.username}</dd></div>
                 <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><Mail size={13} /> Email address</dt><dd className="mt-2 break-all text-sm text-zinc-200">{user?.email}</dd></div>
-                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><ShieldCheck size={13} /> Workspace role</dt><dd className="mt-2 text-sm text-zinc-200">{role.title}</dd></div>
+                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><ShieldCheck size={13} /> {isSystemAdministrator(user) ? 'Platform role' : 'Workspace role'}</dt><dd className="mt-2 text-sm text-zinc-200">{role.title}</dd></div>
                 <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><KeyRound size={13} /> User ID</dt><dd className="mt-2 font-mono text-xs text-zinc-300">USR-{String(user?.id || 0).padStart(4, '0')}</dd></div>
               </dl>
               <p className="mt-5 rounded border border-blue-400/15 bg-blue-400/[0.06] px-4 py-3 text-xs leading-5 text-blue-200/75">Profile editing will become available when a self-service profile endpoint is exposed by the platform.</p>

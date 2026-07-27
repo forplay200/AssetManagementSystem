@@ -3,6 +3,9 @@ import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PermissionRoute from './components/auth/PermissionRoute';
 import WorkspaceRoute from './components/auth/WorkspaceRoute';
+import WorkspaceAccountRoute from './components/auth/WorkspaceAccountRoute';
+import { isSystemAdministrator } from './auth/roles';
+import { useAuth } from './context/AuthContext';
 import AssetDetailPage from './pages/AssetDetailPage';
 import AssetsPage from './pages/AssetsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -19,6 +22,12 @@ import WorkspaceSetupPage from './pages/WorkspaceSetupPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RouteAccessibility from './components/common/RouteAccessibility';
 
+function AuthenticatedHome() {
+  const { user } = useAuth();
+  if (isSystemAdministrator(user)) return <Navigate to="/admin/users" replace />;
+  return <Navigate to={user?.role === 'user' && !user?.team ? '/workspace' : '/dashboard'} replace />;
+}
+
 export default function App() {
   return (
     <>
@@ -31,8 +40,8 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/workspace" element={<WorkspaceSetupPage />} />
+          <Route index element={<AuthenticatedHome />} />
+          <Route path="/workspace" element={<WorkspaceAccountRoute><WorkspaceSetupPage /></WorkspaceAccountRoute>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route element={<WorkspaceRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
