@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, CheckCircle2, Edit3, FileText, Hash, LoaderCircle, Plus, Save, Sparkles, Tag, Trash2, X } from 'lucide-react';
+import { Check, CheckCircle2, Edit3, FileText, Hash, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Tag, Trash2, X } from 'lucide-react';
 import { getApiError } from '../../services/api';
 import { assetService } from '../../services/assetService';
+import VisualVocabulary from './VisualVocabulary';
+
+const getVisualType = (filename, aiType) => {
+  if (/\.(png|jpe?g|gif|webp)$/i.test(filename || '')) return 'image';
+  if (/\.(obj|fbx)$/i.test(filename || '')) return '3d';
+  return ['image', '3d'].includes(aiType) ? aiType : null;
+};
 
 const makeRows = (metadata) => Object.entries(metadata || {})
   .filter(([key, value]) => key !== 'ai' && value !== null && !['object', 'undefined'].includes(typeof value))
@@ -13,7 +20,7 @@ const restoreType = (row) => {
   return row.value.trim();
 };
 
-export default function MetadataPanel({ assetId, metadata, repositoryTags, canEdit, onMetadataChange, onTagsChange }) {
+export default function MetadataPanel({ assetId, assetFilename, metadata, repositoryTags, canEdit, onMetadataChange, onTagsChange }) {
   const [editing, setEditing] = useState(false);
   const [rows, setRows] = useState(() => makeRows(metadata));
   const [saving, setSaving] = useState(false);
@@ -52,7 +59,7 @@ export default function MetadataPanel({ assetId, metadata, repositoryTags, canEd
         {editing ? <div className="mt-4 space-y-3">{rows.map((row) => <div key={row.id} className="grid grid-cols-[minmax(100px,.7fr)_minmax(0,1fr)_32px] gap-2"><input className="input h-9 min-w-0 font-mono text-xs" value={row.key} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, key: event.target.value } : item))} placeholder="field_name" aria-label="Metadata field name" /><input className="input h-9 min-w-0" value={row.value} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, value: event.target.value } : item))} placeholder="Value" aria-label="Metadata value" /><button className="grid h-9 w-8 place-items-center text-zinc-600 hover:text-red-300" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))} aria-label="Remove metadata field"><Trash2 size={14} /></button></div>)}<button className="secondary-button mt-1" onClick={() => setRows((current) => [...current, { id: `${Date.now()}-${current.length}`, key: '', value: '', originalType: 'string' }])}><Plus size={14} /> Add field</button></div> : <MetadataReadout rows={rows} />}
         {!canEdit && <p className="mt-4 border-t border-white/[0.06] pt-3 text-xs text-zinc-600">Your role has read-only metadata access.</p>}
       </section>
-      <AiEnrichment assetId={assetId} metadata={metadata} repositoryTags={repositoryTags} canEdit={canEdit} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />
+      <AiEnrichment assetId={assetId} assetFilename={assetFilename} metadata={metadata} repositoryTags={repositoryTags} canEdit={canEdit} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />
     </div>
   );
 }
@@ -61,8 +68,9 @@ function MetadataReadout({ rows }) {
   return rows.length ? <dl className="mt-4 divide-y divide-white/[0.06]">{rows.map((row) => <div key={row.id} className="grid grid-cols-[120px_1fr] gap-4 py-3 text-sm"><dt className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">{row.key}</dt><dd className="break-words text-zinc-300">{row.value}</dd></div>)}</dl> : <p className="mt-4 text-sm text-zinc-500">No custom metadata has been added.</p>;
 }
 
-function AiEnrichment({ assetId, metadata, repositoryTags, canEdit, onMetadataChange, onTagsChange }) {
+function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdit, onMetadataChange, onTagsChange }) {
   const ai = useMemo(() => metadata?.ai || {}, [metadata]);
+  const visualAssetType = getVisualType(assetFilename, ai.type);
   const collections = useMemo(() => [
     ['imageTags', 'Generated image tags', Tag],
     ['modelTags', 'Generated Model Tags', Tag],
@@ -97,8 +105,10 @@ function AiEnrichment({ assetId, metadata, repositoryTags, canEdit, onMetadataCh
     setBusy(`accept-${value}`);
     try {
       const response = await assetService.addTag(assetId, value);
-      onTagsChange([...repositoryTags, response.tag]);
-      setMessage({ type: 'success', text: `Accepted “${value}” as a repository tag.` });
+      if (!repositoryTags.some((tag) => tag.id === response.tag.id || tag.name?.toLowerCase() === response.tag.name?.toLowerCase())) {
+        onTagsChange([...repositoryTags, response.tag]);
+      }
+      setMessage({ type: 'success', text: `Accepted “${response.tag.name}” as a repository tag.` });
     } catch (error) { setMessage({ type: 'error', text: getApiError(error, 'The tag could not be accepted.') }); }
     finally { setBusy(''); }
   };
@@ -121,9 +131,28 @@ function AiEnrichment({ assetId, metadata, repositoryTags, canEdit, onMetadataCh
     finally { setBusy(''); }
   };
 
+  const generateTags = async () => {
+    setBusy('generate'); setMessage({ type: '', text: '' });
+    try {
+      await assetService.generateAiTags(assetId);
+      setMessage({ type: 'success', text: 'AI tagging queued with the current vocabulary. Use Refresh results after processing finishes.' });
+    } catch (error) { setMessage({ type: 'error', text: getApiError(error, 'AI tagging could not be queued.') }); }
+    finally { setBusy(''); }
+  };
+
+  const refreshResults = async () => {
+    setBusy('refresh'); setMessage({ type: '', text: '' });
+    try {
+      const response = await assetService.getMetadata(assetId);
+      onMetadataChange(response.metadata);
+      setMessage({ type: 'success', text: 'The latest AI results have been loaded.' });
+    } catch (error) { setMessage({ type: 'error', text: getApiError(error, 'AI results could not be refreshed.') }); }
+    finally { setBusy(''); }
+  };
+
   return (
     <section className="panel p-5">
-      <div className="section-title"><Sparkles size={16} className="text-aether-primary" /> AI enrichment</div>
+      <div className="section-title flex-wrap"><Sparkles size={16} className="text-aether-primary" /> AI enrichment{visualAssetType && <div className="ml-auto flex flex-wrap gap-2"><button className="secondary-button h-8 text-xs" onClick={refreshResults} disabled={Boolean(busy)}><RefreshCw size={13} />Refresh results</button>{canEdit && <button className="secondary-button h-8 text-xs" onClick={generateTags} disabled={Boolean(busy)}>{busy === 'generate' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}Regenerate tags</button>}</div>}</div>
       {message.text && <div className={`mt-4 rounded border px-3 py-2 text-xs ${message.type === 'error' ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'}`}>{message.text}</div>}
       <div className="mt-5 space-y-5">
         {ai.type === '3d' && <div><h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-zinc-500">3D Metadata</h3><dl className="grid grid-cols-2 gap-3"><ModelStat label="Vertex Count" value={ai.vertexCount} /><ModelStat label="Face Count" value={ai.faceCount} /></dl></div>}
@@ -135,8 +164,11 @@ function AiEnrichment({ assetId, metadata, repositoryTags, canEdit, onMetadataCh
         })}</div></div>)}
         {ai.summary && <AiText label="Summary" value={ai.summary} />}
         {ai.transcript && <AiText label="Audio transcript" value={ai.transcript} mono />}
-        {!collections.length && !ai.summary && !ai.transcript && ai.type !== '3d' && <div className="flex items-center gap-3 rounded border border-dashed border-white/10 p-4 text-sm text-zinc-500"><LoaderCircle size={17} className="text-aether-secondary" />AI metadata is pending or unavailable.</div>}
+        {visualAssetType && ai.clip?.status === 'completed' && !ai.imageTags?.length && !ai.semanticTags?.length && <p className="text-sm text-zinc-500">AI found no suitable visual tags. You can add repository tags manually.</p>}
+        {visualAssetType && ai.clip?.status === 'failed' && <p className="text-sm text-zinc-500">AI visual tagging is unavailable for this asset. You can add repository tags manually.</p>}
+        {!collections.length && !ai.summary && !ai.transcript && ai.type !== '3d' && !ai.clip?.status && <div className="flex items-center gap-3 rounded border border-dashed border-white/10 p-4 text-sm text-zinc-500"><LoaderCircle size={17} className="text-aether-secondary" />AI metadata is pending or unavailable.</div>}
         <div className="border-t border-white/[0.06] pt-4"><p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-zinc-500">Repository tags</p><div className="flex flex-wrap gap-2">{repositoryTags.map((tag) => <span key={tag.id || tag.name} className="tag-chip inline-flex items-center gap-1.5">{tag.name}{canEdit && <button className="text-zinc-600 hover:text-red-300" disabled={Boolean(busy)} onClick={() => removeRepositoryTag(tag)} aria-label={`Remove repository tag ${tag.name}`}><X size={11} /></button>}</span>)}</div>{canEdit && <form className="mt-3 flex gap-2" onSubmit={addRepositoryTag}><input className="input h-9 min-w-0 flex-1" value={newTag} onChange={(event) => setNewTag(event.target.value)} maxLength={80} placeholder="Add repository tag" aria-label="New repository tag" /><button className="secondary-button h-9" disabled={!newTag.trim() || Boolean(busy)}><Plus size={14} /> Add</button></form>}</div>
+        {visualAssetType && <VisualVocabulary assetId={assetId} assetType={visualAssetType} repositoryTags={repositoryTags} canEdit={canEdit} />}
       </div>
     </section>
   );

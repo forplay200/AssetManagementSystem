@@ -1,15 +1,9 @@
 const { Op } = require('sequelize');
 const { User, TeamMember, Team } = require('../models');
 const logger = require('../utils/logger');
+const { ACCOUNT_ROLES } = require('../utils/roles');
 
 const SAFE_ATTRIBUTES = { exclude: ['passwordHash', 'resetToken', 'resetTokenExpiry'] };
-const SYSTEM_ADMIN_ROLES = ['systemAdministrator', 'admin'];
-
-function systemRoleWhere(role) {
-  if (!role) return undefined;
-  return role === 'systemAdministrator' ? { [Op.in]: SYSTEM_ADMIN_ROLES } : role;
-}
-
 exports.getAllUsers = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -25,7 +19,10 @@ exports.getAllUsers = async (req, res) => {
     }
     if (status === 'active') where.isActive = true;
     if (status === 'inactive') where.isActive = false;
-    if (role) where.role = systemRoleWhere(role);
+    if (role && !Object.values(ACCOUNT_ROLES).includes(role)) {
+      return res.status(400).json({ message: 'Invalid account role' });
+    }
+    if (role) where.role = role;
 
     const users = await User.findAll({
       where,
@@ -90,5 +87,3 @@ exports.updateAccountStatus = async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 };
-
-exports.SYSTEM_ADMIN_ROLES = SYSTEM_ADMIN_ROLES;

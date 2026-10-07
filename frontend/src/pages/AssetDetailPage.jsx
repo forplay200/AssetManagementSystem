@@ -8,6 +8,7 @@ import MetadataPanel from '../components/metadata/MetadataPanel';
 import VersionHistory from '../components/versions/VersionHistory';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../context/AuthContext';
+import { WORKSPACE_ROLES } from '../auth/roles';
 import { getApiError } from '../services/api';
 import { assetService } from '../services/assetService';
 import { assetType, formatBytes } from '../utils/formatters';
@@ -56,8 +57,8 @@ export default function AssetDetailPage() {
   const ownsAsset = Number(info.userId) === Number(user?.id);
   const assetWorkspaceId = info.workspaceId || info.teamId;
   const isWorkspaceAsset = Boolean(assetWorkspaceId && Number(assetWorkspaceId) === Number(user?.team?.id));
-  const canManageAsset = isWorkspaceAsset ? ['owner', 'manager'].includes(user?.teamRole) : ownsAsset;
-  const canDeleteAsset = isWorkspaceAsset ? user?.teamRole === 'owner' : ownsAsset;
+  const canManageAsset = isWorkspaceAsset ? [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.MANAGER].includes(user?.teamRole) : ownsAsset;
+  const canDeleteAsset = isWorkspaceAsset ? user?.teamRole === WORKSPACE_ROLES.OWNER : ownsAsset;
   return (
     <>
       {location.state?.uploaded && <div className="mb-5 rounded border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">Asset uploaded successfully. AI processing has been queued.</div>}
@@ -75,7 +76,7 @@ export default function AssetDetailPage() {
           </section>
           <section className="panel flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="font-display text-sm font-semibold text-zinc-100">Asset actions</h2><p className="mt-1 text-xs text-zinc-500">Download the current file{can('deleteAsset') && canDeleteAsset ? ' or permanently remove this asset' : ''}.</p></div><div className="flex gap-2"><button className="secondary-button" onClick={download}><Download size={15} /> Download</button>{can('deleteAsset') && canDeleteAsset && <button className="danger-button" onClick={remove}><Trash2 size={15} /> Delete</button>}</div></section>
         </div>
-        <MetadataPanel assetId={assetId} metadata={state.metadata} repositoryTags={state.tags} canEdit={can('manageMetadata') && canManageAsset} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
+        <MetadataPanel assetId={assetId} assetFilename={info.filename || info.originalname} metadata={state.metadata} repositoryTags={state.tags} canEdit={can('manageMetadata') && canManageAsset} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
       </div>}
       {activePanel === 'versions' && <VersionHistory assetId={assetId} assetName={info.originalname} canCreate={can('createVersion') && canManageAsset} onCurrentVersionChanged={() => load(false)} />}
       {activePanel === 'comments' && <CommentThread assetId={assetId} />}

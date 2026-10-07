@@ -79,7 +79,7 @@ test('new workspace dashboard queries only its empty repository', async () => {
 test('upload assigns the active workspace and keeps the compatibility value', async () => {
   const res = response();
   await controller.uploadAsset({
-    user: { id: 3, workspaceId: 22, teamRole: 'manager' },
+    user: { id: 3, workspaceId: 22, teamRole: 'workspaceManager' },
     file: { originalname: 'car.fbx', mimetype: 'model/fbx', size: 8, buffer: Buffer.from('model') }
   }, res);
   assert.equal(res.statusCode, 201);
@@ -101,7 +101,7 @@ test('new version upload preserves the previous file and replaces the current as
   queuedJobs = [];
   assetRecord = { id: 7, filename: 'stored.png', originalname: 'hero.png', mimetype: 'image/png', size: 100, path: 'stored.png', userId: 3, workspaceId: 4, metadata: { description: 'Hero', ai: { imageTags: ['old'] } }, uploadedAt: new Date('2026-01-01'), async save() {} };
   const res = response();
-  await controller.uploadNewVersion({ params: { id: '7' }, user: { id: 3, role: 'user', workspaceId: 4, teamRole: 'manager' }, body: { changeLog: 'Updated hero' }, file: { originalname: 'hero-v2.png', mimetype: 'image/png', size: 200, buffer: Buffer.from('replacement') } }, res);
+  await controller.uploadNewVersion({ params: { id: '7' }, user: { id: 3, role: 'user', workspaceId: 4, teamRole: 'workspaceManager' }, body: { changeLog: 'Updated hero' }, file: { originalname: 'hero-v2.png', mimetype: 'image/png', size: 200, buffer: Buffer.from('replacement') } }, res);
 
   assert.equal(res.statusCode, 201);
   assert.equal(createdVersion.originalName, 'hero.png');

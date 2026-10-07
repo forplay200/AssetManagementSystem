@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, FolderOpen, LayoutDashboard, LogOut, Menu, Search, Upload, UserRound, UsersRound, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { accountRoleLabel, isSystemAdministrator } from '../../auth/roles';
+import { accountRoleLabel, isSystemAdministrator, workspaceRoleLabel } from '../../auth/roles';
 import { usePermissions } from '../../hooks/usePermissions';
 import BrandMark from '../common/BrandMark';
 import SystemStatus from '../common/SystemStatus';
@@ -108,7 +108,7 @@ export default function AppShell() {
             </Link>
             <Link to="/profile" className="hidden min-w-0 sm:block">
               <p className="max-w-32 truncate text-sm font-medium text-zinc-200">{user?.username || 'User'}</p>
-              <p className="font-mono text-[10px] uppercase text-zinc-500">{systemAdministrator ? accountRoleLabel(user?.accountRole || user?.role) : user?.teamRole || user?.role || 'user'}</p>
+              <p className="font-mono text-[10px] uppercase text-zinc-500">{user?.teamRole ? workspaceRoleLabel(user.teamRole) : accountRoleLabel(user?.accountRole || user?.role)}</p>
             </Link>
             <button className="p-2 text-zinc-500 transition hover:text-zinc-200" onClick={logout} aria-label="Log out" title="Log out">
               <LogOut size={17} />

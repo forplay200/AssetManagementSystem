@@ -7,6 +7,7 @@ const YAML = require('yamljs');
 const path = require('path');
 const db = require('./models');
 const { backfillKnownWorkspaceOwnership } = require('./utils/workspaceMigration');
+const { up: migrateCanonicalRoles } = require('../migrations/20261007000000-canonicalize-roles');
 
 const authRoutes = require('./routes/auth');
 const assetsRoutes = require('./routes/assets');
@@ -44,7 +45,8 @@ app.get('/', (req, res) => {
   res.json({ message: 'Hello from the backend!' });
 });
 
-db.sequelize.sync({ alter: true })
+migrateCanonicalRoles(db.sequelize.getQueryInterface())
+  .then(() => db.sequelize.sync({ alter: true }))
   .then(async () => {
     const backfilledAssets = await backfillKnownWorkspaceOwnership(db.sequelize);
     logger.info('Database synced');
@@ -55,7 +57,7 @@ db.sequelize.sync({ alter: true })
     });
   })
   .catch(err => {
-    logger.error('Database sync failed', err);
+    logger.error('Database startup failed', err);
   });
 
 // Error handling middleware

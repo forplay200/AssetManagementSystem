@@ -1,3 +1,5 @@
+const { ACCOUNT_ROLES } = require('../utils/roles');
+
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
     id: {
@@ -28,11 +30,9 @@ module.exports = (sequelize, DataTypes) => {
     resetTokenExpiry: DataTypes.DATE,
 
     role: {
-      // Account roles remain separate from workspace membership roles. Legacy
-      // `admin` remains an alias for the canonical platform-level role.
-      type: DataTypes.ENUM('user', 'systemAdministrator', 'admin', 'developer', 'designer', 'collaborator'),
+      type: DataTypes.ENUM(...Object.values(ACCOUNT_ROLES)),
       allowNull: false,
-      defaultValue: 'user'
+      defaultValue: ACCOUNT_ROLES.USER
     },
 
     isActive: {

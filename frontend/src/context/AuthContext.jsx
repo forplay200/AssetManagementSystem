@@ -3,6 +3,7 @@ import { clearStoredSession, readStoredSession, writeStoredSession } from '../au
 import { setAuthorizationToken } from '../services/api';
 import { authService } from '../services/authService';
 import { teamService } from '../services/teamService';
+import { ACCOUNT_ROLES } from '../auth/roles';
 
 const AuthContext = createContext(null);
 
@@ -79,7 +80,7 @@ export function AuthProvider({ children }) {
       if ([403, 404].includes(error.response?.status)) {
         setSession((current) => {
           if (!current) return current;
-          const accountRole = current.user.accountRole || 'user';
+          const accountRole = current.user.accountRole || ACCOUNT_ROLES.USER;
           const nextSession = { ...current, user: { ...current.user, team: null, teamRole: null, role: accountRole } };
           writeStoredSession(nextSession);
           return nextSession;

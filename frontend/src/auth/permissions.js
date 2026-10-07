@@ -1,13 +1,11 @@
+import { ACCOUNT_ROLES, WORKSPACE_ROLES } from './roles';
+
 const rolePermissions = {
-  owner: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment', 'manageTeam'],
-  manager: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'createVersion', 'comment'],
-  collaborator: ['viewAsset', 'downloadAsset', 'comment'],
-  user: [],
-  systemAdministrator: ['manageUsers'],
-  // Legacy `admin` remains a compatibility alias for System Administrator.
-  admin: ['manageUsers'],
-  developer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment'],
-  designer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment'],
+  [WORKSPACE_ROLES.OWNER]: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'deleteAsset', 'createVersion', 'comment', 'manageTeam'],
+  [WORKSPACE_ROLES.MANAGER]: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'moderateAi', 'createVersion', 'comment'],
+  [WORKSPACE_ROLES.COLLABORATOR]: ['viewAsset', 'downloadAsset', 'comment'],
+  [ACCOUNT_ROLES.USER]: [],
+  [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: ['manageUsers'],
 };
 
 export function hasPermission(role, permission) {

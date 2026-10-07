@@ -1,6 +1,5 @@
 GAME_TAGS = [
-    "unity editor",
-    "unreal engine",
+
 
     "software screenshot",
     "user interface",
@@ -19,6 +18,8 @@ GAME_TAGS = [
 
     "3d model",
     "environment",
+
+    "robot",
 
     "concept art",
 

@@ -10,9 +10,9 @@ Missing capabilities were account activation status, server-side search, workspa
 
 ## Role Model
 
-`systemAdministrator` is the canonical platform account role. Existing `admin` database values remain accepted as a compatibility alias. Neither value grants workspace, team invitation, or asset permissions. Owner, Manager, Collaborator, and User cannot satisfy the platform-level `manageUsers` permission.
+`systemAdministrator` is the platform account role. Stored `admin` values are migrated to it before the backend serves requests. Workspace Owner (`workspaceOwner`), Workspace Manager (`workspaceManager`), Collaborator (`collaborator`), and User (`user`) cannot satisfy the platform-level `manageUsers` permission.
 
-The first platform administrator remains a deployment-provisioned account. Existing `admin` accounts can use the module immediately after migration; public registration cannot grant either administrator role.
+The first platform administrator remains a deployment-provisioned account. Existing `admin` accounts can use the module after migration; public registration grants only `user`.
 
 ## Account Status
 

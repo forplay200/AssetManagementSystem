@@ -2,17 +2,14 @@ import { CheckCircle2, Clock3, KeyRound, Mail, ShieldCheck, UserRound } from 'lu
 import PageHeader from '../components/common/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { formatDateTime } from '../utils/formatters';
-import { isSystemAdministrator } from '../auth/roles';
+import { ACCOUNT_ROLES, WORKSPACE_ROLES, isSystemAdministrator } from '../auth/roles';
 
 const roleDetails = {
-  user: { title: 'User', permissions: ['Update own profile', 'Create a team', 'Join a team'] },
-  owner: { title: 'Team Owner', permissions: ['Manage team members and roles', 'Manage projects and assets', 'Approve assets', 'Participate in discussions'] },
-  manager: { title: 'Manager', permissions: ['Upload and manage assets', 'Review AI metadata', 'Manage versions', 'Participate in discussions'] },
-  systemAdministrator: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
-  admin: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
-  developer: { title: 'Developer', permissions: ['Upload and manage assets', 'Preserve asset versions', 'Download repository files', 'Participate in discussions'] },
-  designer: { title: 'Designer', permissions: ['Upload visual assets', 'Review AI metadata', 'Manage asset metadata', 'Participate in discussions'] },
-  collaborator: { title: 'Collaborator', permissions: ['View repository assets', 'Download permitted files', 'Provide feedback', 'Reply to discussions'] },
+  [ACCOUNT_ROLES.USER]: { title: 'User', permissions: ['Update own profile', 'Create a team', 'Join a team'] },
+  [WORKSPACE_ROLES.OWNER]: { title: 'Workspace Owner', permissions: ['Manage team members and roles', 'Manage projects and assets', 'Approve assets', 'Participate in discussions'] },
+  [WORKSPACE_ROLES.MANAGER]: { title: 'Workspace Manager', permissions: ['Upload and manage assets', 'Review AI metadata', 'Manage versions', 'Participate in discussions'] },
+  [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
+  [WORKSPACE_ROLES.COLLABORATOR]: { title: 'Collaborator', permissions: ['View repository assets', 'Download permitted files', 'Provide feedback', 'Reply to discussions'] },
 };
 
 function getTokenExpiry(token) {
@@ -25,7 +22,7 @@ function getTokenExpiry(token) {
 export default function ProfilePage() {
   const { user, token } = useAuth();
   const roleKey = isSystemAdministrator(user) ? user?.accountRole || user?.role : user?.teamRole || user?.role;
-  const role = roleDetails[roleKey] || roleDetails.user;
+  const role = roleDetails[roleKey] || roleDetails[ACCOUNT_ROLES.USER];
   const expiry = getTokenExpiry(token);
   const initial = (user?.username || 'U').slice(0, 1).toUpperCase();
 

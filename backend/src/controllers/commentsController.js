@@ -1,4 +1,5 @@
 const { Asset, Comment, User } = require('../models');
+const { WORKSPACE_ROLES } = require('../utils/roles');
 const logger = require('../utils/logger');
 const { belongsToWorkspace } = require('../utils/workspaceScope');
 
@@ -27,7 +28,7 @@ function publicComment(record) {
 }
 
 function canManageComment(req, comment) {
-  return req.user.teamRole === 'owner' || Number(comment.userId) === Number(req.user.id);
+  return req.user.teamRole === WORKSPACE_ROLES.OWNER || Number(comment.userId) === Number(req.user.id);
 }
 
 async function findCommentInWorkspace(id, user) {

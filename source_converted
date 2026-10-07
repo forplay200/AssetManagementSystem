@@ -1,0 +1,1529 @@
+<a id="_Toc226623601"></a>![C:\Users\Jing_Xiang\Downloads\SUC.png](source_converted_files/image_001.png)
+
+__BTIS3013__
+
+__Final Year Project 1__
+
+__Development of an AI\-Enhanced Collaborative Digital Asset Management Platform for Independent Game Developers__
+
+__Koo Jing Lin (B240077B)__
+
+__Supervisor: Noor Fatihah Bt Mazlam__
+
+__5 August 2026__
+
+__Department of Computer Science__
+
+__Faculty of Engineering and Information Technology__
+
+DECLARATION OF THESIS / UNDERGRADUATE PROJECT REPORT AND COPYRIGHT
+
+Author’s full name 	:	Koo Jing Lin
+
+Date of Birth	: 09 September 2026
+
+Title	: 	Development of an AI\-Enhanced Collaborative Digital Asset Management Platform for Independent Game Developers
+
+Academic Session	: 2026B
+
+I declare that this thesis is classified as: 
+
+|  | CONFIDENTIAL | (Contains confidential information under the Official Secret Act 1972)* |
+| --- | --- | --- |
+|  |  |  |
+|  | RESTRICTED | (Contains restricted information as specified by the organization where research was done)* |
+|  |  |  |
+| ü | OPEN ACCESS | I agree that my FYP/ dissertation / thesis / source code to be published as online open access (full text) |
+
+1. I acknowledged that Kolej Universiti Selatan reserves the right as follows:
+2. The FYP/ dissertation/ thesis/ source code is the property of Kolej Universiti Selatan.
+3. The Faculty of Engineering and Information Technology of Kolej Universiti Selatan has the right to make copies for the purpose of research only.
+4. The Faculty of Engineering and Information Technology has the right to utilise the FYP/ dissertation/ thesis/ source code for academic exchange or donation/ sponsorship purpose.
+
+Certified by:
+
+           ![](source_converted_files/image_002.png)                 
+
+SIGNATURE OF STUDENT
+
+SIGNATURE OF SUPERVISOR
+
+050912\-01\-1841
+
+__Noor Fatihah Bt Mazlam__
+
+__Student ID__
+
+__NAME OF SUPERVISOR__
+
+Date:  31 DECEMBER 2024
+
+Date:   31 DECEMBER 2024
+
+__*Notes*__: If the FYP/ dissertation / thesis / source code is CONFIDENTIAL or RESTRICTED, please attach with the Non\-Disclosure Agreement(NDA) or letter from the organisation / department with period and reasons for confidentiality or restriction as appendices.  
+
+__DECLARATION OF COPYRIGHT__
+
+I hereby declare that this FYP/dissertation/thesis entitled __“TITLE TO BE THE SAME AS FRONT COVER, CAPITAL LETTER, BOLD”__ to be kept by Southern University College subject to the regulations as follows:
+
+1\.	This FYP/dissertation/thesis is a property of Southern University College.
+
+2\.	Southern University College or its library has the right to make and transmit copies (print or electronic) of this FYP/dissertation/thesis for academic purposes.
+
+3\.	Southern University College or its library has the right to store this FYP/dissertation/thesis in a retrieval system and supply copies of this FYP/dissertation/thesis if requested by other universities and research libraries. 
+
+Signature	:	\_\_\_\_\_\_\_\_\_\_![](source_converted_files/image_003.png)\_\_\_\_\_\_\_
+
+Name	:	\_\_\_\_\_\_\_\_\_Koo Jing Lin\_\_\_\_\_
+
+ID No.	:	\_\_\_\_\_\_\_\_\_050912\-01\-1841\_\_\_\_\_
+
+Date 	:	\_\_\_\_\_\_\_\_\_\_5 Aug 2026\_\_\_\_\_
+
+__ECLARATION OF RESPONSIBLE ARTIFICIAL INTELLIGENCE__
+
+I, the undersigned hereby declare that this FYP/dissertation/thesis entitled __“TITLE TO BE THE SAME AS FRONT COVER, CAPITAL LETTER, BOLD”__ involving artificial intelligence (AI). 
+
+| Tick if use | Level | Level of AI Use | Description | Disclosure Requirements |
+| --- | --- | --- | --- | --- |
+| √ | 0 | NO AI Use | This final year project is completed without AI assistance. |  |
+| √ | 1 | AI-assisted Idea Generation and Structuring | AI is used for brainstorming. | Appendix C: AI Chat / Prompt History |
+| √ | 2 | AI- Assisted Editing | AI is used to make improvements to the clarity or quality of student created work to improve the final output. | Appendix D: Paraphrasing tools |
+|  | 3 | AI for Specified Completion | AI is used to complete certain tasks listed in this final year project. | Appendix E: AI tools |
+|  | 4 | Full AI Use with Human Oversight | AI is used as ‘co-pilot’ to enhance human creativity. Student is responsible for providing human oversight and evaluation of all AI generated content. | Appendix E: AI tools |
+
+By signing this declaration, I am responsible in my use of AI technologies throughout this FYP/ dissertation/ thesis.
+
+Signature	:	\_\_\_\_\_\_\_\_![](source_converted_files/image_004.png)\_\_\_\_\_\_\_\_\_\_
+
+Name	:	\_\_\_\_\_\_Koo Jing Lin\_\_\_\_\_\_\_\_\_
+
+ID No.	:	\_\_\_\_\_\_\_\_050912\-01\-1841\_\_\_\_\_\_\_\_\_
+
+Date 	:	\_\_\_\_\_\_\_5 Aug 2026\_\_\_\_\_\_\_\_\_\_\_
+
+<a id="_Toc182825516"></a>__Abstract__
+
+To store and manage a variety of digital materials, including visuals, sounds, scripts, and 3D models, often, independent developers use standard file storage services. However, as the complexity of the project grows, this approach leads to challenges related to organization of assets, difficulties in retrieval, inconsistency in metadata and weak collaboration management. On top of that, tagging of assets by hand takes a lot of time and efforts and still ends up with incomplete and inaccurate metadata thus hindering discovery of an asset and its efficient workflow.
+
+The goal of this project is to create an AI\-based collaborative digital asset management platform especially designed for independent game developers. This platform should provide an all\-in\-one place where digital materials necessary for game development can be stored, organized, retrieved and controlled with the help of Role\-Based Access Control (RBAC). An AI\-assisted metadata generation pipeline aimed at automatically generating tags for different types of assets is the key feature of the system that would help with better organization of assets and help to minimize the efforts put into tagging assets by hand.
+
+The RAD, or Rapid Application Development, methodology was applied in the project, which prioritizes feedback and adjustment during design. The architecture of the system was created using a web framework featuring React.Js, Node.Js with Express.Js, PostgreSQL, MinIO, Redis, FastAPI, and Docker, and several AI technologies, including CLIP, KeyBERT, YAMNet, and Whisper. The system functions and interactions with users were illustrated by developing UML diagrams, database architectures, and prototype designs.
+
+The resulting prototype shows primary capabilities such as user authentication, workspace administration, asset upload and sorting, AI\-enabled tagging, advanced asset search, versioning, collaboration via comments, and administration. This platform provides a groundwork for improving how assets are discovered and metadata consistency in independent game production environments.
+
+<a id="_Toc182825517"></a>__Acknowledgements__
+
+At this point, I must thank my supervisor, Ms. Noor Fatihah Bt Mazlam for providing guidance and advice throughout this project. Without her support and encouragement, it would not have been easy for me to finish it.
+
+Moreover, I would also like to express my gratitude to the teaching and administrative staff at the Faculty of Engineering and Information Technology, Southern University College for enabling me to gain the required knowledge, resources and other assistance needed for successful completion of this study. 
+
+Also, I appreciate my friend and family members for motivating and supporting me during the course of this work. Their help played a pivotal role in carrying out this study.
+
+Lastly, I appreciate all researchers and other authors whose above works helped in development of this project.
+
+Table of Contents
+
+[Chapter 1	Introduction	1](#_Toc237555996)
+
+[1.1	Overview of Chapter 1	1](#_Toc237555997)
+
+[1.2	Introduction	1](#_Toc237555998)
+
+[1.3	Problem Statements	4](#_Toc237555999)
+
+[1.4	Objectives	5](#_Toc237556000)
+
+[1.5	Project Scope	5](#_Toc237556001)
+
+[1.5.1	User Scope	5](#_Toc237556002)
+
+[1.5.2	System Scope	6](#_Toc237556003)
+
+[1.6	Thesis Organization	7](#_Toc237556004)
+
+[Chapter 2	Literature Review	9](#_Toc237556005)
+
+[2.1	Introduction	9](#_Toc237556006)
+
+[2.2	Digital Asset Management (DAM) in Game Development	9](#_Toc237556007)
+
+[2.3	Role\-Based Access Control (RBAC)	11](#_Toc237556008)
+
+[2.4	AI\-assisted Auto tagging	12](#_Toc237556009)
+
+[2.5	Existing System	13](#_Toc237556010)
+
+[2.5.1	LottieFiles	13](#_Toc237556011)
+
+[2.5.2	Google Drive	15](#_Toc237556012)
+
+[2.5.3	Eagle	17](#_Toc237556013)
+
+[2.5.4	Anchorpoint	19](#_Toc237556014)
+
+[2.6	Literature Review Matrix	23](#_Toc237556015)
+
+[2.7	Framework	26](#_Toc237556016)
+
+[2.7.1	React.js	27](#_Toc237556017)
+
+[2.7.2	Node.js with Express.js	28](#_Toc237556018)
+
+[2.7.3	Multi\-Modal Local AI Tagging Pipeline	28](#_Toc237556019)
+
+[2.7.4	Hybrid Metadata Strategy	30](#_Toc237556020)
+
+[2.7.5	MinIO	31](#_Toc237556021)
+
+[2.7.6	Redis	31](#_Toc237556022)
+
+[2.7.7	Docker	31](#_Toc237556023)
+
+[2.8	Database	32](#_Toc237556024)
+
+[2.9	Summary	33](#_Toc237556025)
+
+[Chapter 3	Methodology	35](#_Toc237556026)
+
+[3.1	Introduction	35](#_Toc237556027)
+
+[3.2	Rapid Application Development (RAD)	35](#_Toc237556028)
+
+[3.3	Project Framework	38](#_Toc237556029)
+
+[3.3.1	Phase One: Requirement Gathering	40](#_Toc237556030)
+
+[3.3.2	Phase Two: Design	41](#_Toc237556031)
+
+[3.3.3	Phase Three: Construction	42](#_Toc237556032)
+
+[3.3.4	Phase Four: Cutover	43](#_Toc237556033)
+
+[3.4	Gantt Chart	45](#_Toc237556034)
+
+[Chapter 4	Design	47](#_Toc237556035)
+
+[4.1	Introduction	47](#_Toc237556036)
+
+[4.2	Use Case Diagram	47](#_Toc237556037)
+
+[4.2.1	Overall Use Case Diagram	47](#_Toc237556038)
+
+[4.2.2	Account and Workspace Management Use Case Diagram	49](#_Toc237556039)
+
+[4.2.3	Asset and AI Tagging Management Use Case Diagram	51](#_Toc237556040)
+
+[4.2.4	Search and Asset Retrieval Use Case Diagram	52](#_Toc237556041)
+
+[4.2.5	Version and Collaboration Use Case Diagram	54](#_Toc237556042)
+
+[4.2.6	Workspace and System Administration Use Case Diagram	55](#_Toc237556043)
+
+[4.2.7	Use Case Descriptions	56](#_Toc237556044)
+
+[4.3	Sequence Diagram	67](#_Toc237556045)
+
+[4.3.1	User Authentication Sequence Diagram	67](#_Toc237556046)
+
+[4.3.2	Workspace Access Sequence Diagram	69](#_Toc237556047)
+
+[4.3.3	Asset Upload and AI Tagging Sequence Diagram	76](#_Toc237556048)
+
+[4.3.4	Asset Search and Retrieval Sequence Diagram	78](#_Toc237556049)
+
+[4.3.5	Asset Version and Collaboration Sequence Diagram	80](#_Toc237556050)
+
+[4.4	Class Diagram	82](#_Toc237556051)
+
+[4.5	Activity Diagram	84](#_Toc237556052)
+
+[4.5.1	User Authentication Activity Diagram	85](#_Toc237556053)
+
+[4.5.2	Workspace Access Activity Diagram	87](#_Toc237556054)
+
+[4.5.3	Asset Upload and AI Tagging Activity Diagram	89](#_Toc237556055)
+
+[4.5.4	Asset Search and Retrieval Activity Diagram	91](#_Toc237556056)
+
+[4.5.5	Asset Version and Collaboration Activity Diagram	93](#_Toc237556057)
+
+[4.6	Summary	95](#_Toc237556058)
+
+[Chapter 5	Preliminary Implementation	96](#_Toc237556059)
+
+[5.1	Introduction	96](#_Toc237556060)
+
+[5.2	System Prototype	96](#_Toc237556061)
+
+[5.2.1	Login Page	96](#_Toc237556062)
+
+[5.2.2	User Registration Page	97](#_Toc237556063)
+
+[5.2.3	Workspace Setup Page	98](#_Toc237556064)
+
+[5.2.4	Workspace Dashboard Page	99](#_Toc237556065)
+
+[5.2.5	Asset Library Page	100](#_Toc237556066)
+
+[5.2.6	Asset Details Page	101](#_Toc237556067)
+
+[5.2.7	Asset Upload Page	104](#_Toc237556068)
+
+[5.2.8	Advanced Search Page	105](#_Toc237556069)
+
+[5.2.9	Workspace Administration Page	106](#_Toc237556070)
+
+[5.2.10	System Administrator Page	107](#_Toc237556071)
+
+[5.3	Summary	108](#_Toc237556072)
+
+[Chapter 6	Conclusion	109](#_Toc237556073)
+
+[6.1	Introduction	109](#_Toc237556074)
+
+[6.2	Achievements	109](#_Toc237556075)
+
+[6.3	Limitations	110](#_Toc237556076)
+
+[6.4	Future Work	111](#_Toc237556077)
+
+[6.5	Summary	112](#_Toc237556078)
+
+[References	114](#_Toc237556079)
+
+Table of Figures
+
+[Figure 1.1 Thesis Organization	7](#_Toc236860081)
+
+[Figure 2.1 The collaborative commenting interface in LottieFiles (Accessed 14 July 2026)	14](#_Toc236860082)
+
+[Figure 2.2 The LottieFiles upload interface (Accessed 14 July 2026)	15](#_Toc236860083)
+
+[Figure 2.3 The traditional hierarchical folder structure in Google Drive (Accessed 14 July 2026)	16](#_Toc236860084)
+
+[Figure 2.4 The basic sharing and permission settings interface in Google Drive (Accessed 14 July 2026)	16](#_Toc236860085)
+
+[Figure 2.5 The robust tagging system and visual\-first interface in Eagle (Accessed 1 July 2026)	18](#_Toc236860086)
+
+[Figure 2.6 The local library management interface in Eagle  (Accessed 1 July 2026)	19](#_Toc236860087)
+
+[Figure 3.1 Rapid Application Development (RAD) Model	36](#_Toc236860088)
+
+[Figure 3.2 Project Framework for the System	38](#_Toc236860089)
+
+[Figure 3.3 Framework of Phase One	40](#_Toc236860090)
+
+[Figure 3.4 Framework of Phase Two	41](#_Toc236860091)
+
+[Figure 3.5 Framework of Phase Three	42](#_Toc236860092)
+
+[Figure 3.6 Framework of Phase Four	43](#_Toc236860093)
+
+[Figure 3.7 Gantt Chart of FYP 1	45](#_Toc236860094)
+
+[Figure 4.1 Overall Use Case Diagram	47](#_Toc236860095)
+
+[Figure 4.2 Account and Workspace Management Use Case Diagram	49](#_Toc236860096)
+
+[Figure 4.3 Asset and AI Tagging Management Use Case Diagram	51](#_Toc236860097)
+
+[Figure 4.4 Search and Asset Retrieval Use Case Diagram	52](#_Toc236860098)
+
+[Figure 4.5 Version and Collaboration Use Case Diagram	54](#_Toc236860099)
+
+[Figure 4.6 Workspace and System Administration Use Case Diagram	55](#_Toc236860100)
+
+[Figure 4.7 User Authentication Sequence Diagram	67](#_Toc236860101)
+
+[Figure 4.8 Workspace Access Sequence Diagram	69](#_Toc236860102)
+
+[Figure 4.9 Workspace Creation Process Sequence Diagram	71](#_Toc236860103)
+
+[Figure 4.10 Workspace Joining Process Sequence Diagram	73](#_Toc236860104)
+
+[Figure 4.11 Workspace Switching Process Sequence Diagram	75](#_Toc236860105)
+
+[Figure 4.12 Asset Upload and AI Tagging Sequence Diagram	76](#_Toc236860106)
+
+[Figure 4.13 Asset Search and Retrieval Sequence Diagram	78](#_Toc236860107)
+
+[Figure 4.14 Asset Version and Collaboration Sequence Diagram	80](#_Toc236860108)
+
+[Figure 4.15 Class Diagram of the Proposed System	82](#_Toc236860109)
+
+[Figure 4.16 User Authentication Activity Diagram	85](#_Toc236860110)
+
+[Figure 4.17 Workspace Access Activity Diagram	87](#_Toc236860111)
+
+[Figure 4.18 Asset Upload and AI Tagging Activity Diagram	89](#_Toc236860112)
+
+[Figure 4.19 Asset Search and Retrieval Activity Diagram	91](#_Toc236860113)
+
+[Figure 4.20 Asset Version and Collaboration Activity Diagram	93](#_Toc236860114)
+
+[Figure 5.1 Login Page	96](#_Toc236860115)
+
+[Figure 5.2 User Registration Page	97](#_Toc236860116)
+
+[Figure 5.3 Workspace Setup Page: Create Workspace Interface	98](#_Toc236860117)
+
+[Figure 5.4 Workspace Setup Page: Join Workspace Interface	98](#_Toc236860118)
+
+[Figure 5.5 Workspace Dashboard Page	99](#_Toc236860119)
+
+[Figure 5.6 Asset Library Page	100](#_Toc236860120)
+
+[Figure 5.7 Asset Details Page	101](#_Toc236860121)
+
+[Figure 5.8 Asset Version History Tab	102](#_Toc236860122)
+
+[Figure 5.9 Asset Collaboration Tab	103](#_Toc236860123)
+
+[Figure 5.10 Asset Upload Page	104](#_Toc236860124)
+
+[Figure 5.11 Advanced Search Page	105](#_Toc236860125)
+
+[Figure 5.12 Workspace Administrator Page	106](#_Toc236860126)
+
+[Figure 5.13 System Administrator Page	107](#_Toc236860127)
+
+Table of Tables
+
+[Table 2.1 Comparison of Lottiefiles, Google Drive, Eagl,  Anchorpoint and the Proposed System	23](#_Toc237556084)
+
+[Table 4.1 UC\-01 Log In	56](#_Toc237556085)
+
+[Table 4.2 UC\-02 Create Workspace	57](#_Toc237556086)
+
+[Table 4.3 UC\-03 Join Workspace	59](#_Toc237556087)
+
+[Table 4.4 Upload Asset and AI Tagging	60](#_Toc237556088)
+
+[Table 4.5 Search and Retrieve Asset	61](#_Toc237556089)
+
+[Table 4.6 Upload New Asset Version	62](#_Toc237556090)
+
+[Table 4.7 Add or Reply to Comment	63](#_Toc237556091)
+
+[Table 4.8 Manage Workspace Members and Roles	64](#_Toc237556092)
+
+[Table 4.9 Manage User Account Status	65](#_Toc237556093)
+
+# <a id="_Toc237555996"></a>Introduction
+
+## <a id="_Toc237555997"></a>Overview of Chapter 1
+
+This chapter explains the background of the research topic and stresses the significance of digital asset management in today’s gaming industry. In Section 1.2, the study is introduced by stressing the increasing complexity of the digital asset management process that demands special solutions and organizing. In Section 1.3, the problems are discussed by covering main aspects such as the lack of ability to organize the assets, the necessity of manual data tagging for metadata and the absence of the secure collaboration process.
+
+In Section 1.4, the study aims are elaborated and they concern the design and development of the AI\-based collaborative digital asset management platform that will ensure better organization and access control. Section 1.5 describes the boundaries of the study concerning user scope and system scope. The last Section 1.6 describes the general format of the present research.
+
+## <a id="_Toc237555998"></a>Introduction
+
+As digital technologies evolve, businesses face ever\-growing complexity in terms of managing and using digital assets. According to (Idowu et al., 2023; Sulyma, 2025), digital assets are vital for projects of all kinds and must be moved into suitable file management systems. With the broad number of assets, it becomes clear that traditional methods of file management are outdated, resulting in various problems such as inefficiently organized storage, difficulty to locate a file, and decreased productivity.
+
+Game development processes nowadays, mainly for indie game developers, use non\-specialized technologies for managing digital assets like file systems and cloud storage systems since asset management is not considered important. For example, both digital and physical goods are usually organized under folders and through naming files only but without using any metadata, making it more challenging to manage them as the scope of a project increases. Furthermore, collaborative work is often performed separately through some external communication instruments but asset sharing happens through various manual procedures. Such non\-systematic working processes lead to a range of negative consequences, such as duplication or failure to find some assets.
+
+In a collaborative development environment, asset management challenges are intensified by the necessity for teams to share and access massive amounts of resources between different roles. In the absence of a well\-structured digital asset repository, several problems can arise during project execution, including a disorganized manner of asset organization, lack of version control, and difficulty in controlling what is being done with the asset (Allen et al., 2023). Besides, the lack of proper access control exposes assets to risks such as unauthorized modification and misuse. It highlights the need for secure collaboration mechanisms such as role\-based access control (Owoade et al., 2023; Stickland et al., 2021).
+
+The obstacles being discussed are found mostly in game development. There are plenty of digital assets involved in the process such as sprites, various animations, audio materials, and scripts. For game creators who work as independent developers, and therefore have limited budget and team, managing these digital assets is a troublesome task because they need to deal with a variety of responsibilities concerning the process of developing the game without the help of any software or specialized people. (Rodriguez Castañeda, 2025). The lack of structured tools and efficient management methods forces developers to rely on manual organization practices. Manual organization practices are time\-consuming, error\-prone, and difficult to scale as project complexity increases (Ratican & Hutson, 2024).
+
+To solve the challenges faced in this field, traditional methods are mainly based on those technologies which are based on file management systems and cloud\-based technologies that allow the practice of keeping digital files in centralized storage for their sharing with a wide range of people. Therefore the development of Digital Asset Management (DAM) systems reveals its purpose of improving the organization, storage, and retrieval of digital assets through structured metadata and lifecycle management, thus improving accessibility and usability within the organizational processes (Alkhard, 2024; Currall & Moss, 2011).
+
+Apart from the issues of organization, security and access management remain very important problems for collaborative repositories. Traditional systems of storage lack sufficient controls for managing users’ access to these repositories, thus allowing users full access to the materials available for sharing. In order to resolve this problem, the widespread application of Role\-Based Access Control (RBAC) system has proved to be an effective solution for ensuring users’ access to the repositories. The main idea of RBAC system is that roles in organizations are allocated to users and permissions for access are granted taking into consideration these roles (Ferraiolo et al., 2007; Owoade et al., 2023). 
+
+Recently, there has been an interest in the use of modern technologies like artificial intelligence (AI) in improving the process of digital asset management. Advances like AI\-driven technology and automated tagging and creation of metadata can lessen the burden of organizing big repositories of digital assets. Thanks to machine learning techniques, the digital asset management systems can automatically classify and categorize multimedia files, resulting in better efficiency in managing such assets (Salhab, 2025; Saraiya, 2025). Despite these advancements, many existing solutions either lack integration with collaborative workflows or provide only partial automation.  The need of comprehensive and intelligent systems is indicated.
+
+With the aforementioned problems in mind, this research proposes an AI\-Enhanced Collaborative Digital Asset Management Platform designed for independent game developers. This new solution promises to be a structured digital asset storage that allows for better organization and management of digital game asset repositories and facilitates better interaction among developers.
+
+This solution employs two important features to achieve the desired results. Firstly, it utilizes an AI\-based auto\-tagging process to automate the creation of metadata for the assets that have been uploaded. This reduces the need for human involvement in classification processes and strengthens consistency in the organization of the assets. Secondly, the Role\-Based Access Control (RBAC) mechanism is introduced, which is the primary feature of the system in terms of security, as it controls user access and prevents assets from unauthorized exposure. Hence, by utilizing intelligent storage management and secure access, the program offers both proper management of the assets and adequate security of their organization.
+
+In general, the platform set out to revolutionize the workings of conventional repository systems by solving the issues of unstructured storage, the involvement of manual tagging, and unsafe collaboration practices. By our solution we make asset management a structured, secure, and smart process thereby reducing administrative burden by decreasing asset\-related mistakes and increasing productivity of our users.
+
+## <a id="_Toc226623603"></a><a id="_Toc237555999"></a>Problem Statements
+
+The emergence of numerous digital assets in the field of game development raises certain difficulties in the spheres of organizing and managing multimedia resources appropriately, which refers above all to independent developers, most of whom are using conventional file systems that do not provide structured organization and necessary support of metadata, which makes the assets management very complicated and inefficient (Yuliana, 2026). Therefore, assets are often stored in disorganized folders, which makes the retrieval process very difficult. Hence, it means losing a lot of time and having low efficiency because of the need for doing a massive search manually by exploring numerous folders or relying on unusual file names while searching for appropriate assets, which impedes the development process and increases the chances of mistakes or duplication. Additionally, the lack of proper organization may result in difficulties in coordinating the workflow, especially when working with numerous assets, which becomes a barrier for developers during resource updating and managing. Thus, it is necessary to develop more organized and efficient asset management methods.
+
+The manual classification and tagging of digital assets lead to major inefficiencies in managing assets. The developers manually input metadata and create new names in the naming process manually. In addition, many of them rely on folder systems, which may be inefficient and makes the process prone to human errors. The outcome of the process is metadata inconsistency and incompleteness (Horodyski, 2006; Yang et al., 2025). As a result, new frustrations and obstacles arise in asset management. In addition, finding the required asset becomes difficult and leads to problems in work in general. In certain cases it may take a developer a few tries just to locate a digital asset. For example, one may need to search through a number of folders or click on uncertain file names in order to find the required asset. This makes it impossible to maintain the productivity of the work. Hence, a more efficient way to eliminate excessive manual efforts is necessary.
+
+The issue of accessing and controlling shared assets is complicated by ineffective cooperation and the absence of sufficient access control systems. In many instances, people utilize digital assets without having proper access rights systems, creating the possibility of unauthorized alterations and versioning problems in the future. The existing tools cannot provide for safe collaboration in the real\-time mode (Stickland et al., 2021; Zhang et al., 2025). Consequently, the versions of the digital assets may turn out to be inconsistent, which may lead to different complications related to coordination, as people working on one asset may be inclined to change it without knowing whether someone else has done it previously. This results in lack of progress because fulfilling the corrections takes time and thus alters the existing efforts of the team members required to accomplish any task. Therefore, it is vital to introduce more effective systems of cooperation.
+
+## <a id="_Toc226623604"></a><a id="_Toc237556000"></a>Objectives
+
+1. To identify the current practices, limitations, and unstructured asset management challenges in digital asset collaboration among independent game developers.
+2. To design an AI\-enhanced collaborative digital asset management platform incorporating Role\-Based Access Control (RBAC) and a structured metadata schema.
+3. To develop a web\-based digital asset repository with AI\-assisted auto\-tagging to improve asset organization and workflow efficiency.
+4. To verify and evaluate the functionality and usability of the proposed platform through user testing, focusing on reducing version conflicts and improving asset retrieval time.
+
+## <a id="_Toc226623606"></a><a id="_Toc237556001"></a>Project Scope
+
+### <a id="_Toc237556002"></a>User Scope
+
+The proposed system is intended for independent game developers and small development teams who manage various digital assets such as images, audio files, scripts, and other game resources. The system supports multiple user roles, including system administrator, workspace owners, workspace managers, and collaborators, allowing users to work together within a shared environment. Users can upload, organize, and manage digital assets within a centralized platform, as well as search, access, and retrieve assets efficiently to support their development tasks. In addition, the system enables collaboration among users by allowing them to share assets and interact through commenting features on asset pages, where team members can provide feedback and discuss improvements to enhance coordination during development. Furthermore, users can view and manage asset version history, allowing them to track changes and maintain consistency during collaborative workflows. The system is limited to registered users only and is designed primarily for small to medium\-scale development teams. It does not target large enterprise\-level organizations or support large\-scale multi\-organizational collaboration.
+
+The objective of the proposed system is aimed at independent game developers and small development teams that handle a wide range of digital assets such as images, audio files, scripts, and other game development resources. The system offers the possibility of multiple user roles, including system administrator, workspace owner, workspace manager, and collaborator, allowing users to work in a common environment. The users can upload their digital assets in organized and managed ways in a single place, search the necessary assets, access them, and retrieve the assets needed for their work. The system also allows users to communicate with each other through the asset pages by leaving comments and exchanging their opinions about the assets to improve the development process and enhance communication in the team. The platform also allows users to use the version history of their assets and keep their work organized while cooperating with the members of their teams. The system cannot be used by the users that are not registered and it is designed primarily for small to medium\-scale development teams. It does not target large enterprise\-level organizations or support large\-scale multi\-organizational collaboration.
+
+### <a id="_Toc237556003"></a>System Scope
+
+The system that is designed is a web platform used for managing digital assets along with the inclusion of artificial intelligence for independent automatic tagging and utilization of Role Based Access Control. The system provides a feature of having its own database which acts as a place to store all digital assets; therefore, it helps in organizing every digital asset along with the utilization of proper metadata for organization's sake. The system supports and manages various digital assets which are regularly used in game development, including image files (e.g., PNG, JPG), audio files (e.g., MP3, WAV), 3D models (e.g., FBX, OBJ), scripts (e.g., CS, JS), and data files (e.g., JSON, XML).
+
+Moreover, this solution has functionalities like AI\-based tagging, advanced search and filtering, as well as version management with history tracking to reduce duplication and conflicts. In addition to that, there is a commenting feature on asset pages of the system so that users can communicate and provide feedback to help with collaboration. However, this system works only in the web\-based environment and is unable to support mobile applications or have direct connection to the game engines. Also, the AI features in the system are limited to simple tagging assists; there is no possibility of collaborative editing in real\-time or advanced version control features like Git.
+
+## <a id="_Toc237556004"></a>Thesis Organization
+
+![](source_converted_files/image_005.png)
+
+<a id="_Toc236834047"></a><a id="_Toc236860081"></a>Figure 1.1 Thesis Organization
+
+This Final Year Project 1 is divided into a total of six chapters. Chapter one includes the introduction of the project that consists of all the relevant information related to the project, including the background of the study, as well as all other details like problem statement, aims of the study, scope, and overall details of the paper. 
+
+Chapter Two discusses the literature review and provides an overview of the existing literature on digital asset management, artificial intelligence tagging, and system collaboration. The chapter discusses notable theories, technologies, and previous studies to reveal the existing loopholes and the basis for the proposed system. 
+
+Chapter Three outlines the research methodology of the project, including the techniques and methods that were applied in the process of development of the system. It describes how the system was developed according to the requirements and goals of the project.
+
+Chapter Four focuses on the design and implementation of the system in terms of the architecture of the system, as well as the database design, and notable features of the system. The chapter describes the way the different components of the system are arranged and the way the features are implemented.
+
+Chapter Five discusses the performance of the system in terms of usability and performance testing. The effectiveness of the system is evaluated regarding its ability to meet project goals, with a mention of the limitations in the system.
+
+Chapter Six summarizes the main conclusions of the project and provides guidance for the next steps in the development of the system and improving its performance.
+
+# <a id="_Toc237556005"></a>Literature Review
+
+## <a id="_Toc237556006"></a>Introduction
+
+In this chapter, the literature review relevant to the development of the proposed system is presented. The chapter seeks to examine previous research, theories, and techniques connected to digital asset management in the field of game development. The outcomes of the literature review provide key issues, recent solutions, and areas lacking research which can provide support for the project design.
+
+Sections 2.2 to 2.4 focus on the key components of the proposed system, including Digital Asset Management, AI\-assisted auto tagging, and systems based on collaboration and having access control systems. Each of these sections presents the essential principles, techniques, and ideas used for the system development. Section 2.5 analyzes the existing systems and presents their advantages and disadvantages.
+
+Section 2.6 presents the literature review matrix, which enables organization and summarization of the literature used for this research. In Section 2.7, the system architecture is given in order to introduce the structure of the system. Finally, Section 2.8 is dedicated to the design of the database describing data storage and configuration methods of the system.
+
+## <a id="_Toc237556007"></a>Digital Asset Management (DAM) in Game Development
+
+Digital asset management (DAM) is fundamentally concerned with aligning digital content with organizational objectives and operational needs, prioritizing the intended use and contextual value of assets rather than focusing solely on their technical storage or preservation (Currall & Moss, 2011). As organizations continue to produce increasing volumes of multimedia content, traditional file management approaches become insufficient for maintaining efficient asset organization. Consequently, DAM has evolved into a comprehensive management approach that combines structured organization, metadata, and lifecycle management to improve asset accessibility and operational efficiency.
+
+Generally, modern DAM systems comprise a number of critical elements, including centralized storage, the issue of metadata management, searching functions, control of versions, facilitating collaboration, storage management, and management of access. These elements operate in tandem to heighten the efficiency of storing, getting organized, retrieving, and safeguarding digital means throughout their lifecycle. Metadata management is especially important because it makes assets findable and supports searchability across the system (Xing, 2021). Thus, it seems reasonable to conclude that effective DAM system should be perceived as a unified management system rather than just a solution for storage.
+
+Effective DAM systems require centralized storage to maintain digital assets efficiently, particularly when large multimedia files are involved. As the repository continues to grow, storage scalability becomes increasingly important to ensure long\-term system performance (Liao & Abadi, 2023). In addition to centralized storage, metadata plays an important role in improving asset discoverability. Proper metadata allows assets to be categorized and searched efficiently, reducing the reliance on manual browsing and inconsistent file naming (Gendron et al., 2021).
+
+In the context of game development, this alignment becomes much more complicated when considering the variety and interdependence of the types of assets, involved in this process. In contrast to many conventional business settings where the only digital resource is documents, game development involves a variety of multimedia resources that are subject to numerous modifications during the production process. The game project uses several types of digital assets, such as 2D sprites, 3D models, animation, audio files, texts and configuration data that perform their own functions in the production process.
+
+The limitations of conventional DAM demonstrate that modern asset management systems require more than centralized storage and structured organization. As collaborative development becomes increasingly common, technologies that improve security, metadata quality, and workflow automation have become essential. Therefore, Role\-Based Access Control (RBAC) and AI\-assisted auto\-tagging are reviewed in the following sections as important technologies supporting the proposed system.
+
+However, despite the availability of existing DAM systems, many solutions still rely on manual processes for organizing and tagging assets, which are time\-consuming and lead to inefficient asset management workflows (Sandoval\-Castañeda et al., 2024). This suggests that conventional DAM approaches may no longer adequately support the complexity of modern game production, particularly as asset collections continue to expand.
+
+Effective game\-oriented DAM therefore requires not only reliable storage, but also meaningful metadata, efficient retrieval mechanisms, and collaboration support that reflects how assets are created, shared, and iterated in practice. This need is particularly pronounced in independent game development, where small teams must manage growing asset collections with limited production resources and frequent role overlap, as team members often assume multiple creative and managerial responsibilities simultaneously (Rodriguez Castañeda, 2025).
+
+## <a id="_Toc237556008"></a>Role\-Based Access Control (RBAC)
+
+Role\-Based Access Control (RBAC) is an access control model in which permissions to system resources are assigned based on user roles rather than individual user identities, allowing organizations to manage access rights more efficiently by grouping users according to their responsibilities. Instead of granting permissions directly to each user, RBAC associates access rights with predefined roles that represent specific functions within a system, and users obtain the required permissions by being assigned to these roles (Ferraiolo et al., 2007). This approach simplifies access management, especially in environments with multiple users, as it reduces complexity and helps ensure that permissions are consistently applied across the system.
+
+In collaborative digital systems, RBAC provides a structured method for controlling access by linking permissions to organizational roles instead of individual users, which makes it easier to manage access in multi\-user environments. By clearly defining roles and their associated permissions, RBAC helps prevent unauthorized access and reduces the risk of assigning excessive or incorrect permissions. This not only improves system security but also enhances operational efficiency, as administrators can manage user access more easily and accurately. (Male, 2025; Owoade et al., 2023).
+
+Such structured permission management is especially relevant in collaborative game development environments, where multiple team members interact with shared digital assets. Role\-based permission structures help ensure that access to resources is aligned with each user's responsibilities while supporting teamwork. In addition, RBAC enhances system security by preventing unauthorized access and reducing the risk of unintended modifications, thereby protecting asset integrity in collaborative environments.
+
+## <a id="_Toc237556009"></a>AI\-assisted Auto tagging
+
+AI\-assisted metadata management refers to the use of artificial intelligence techniques to support the automatic generation and organization of metadata for digital assets, reducing the reliance on manual input and improving overall efficiency in asset management processes. As digital asset collections continue to expand in both scale and diversity, traditional manual tagging practices become increasingly difficult to maintain, as they require significant time and effort from users while often leading to inconsistent results across different contributors. In asset\-intensive environments, manual tagging is commonly prone to errors, omissions, and variations in classification, which negatively affect asset discoverability and reuse  (Angerri et al., 2025; Oyighan et al., 2024).
+
+To address these limitations, AI‑assisted metadata management has emerged as a practical enhancement to traditional asset organization approaches. By leveraging automated tagging and metadata enrichment techniques, AI systems can support the generation of descriptive and semantic metadata at scale, reducing the dependency on manual intervention while improving consistency and organizational structure. Rather than replacing human decision‑making, such approaches are commonly positioned as assistive mechanisms that augment existing metadata workflows and help maintain manageable asset repositories (Saraiya, 2025).
+
+In collaborative production environments, particularly in independent game development, AI\-assisted metadata and auto\-tagging are highly relevant due to the continuous creation, modification, and sharing of digital assets among team members with different roles and responsibilities. Automated tagging reduces the cognitive and administrative burden associated with manual classification, making it easier for developers to manage large collections of assets efficiently. At the same time, allowing users to review, modify, or override AI\-generated tags ensures that specialized or creative assets are not incorrectly classified, maintaining both accuracy and flexibility in asset organization.
+
+## <a id="_Toc237556010"></a>Existing System
+
+### <a id="_Toc237556011"></a>LottieFiles
+
+LottieFiles is an online platform located in Malaysia aimed at animation workflow management, providing the necessary tools for creating, testing, and distributing motion graphics assets. It operates as a central warehouse for animations, especially in formats like dotLottie and JSON, helping designers and developers exchange and work with the designs in their applications.
+
+As depicted in Figure 2.1, the platform has gained a tremendous reputation for its formidable Team Workspace and integrated collaboration capabilities. Users can conveniently upload animation resources and disseminate them among remote teams members enabling the creators and producers to provide comments related to specific resources right at the workspace. Such centralized commenting functionality simplifies communication regarding animation resources and fosters efficiencies of iterative procedures making LottieFiles one of the best examples of collaborative asset management.
+
+![](source_converted_files/image_006.png)
+
+<a id="_Toc236834048"></a><a id="_Toc236860082"></a>Figure 2.1 The collaborative commenting interface in LottieFiles (Accessed 14 July 2026)
+
+Though LottieFiles presently accommodates more varied artistic tools such as Lottie animations, popular image types, and design source documents, as seen from Figure 2.2, its approach to asset management is still largely geared towards animation and artists’ process of creating. The site is not, however, equipped to deal with different types of game development assets ranging from the audio and 3D models to editing instructions and game development files. At the same time, even though LottieFiles is applying AI in its design works, its solution does not allow for the same multi\-modal AI\-assisted approach to metadata generation of different game assets that is proposed here. Hence, LottieFiles is an efficient collaboration and asset management tool but its capabilities of asset handling still cannot fit in with various aspects of game development.
+
+![](source_converted_files/image_007.png)
+
+<a id="_Toc236834049"></a><a id="_Toc236860083"></a>Figure 2.2 The LottieFiles upload interface (Accessed 14 July 2026)
+
+### <a id="_Toc237556012"></a>Google Drive
+
+Google Drive is a versatile cloud storage and synchronization service for collecting, disseminating, and collaborating on information and data. The service offers a way to share information in folders and shared drives, which allows for an easier and more effective way to access and manage his information.
+
+The platform is based on an architecture following the established hierarchical structure of folders as shown in Figure 2.3. This functionality allows users to easily upload and organize their files and navigate through them. The simple architecture of Google Drive provides an intuitive way of organizing data that any independent game developer can become familiar with. Because of this, the cloud storage solution is suitable for game designers since it requires no additional expenditures and special instruments for providing basic file management and sharing services.
+
+![](source_converted_files/image_008.png)
+
+<a id="_Toc236834050"></a><a id="_Toc236860084"></a>Figure 2.3 The traditional hierarchical folder structure in Google Drive (Accessed 14 July 2026)
+
+Furthermore, Google Drive's built\-in sharing and collaboration functionalities are depicted in Figure 2.4. There are share links and basic sharing permissions available like Viewer, Commenter, and Editor, meaning users can share files with their colleagues with minimal effort. The ability to share files in real\-time which facilitates communication and makes files readily available for team members without technical complexity.
+
+![A screenshot of a computer
+
+AI-generated content may be incorrect.](source_converted_files/image_009.png)
+
+![](source_converted_files/image_010.png)
+
+<a id="_Toc236834051"></a><a id="_Toc236860085"></a>Figure 2.4 The basic sharing and permission settings interface in Google Drive (Accessed 14 July 2026)
+
+Nonetheless, though Google Drive is generally helpful, it does have several limitations regarding its use in game development procedures. Specifically, it does not provide for certain kinds of domain\-related metadata, making it difficult to categorize advanced items as something other than an ordinary file. Additionally, the platform has no automated file naming and organizational options, so it has to rely on human assistance in naming files, and as a matter of fact, in cases where there is a lot of information, it can be difficult for people to manage the number of items and become inefficient.
+
+At the same time, access control is limited to a few basic roles without more advanced methods, like RBAC. Moreover, there is no AI\-assited tagging, so there are issues related to how efficiently metadata is managed. Thus, Google Drive cannot be used as an ideal option for multiple forms of asset management processes implemented in game development.
+
+### <a id="_Toc237556013"></a>Eagle
+
+The Eagle software is a desktop digital asset management system that caters to visual creators such as 2D artists, user interface and user experience designers, and independent content creators. Eagle is special compared to other cloud storage systems since Eagle provides users with metadata information relevant to their specific needs and employs a visual\-first approach as shown in Figure 2.5. With the help of folders, labels, color filters, and metadata, users can sort their visual materials. In addition, Eagle's AI Action facilitates organizing by making it possible to rename, describe, classify, and label images.
+
+![A screenshot of a computer
+
+AI-generated content may be incorrect.](source_converted_files/image_011.png)
+
+<a id="_Toc236834052"></a><a id="_Toc236860086"></a>Figure 2.5 The robust tagging system and visual\-first interface in Eagle (Accessed 1 July 2026)
+
+Nevertheless, its design as a local, single\-user system might limit its capability for group game development. Eagle does not have any mechanism for processing multiple users using role\-based access controls as shown in Figure 2.6. Although Eagle currently offers the AI\-powered organization and tagging features, they function within its desktop\-based asset management process rather than a centralized multi\-user web environment.
+
+As a result, if the distributed indie teams would like to use this system collaboratively, they will have to synchronize its local database through using cloud drives of third parties. Thus, distributed teams would rely on using cloud\-based tools to operate in the local database together. Nonetheless, this might cause problems like multiple versions, delays in synchronization, and difficulties in keeping the metadata. Thus, single\-user desktop tools might not be adapted for collaborative asset management practices.
+
+![A screenshot of a computer
+
+AI-generated content may be incorrect.](source_converted_files/image_012.png)
+
+<a id="_Toc236834053"></a><a id="_Toc236860087"></a>Figure 2.6 The local library management interface in Eagle (Accessed 1 July 2026)
+
+### <a id="_Toc237556014"></a>Anchorpoint
+
+Anchorpoint is a tool for version control and digital asset management designed for creative teams like game builders, artists, and other technical teams working with huge production files. Unlike other cloud storage tools, Anchorpoint is focused on game making and digital content creation workflows. It has a visual interface to help manage project files along with a version control feature that enables members of the team to monitor alterations that have been made to shared assets. The program also provides support for many game making practices and file formats and is regarded as more game\-making friendly as compared to normal file control solutions.
+
+A significant collaborative aspect offered by Anchorpoint is file locking. According to Figure 2.6, Anchorpoint locks an asset while a team member alters it and shows the user who has the lock on that asset. The feature is especially valuable for game development assets like 3D models, scenes, textures, and other binary files that cannot be merged with ease. Through its restriction to a limited number of users that can alter an asset simultaneously, file locking can consequently allow for preventing unintentional overwriting and disagreements during collaborative development.
+
+![](source_converted_files/image_013.png)
+
+Figure 2.7 File locking interface in Anchorpoint
+
+Source: Anchorpoint (2026). Retrieved from https://www.anchorpoint.app
+
+(Accessed: 13 August 2026)
+
+Apart from file locking features, Anchorpoint also has the effective version control system to control the changes that happen to project assets. Figure 2.8 shows the Changed Files screen that is presented as a list of altered and newly added assets that have not yet been synchronized with a repository. Users can check the changes and leave explanations about the changes prior to synchronization. Such features give one a better idea about assets changes and contribute to managing different versions of a video game during its development process, which makes it a perfect tool for production processes in game development characterized with multiple assets being created, changed, or exchanged between team members.
+
+![](source_converted_files/image_014.png)
+
+Figure 2.8 Changed files and version control interface in Anchorpoint
+
+Source: Anchorpoint (2026). Retrieved from https://www.anchorpoint.app
+
+(Accessed: 13 August 2026)
+
+Nonetheless, Anchorpoint's functionality is not the same as that of the suggested system, for it pays great attention to elements like version control, file synchronization, file locking, and game production workflow integration. At the same time, the suggested system aims at providing a centralized digital asset management service for a sole game developer, focusing on structured data management, AI\-supported auto\-tagging, search and filtering features, and Role\-Based Access Control (RBAC). Therefore, while being good at dealing with the issue of changes and avoiding conflicts, Anchorpoint does not cover the issue of data organization and AI\-supported asset retrieval that is the focus of the proposed system.
+
+## <a id="_Toc237556015"></a>Literature Review Matrix
+
+<a id="_Toc237556084"></a>Table 2.1 Comparison of Lottiefiles, Google Drive, Eagl,  Anchorpoint and the Proposed System
+
+| Feature | LottieFiles | Google Drive | Eagle | Anchorpoint | Proposed AIEnhanced Platform |
+| --- | --- | --- | --- | --- | --- |
+| Feature 1: Deployment & Collaboration |  |  |  |  |  |
+| Deployment Platform | Web, Desktop (Mac), Mobile | Web, Desktop, Mobile | Desktop | Desktop | Web |
+| Cloud-Based Collaboration | ✓ | ✓ | ✗ | ✓ | ✓ |
+| Role-Based Access Control ( | Limited/Team Permission | Limited | ✗ | Limited/ Team Permission | ✓ Granular RBAC |
+| Version History | ✓ | Limited | ✗ | ✓ | ✓ |
+| File Locking | ✗ | ✗ | ✗ | ✓ | ✗ |
+| Feature 2: Asset Management & Organization |  |  |  |  |  |
+| Asset-Level Collaboration | ✓ | Limited | Limited | ✓ | ✓ |
+| Visual-First Interface | ✓ | ✗ | ✓ | ✓ | ✓ |
+| 2D Image / Sprite Support | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Audio Support | ✗ | ✓ | ✓ | ✓ | ✓ |
+| 3D Asset Support | ✗ | ✓ | Partial | ✓ | ✓ |
+| Domain-Specific Metadata | Limited | ✗ | ✓ | ✓ | ✓ |
+| Advanced Search & Filtering | ✓ | Basic | ✓ | ✓ | ✓ |
+| Feature 3: Automation |  |  |  |  |  |
+| AI-Assisted Auto-Tagging | ✗ | ✗ | ✓(Local/Desktop) | ✓ | ✓ |
+| Game Development Workflow Support | Animation Focused | General Purpose | Personal Asset Management | ✓ | ✓ |
+
+The platforms reviewed use differing methods of deployment that influence how and where they can be accessed and used. Google Drive has the most cross\-platform access since it can be used on the web and through downloadable desktop and mobile apps. LottieFiles also offers similar access but has desktop functionality only for macOS. Eagle and Anchorpoint, on the other hand, mainly allow users to access the app on their desktop. Given that the platform proposed in this study is web\-based, it allows independent game developers’ teams to access their resources by using a web browser instead of a separate desktop application.
+
+In terms of deployment and access control, collaborative functionalities vary from one platform to another. For instance, both LottieFiles and Google Drive provide cloud collaboration features, whereas LottieFiles is more focused on teamwork features. In addition, both LottieFiles and Anchorpoint support collaboration through the use of shared projects. In Anchorpoint’s case, however, the role of permissions is much more tied to project\- and team\-level usage. Lastly, Eagle is somewhat unique in that it mostly uses local asset libraries and lacks any type of cloud\-based access control and collaboration. In contrast, the proposed platform provides cloud collaboration features paired with RBAC. It allows permissions to be assigned according to workspace roles such as Owner, Manager, and Collaborator.
+
+There are significant differences in version management and collaboration involving assets among the different platforms that were reviewed. LottieFiles utilizes versioning and collaborative work at the level of assets. On the other hand, Google Drive has simple versioning and only allows for collaboration on general files. Eagle has very primitive versioning capabilities when collaborating due to its personal and desktop\-focused design. Anchorpoint provides the best version management system, which entails all of the features expected in version management and meets all the requirements involved in using version management. The platform being proposed in this paper positions itself differently; it utilizes elements of versions history and feedback. It does not, however, include file locking or Git\-like versioning in cooperation given its focus on digital asset management rather than source management.
+
+The different platforms stand out in how they treat various digital assets. For example, while Google Drive accommodates a plethora of file types from images to audio and 3D content. Its overall design is not optics\-friendly, meaning that it is not suitable for visual asset management. LottieFiles offers users a visually\-oriented solution, although its focus on motion and creative content means that it lacks useful features for working with audio and 3D game assets. Eagle enables users to work with images and creative content efficiently, but its capabilities with 3D and game\-specific assets are limited. Anchorpoint excels at supporting visual asset management of 2D, audio, and 3D projects, but various game assets still remain beyond its scope. Likewise, our platform employs a visual\-first approach while giving users access to a wide variety of assets in one place.
+
+The distinction between general\-purpose storage and specialized asset management systems also arises from the way in which they deal with metadata and asset retrieval. For example, Google Drive uses simply metadata such as the attributes of general files and folders, which allows for the generic search and retrieval of files but limits the way in which game asset metadata can be processed. Also, LottieFiles incorporates a more sophisticated type of metadata and in\-built search capabilities of materials related to graphics and animation creation. Meanwhile, Eagle provides enhanced categorizing, tagging, and filtering capabilities for imagery and visual materials, while Anchorpoint employs the similar functions with regard to different production materials. Therefore, the approach that is proposed in the framework of the platform combines targeted metadata and advanced filtering and AI\-generated tagging functionality, giving the opportunity to launch the retrieval of game assets according to their parameters.
+
+The proposed platform is not the only one offering automated solutions since there are already available various degrees of AI\-assisted organization of assets within other systems. For instance, in platforms such as Google Drive and LottieFiles there is no dedicated workflow for AI\-assisted auto\-tagging when it comes to various game assets classed together. The case of Eagles is different, since its asset management utilization of AI for tagging process is oriented towards desktop usage. Another case in point is Anchorpoint, whose tagging process is mainly focused on visualization and production processes. This means that only the proposed platform successfully achieves the goal of applying the multi\-modal approach to different asset categories, successfully using available AI solutions for generation of metadata based on visual or media evidence in the process of uploading files rather than merely applying the automatic tagging function.
+
+In the processing of game development, Google Drive is regarded to be a standard storage software. LottieFiles, on the contrary, is used for motion and creative production work and Eagle is meant more for organizing personal creative resources. In terms of game development capabilities, Anchorpoint is the closest system among the reviewed ones to be in line with the concept presented. It has functionalities enabling to perform specialized workflows that involve working with assets and version control as well as synchronization and conflict prevention. However, this also shows a difference in focus of the systems as while Anchorpoint has more various functionalities aimed at production and version control work, the target system is aimed at centralizing the management of assets using all the cooperative advantages it has. Thus, the target system is not meant to substitute any specific functions of Anchorpoint while trying to create a completely new alternative DAM which will integrate asset management capabilities into a simple collaborative system.
+
+## <a id="_Toc237556016"></a>Framework
+
+According to the literature discussed earlier, modern digital asset management systems typically use client\-server architecture on the internet. These systems utilize fundamental ideas of DAM, AI\-based automation, and secure cooperation constructs to overcome the problem of unstructured storage and manual management of assets.
+
+These systems work to create a centralized space where digital content organization is in line with workflows of business processes. By bringing different technological elements together, they deliver a systematic solution for asset findability, metadata management, and efficiency of collaboration in media\-intensive industries, like game development.
+
+As for the system design, all these architectures include several layered components, such as the interaction layer, server\-side processing system, and intelligent data processing module. Best part about this architecture is that it makes it possible to create a modular system which is easy to maintain and scalable.
+
+### <a id="_Toc237556017"></a>React.js
+
+React.js is one of the most popular frontend frameworks for creating interactive websites. The framework is also used here as the presentation layer of the proposed AI\-enabled collaborative digital asset management platform. Its role is to facilitate user interactions with the system via a responsive interface, which also enables the implementation of crucial system components, including user login, asset repository browsing, asset upload, metadata viewing, searching and filtering of retrieved information, and viewing version history of assets. When it comes to digital asset management systems, Visualization plays a very important role when displaying any multimedia content such as images, sprites, or other frontend UI elements. 
+
+React.js leverages a vase Virtual DOM technology, which allows for improving performance due to fetching and updating only those system components that have changed over time, rather than refreshing the presentation layer. This leads to a significant boost in rendering speed and quality, thus increasing responsiveness when working with a huge database of digital assets.
+
+As well, React’s component\-based structure facilitates creating reusable interface components, such as asset preview modules, tagging systems, and collaborative panels that ease code maintenance and make it easy to add new features in the future, as well as encourage a modular approach in the architecture that is being developed. Therefore, React.js makes a good basis for the frontend part for the creation of an interactive and scalable digital asset management system with its help.
+
+### <a id="_Toc237556018"></a>Node.js with Express.js
+
+The combination of Node.js and Express.js is widely used in backend development and API routing of web applications. The AI\-powered platform for digital collaboration and asset management employs Node.js and Express.js for the implementation of backend logic that is responsible for communicating with the customers and interacting with other system components, such as the user interface, backend database PostgreSQL, and storage system MinIO. Thus, the backend must perform various operations for its users and, at the same time, ensure such functions as authentication, control over digital assets, metadata processing, and access rights validation. 
+
+Node.js overcomes the limits of traditional synchronous mechanisms of the backend through its asynchronous, event\-driven, and non\-blocking I/O architecture, thus making itself a very efficient option for I/O\-heavy solutions like digital asset stores. Such architecture provides better scalability and responsiveness while performing operations on requests, such as uploading large files, retrieving assets, and making metadata updates as well as working with AI processing services at the same time.
+
+Express.js is one of the most versatile and lightweight web frameworks equipped with powerful routing features and be easily integrated into middleware solutions. Thanks to these features it can immensely facilitate request routing and API operation processing, access and authentication system, as well as data processing. Thus, the combination of Node.js and Express.js makes it possible to create an efficient backend for digital asset management with the focus on collaborative aspects of it and AI\-based functioning.
+
+### <a id="_Toc237556019"></a>Multi\-Modal Local AI Tagging Pipeline
+
+In order to solve the issues related to inefficiencies and cognitive overload caused by manual metadata input in classical data storage systems, new practices introduce multi\-modal AI tagging pipelines that allow for automatic metadata production. Most often those pipelines are built according to the microservices architecture that allows separating computationally heavy operations from the main application server. In this case, FastAPI has gained immense popularity due to its good performance, intrinsic asynchronous operations, and wide compatibility with Python\-based machine learning ecosystems.
+
+Using the decoupled microservices architecture, the asset's information can be communicated through restful URLs to the special AI services, where multi\-modal inference is performed, thus resulting in getting semantic metadata as output in a structured format, such as JSON, which makes the integration with metadata management systems seamless and thus allows avoiding possible bottlenecks of the main application layer.
+
+In the suggested digital asset management system, the platform utilizes CLIP technology to automate the assignment of semantic tags to visual assets that have been uploaded, including images, sprites, and parts of user interface design. For the processing of visual assets, such technologies such as CLIP (Contrastive Language\-Image Pre\-training) is extensively utilized for the purpose of semantic classification. In contrast to other convolutional systems that can only classify the assets within the limits of predetermined categories, CLIP utilizes dual\-role methods to encode the images and words received with the help of a specialized space for encoding purposes. Therefore, cutting\-edge technology offers users the possibility to classify objects in different styles without additional training programs. 
+
+In the digital asset management system, KeyBERT is incorporated in order to form keywords for textual assets, such as scripts, documentation, and code files. The formed keywords are kept in the form of metadata for the purpose of efficient management and searching of the assets. For the purpose of working with textual data, keyword extraction methods such as KeyBERT are applied in order to extract significant semantic descriptors. KeyBERT applies the transformer\-based encoding based on the previous BERT models to extract keywords, as well as measure the vector similarity of the different phrases along with the whole document. Such an approach allows efficient tagging of the scripts and code components effectively.
+
+The proposed system is designed to integrate YAMNet and Whisper to allow users to automatically generate metadata of any audio assets submitted for processing. YAMNet is in charge of the identification of environmental sounds while Whisper processes spoken dialogue and provides text version of the dialogue that makes audio classification and text searchable within audio assets depot. Such models as YAMNet are referred to in the context of processing audio assets when it comes to identification of environmental sounds starting with the sound signals. At the same time Whisper is used for converting speech into text format.
+
+### <a id="_Toc237556020"></a>Hybrid Metadata Strategy	
+
+In the AI\-based digital asset management platform that is being proposed, a combined metadata method is applied which enables mandatorily metadata production for 3D files. The new method used is the combination of deterministic metadata extraction and AI\-based semantics tagging which ensures that the efficiency of the process is increased while descriptions of the assets are produced adequately. The method applied enables the interchange between the technical metadata and semantics information making technical characteristics of the assets more comprehensive and complete.
+
+Because of the complicated algorithm processes occurring during the use of deep learning in 3D analysis many companies utilize a hybrid method of metadata extraction in order to process the 3D materials. This method combines deterministic information production and AI\-based technologies for the better processing of 3D materials. The process of deterministic metadata extraction means that the data is acquired from the characteristics of data such as file type or amount of polygons or type of animation.
+
+Along with deterministic metadata extraction, the new system creates two\-dimensional preview pictures from uploaded three\-dimensional models. These preview pictures undergo processing through the visual artificial intelligence tagging pipeline on the basis of CLIP in order to result in semantic tags associated with the appearance and content of the asset. By amalgamating technical metadata from the model file with AI\-produced semantic metadata, the proposed system facilitates the discovery of assets without the need for dedicated 3D deep learning models. This hybrid approach enables the retention of an acceptable balance between metadata quality and computational expenses, which is useful in independent game development environments with limited computational power.
+
+### <a id="_Toc237556021"></a>MinIO
+
+Systems for object storage, such as MinIO, are commonly used when it comes to storing unstructured data, which includes image, audio, video, or 3D data. In the proposed digital asset management system enhanced by AI technology, MinIO serves as a primary object storage provider for uploaded multimedia files, while PostgreSQL takes care of storing metadata and object references. Compared to standard relational databases, object storage is very efficient in storing binary data, while also being a cost\-effective way of storage. MinIO works with Amazon S3 APIs so that it allows high\-speed storage and possibility of its deployment in local conditions. All of this permits the suggested system to organize multimedia files efficiently and get benefits such as high\-speed retrieval and less burden on relational databases.
+
+### <a id="_Toc237556022"></a>Redis
+
+Redis is widely utilized as a message queue and as an in\-memory data storage application to conduct asynchronous processing. By virtue of being a messaging layer, Redis comes into play in the case of the system when it is used as a queue to store tasks associated with the AI processing. The moment digital assets are uploaded by the users, the backend system sends tagging requests to Redis, which means that the tag processing takes place without any interruption in the user experience because the job run is performed asynchronously. In the domains where heavy computing tasks are involved, such as AI processing, Redis allows separating the execution process of the system from the operation of the main application server providing asynchronous computing.
+
+### <a id="_Toc237556023"></a>Docker
+
+By using containerization technologies like Docker, a homogeneous environment is created for implementing applications by means of packing together software parts with their dependencies. In the suggested platform, Docker serves to run frontend application, backend server, PostgreSQL database, MinIO object storage, Redis message queue, and AI classification system as independent containers. Docker makes it possible to implement uniformly in production and development environments, making system configuration easier and supporting multi\-service architectures with the help of such tools as Docker Compose. As a result of isolating each service from others, as well as ensuring their interaction, deployment becomes more reliable, maintenance is easier, and scalability is improved.
+
+## <a id="_Toc237556024"></a>Database
+
+Database technology is essential for digital asset management systems as it permits effective storage, organization and retrieval of data and metadata. Relational databases are largely used in these systems because they are capable of maintaining structured data, ensuring data reliability (Pallante et al., 2024). Similarly, they facilitate large\-scale data organization and querying, making them suitable for dealing with complicated asset management issues.
+
+![](source_converted_files/image_015.png)
+
+Since its introduction, PostgreSQL has gained significant popularity in recent years due to its various features and capabilities. PostgreSQL utilizes a stable table\-based framework allowing metadata to be kept in clearly defined schemas which guarantees consistency and reliability of the system. Lastly, it offers support for various sophisticated indexing forms and query optimization methods ensuring the efficient retrieval of huge data flows.
+
+One of the main reasons why PostgreSQL is popular among businesses is its ability to work with both structured and semi\-structured data. Support for JSON and JSONB data types is key to adapting to complex metadata that typically exists in digital asset systems. Also, with support for transactions, PostgreSQL is able to provide reliable data storage. The technology comes with scalable features that can adapt as the volume of data grows. 
+
+Due to these features, PostgreSQL is appropriate for asset management systems with the need for efficient metadata storage and offers a flexible way of organizing data. Nevertheless, relational databases are likely to have problems with non\-structured multimedia, showing the necessity of using other methods of storage.
+
+## <a id="_Toc237556025"></a>Summary
+
+The focus of this chapter has been to analyze the most important notions and technologies of digital asset management applied in game development. The starting point in this regard is based on the work of Currall and Moss (2011), who underlined that Digital Asset Management (DAM) stands for much more than simple storage, because it involves meaningful organization and utilization of digital assets. Based on this idea, Rodriguez Castañeda (2025) pointed out the growing difficulties of independent game developers working with collections of assets that are both heterogeneous and growing quickly.
+
+In order to create productive collaborative environments, Ferraiolo et al. (2007) introduced Role\-Based Access Control (RBAC), while Owoade et al. (2023) point out its importance in this field of access control in connection with the question of providing secure collaboration. The studies cited evidence the role of access control in the safeguarding of assets in multiuser systems.
+
+Due to the drawbacks of manual asset management, research by Oyighan et al. (2024) and Angerri et al. (2025) focused on AI\-enabled metadata management to enable automated tagging and thus achieve both efficiency and consistency. Nevertheless, Saraiya (2025) revealed that many implementations of currently available systems make AI tagging an independent characteristic rather than integrating it into the asset management process.
+
+The deficiency in current systems is illustrated by some of them, like LottieFiles which specializes in animated assets by supporting minimal types of game assets; Google Drive that mainly relies on manual organization of files with limited capabilities of structured metadata and advanced access solutions. As was shown in the comparison analysis, none of the studied systems are capable of delivering an integrated solution that brings together automation, cooperation, and management of structured assets.
+
+To fill the voids noticed in the previous sections, the advanced systems architecture made use of several new technologies to provide it with better performance abilities and increased scalability. Technologies like React.js and Node.js are used for implementing dynamic web\-based applications. Therefore, MinIO is used for efficient storage of unstructured data, Redis is for performing asynchronous processing, and Docker is chosen for achieving flexible deployment environments. PostgreSQL has emerged as an effective relational database used to handle structured metadata and guarantee data integrity.
+
+To sum up, the literature highlights the fact that although advancements in digital asset management have been made, no integrated solution exists that ensures intelligent automation, management of structured metadata, and trustworthy collaborative control at the same time. Based on this observation, the current research intends to work out an AI\-based collaborative platform for digital asset management which is going to be described in details below.
+
+# <a id="_Toc237556026"></a>Methodology
+
+## <a id="_Toc237556027"></a>Introduction
+
+This chapter presents the research methodology used in the development of the proposed system. It describes the System Development Life Cycle (SDLC) model adopted for this study and explains how the selected approach supports the development of the “AI\-Enhanced Collaborative Digital Asset Management Platform.”
+
+In this project, the Rapid Application Development (RAD) model is selected as the main methodology due to its iterative nature and ability to support continuous system improvement. This approach is suitable for the project as it allows frequent testing and refinement of system features, especially during the integration of AI\-assisted tagging and collaborative functionalities.
+
+This chapter is organized into several sections. Section 3.2 discusses the selected methodology and justification for using the RAD model. Section 3.3 explains the stages of the RAD development process.
+
+## <a id="_Toc237556028"></a>Rapid Application Development (RAD)
+
+Rapid Application Development (RAD) is a software development methodology that focuses on fast system development through iterative prototyping and continuous user feedback (Lal, 2024). The technique promotes adaptability and fast implementation of functioning systems instead of adopting a rigid and direct development approach. RAD makes it possible for developers to create system components gradually, introducing improvements thanks to the received feedback, making it a perfect method for the projects requiring constant changes.
+
+![A diagram of a process
+
+AI-generated content may be incorrect.](source_converted_files/image_016.png)
+
+<a id="_Toc236834054"></a><a id="_Toc236860088"></a>Figure 3.1 Rapid Application Development (RAD) Model
+
+As illustrated in Figure 3.1, the RAD methodology has four key phases: Requirements Planning, User Design, Construction, and Cutover. One of the main highlights of this methodology is the iterative loop between User Design and Construction phases. In this looping process, the developer constantly builds, tests, and improves prototypes before actual implementation. This methodology is in contrast to traditional techniques like the Waterfall methodology where development is strictly a sequence of stages. The iterative process of RAD enables the detection of potential problems from the beginning and allows improvements along the development process (Lal, 2024).
+
+The RAD methodology is chosen for this project owing to its capability of rapid development and continuous improvement, which are crucial for development undertaken by a single developer in a short time interval. Using the process of iterative prototyping will help test essential features of the system during the initial design stage as for instance user interface design and Role\-Based Access Control workflows.
+
+Moreover, it complements the initial incorporation and assessment of the AI tagging functionality, which consists of integrating various AI systems and might demand several optimization iterations. Because the AI tagging pipeline includes local ML elements and allows for multi\-modality processing functionalities, iterative fine\-tuning is crucial to ensure system performance and efficacy. By enabling continuous feedback and gradual improvement, the RAD model minimizes the challenges of the development procedure.
+
+## <a id="_Toc237556029"></a>Project Framework
+
+![](source_converted_files/image_017.png)
+
+<a id="_Toc236834055"></a><a id="_Toc236860089"></a>Figure 3.2 Project Framework
+
+Figure 3.2 illustrates the overall project framework for the development of the "AI\-Enhanced Collaborative Digital Asset Management Platform." The framework follows the Rapid Application Development (RAD) approach and is modified in a manner that makes it suitable for system development loop in game development. The framework consists of four components: Requirements Planning, User Design, Construction, and Cutover.
+
+The framework ensures that each component is linked to one of the project aims set in Chapter 1 that makes checking the progress through the system easy. Unlike the traditional linear development models, the framework has an iterative feedback process between the User Design and Construction that provides constant modification of certain components from the graphical user interface (GUI) to Role Based Access Control (RBAC) workflow and the AI tagging system.
+
+Moreover, the framework accentuates the fact that validation is an ongoing process which runs through the entire process of development. The iterative cycle makes it possible for the developer to detect problems at early stages of development and modify the system based on its technical feasibility as well as feedback from users. The following subsections will present detailed information about the activities, techniques, tools, and people involved in each stage.
+
+The first phase of the RAD is called Requirement Planning and includes identifying current procedures and limitations of unstructured asset management used by independent game developers. It starts with market analysis of the available systems, like Google Drive and LottieFiles that are widely used for asset storage and cooperation. The analysis aims to identify their advantages and disadvantages in terms of asset management and understand how the systems function in terms of collaboration features and metadata management.
+
+After analyzing the market situation, user requirements are collected to clarify what the target audience needs. The data collection happens through online questionnaires and semi\-structured interviews with independent game devs as the main stakeholders, whom the team needs feedback from. When the data is collected, it undergoes the process of analysis, where common problems are identified alongside the users’ expectations and system features. In the end, the data received is checked to prove that it is complete and correct. Ultimately, the output of the first phase is the completed requirement specification document with detailed requirements for the system and its functions.
+
+### <a id="_Toc226623622"></a><a id="_Toc237556030"></a>Phase One: Requirement Gathering
+
+![](source_converted_files/image_018.jpeg)
+
+<a id="_Toc236834056"></a><a id="_Toc236860090"></a>Figure 3.3 Framework of Phase One
+
+The first phase of the RAD approach is Requirement Planning, which is meant for determining the actual experience and limitations as well as unmanaged asset management difficulties of the independent game developers. The stage starts with researching the existing game asset management platforms. The case of Google Drive is considered as a standard type of the cloud storage facility and the platform for file sharing in the part of its file organization, sharing settings, and versions.
+
+On the contrary, Anchorpoint will be analyzed as an asset management and version control platform oriented on game development, with certain emphasis on such features as visual asset management, file locking, version tracking, metadata management and teamwork. Certain other visual asset management platforms, such as LottieFiles and Eagle, will also be reviewed in order to add more viewpoints to visual assets arrangement, metadata management and collaboration. Comparing both general purpose and game development\-oriented platforms will give additional understanding of the modern practices in the industry and provide insights into the requirements associated with the future system.
+
+After the market analysis, the next step is to gather requirements from users. User requirements are gathered through different methods such as online surveys and semi\-structured interviews so that it is possible to collect and analyze the feedback from independent game developers who perform as the main stakeholders. This data undergoes an analysis to help identify different problems, expectations, and possible functions of the system. After that, the findings are validated and checked to make sure the information is correct and complete. At the end of this phase, the requirement specification document is produced.
+
+### <a id="_Toc237556031"></a>Phase Two: Design
+
+![](source_converted_files/image_019.png)
+
+<a id="_Toc236834057"></a><a id="_Toc236860091"></a>Figure 3.4 Framework of Phase Two
+
+The second phase of the RAD model is Design. This phase aims to develop a digital asset management system with enhanced AI from the successfully validated requirements from Phase One. Importantly, this phase aims to turn user requirements into the system architecture and various components of the system..
+
+In this phase, we first focus on developing Role\-Based Access Control (RBAC) architecture, domain\-specific metadata schema, and versioning system for the assets in a visual modeling tool such as Draw.io. These components set a good basis for ensuring secure asset access, the organization of data in structured tables, and keeping track of versions. Based on this phase’s solutions, the workflow and interactions with the system through its UI are created using prototyping tools such as Figma.
+
+To ensure conformity with RAD methodology, feedback is collected from end\-users, especially independent game developers. The feedback received is utilized to modify design. The modifying process goes hand\-in\-hand with the Construction phase, of which the developer can confirm his decisions concerning the usability of the design solution, especially during the early testing of the AI tagging and version tracking systems.
+
+The phase finishes with the validating of the design documentation in order to make sure that it is valid and meets high standards. The final document obtained at this phase is the document of validated design, which presents UML diagrams, databases schema and the mock\-ups of the graphical user interface tools.
+
+### <a id="_Toc237556032"></a>Phase Three: Construction
+
+![](source_converted_files/image_020.png)
+
+<a id="_Toc236834058"></a><a id="_Toc236860092"></a>Figure 3.5 Framework of Phase Three
+
+The third phase of the RAD model is Construction. The purpose of this phase is to accomplish the development of an AI\-powered collaborative platform that has digital asset management capabilities, taking its base from the designed system. Summarily, the phase is concerned with the transformation of the prototypes and architecture produced in the User Design phase into a working web application for creating games. The development of the system involves development of its interface, back\-end system, metadata creation, and the integration of the AI\-supported tagging mechanism.
+
+In accordance with the iterative essence of the RAD model, this phase is particularly interconnected with the User Design phase, being based on a continuous feedback cycle. During the development of different system components, it becomes possible to collect some technical feedback on the system is based on actual game assets. In case some issues occur, for example, with AI\-produced tagging or some other problem, there exists a possibility of altering the system design before going on with the development process.
+
+At this stage, the user interface is developed using modern web development approaches to create a user\-friendly and interactive experience. The back\-end system implements the data processing, metadata storage, and access control through the role\-based access control (RBAC) system. Another important aspect of the process is the creation of a version history feature for recording the changes made to digital assets. Whenever an asset is modified, a new version of this asset is created while all the old versions remain preserved for the user to track the history of the asset.
+
+Among the most important processes at this stage is the integration of a localized AI tagging pipeline, which requires the conversion of the assets via an AI inference module to provide metadata to them. The whole process involves using multiple AI models for different types of data, which allows completing the tagging process without using third\-party cloud APIs. The prototype is tested at this stage for verification of its work related to uploading assets, tagging, keeping access control, tracking versions, and collaboration. The final output of this phase is a fully functional system prototype.
+
+### <a id="_Toc237556033"></a>Phase Four: Cutover
+
+![](source_converted_files/image_021.png)
+
+<a id="_Toc236834059"></a><a id="_Toc236860093"></a>Figure 3.6 Framework of Phase Four
+
+The final phase of the RAD model is Cutover. The aim of this phase is to check the working of functionalities and usability of the system through user testing, thus confirming that it can solve problems like versioning discrepancies and improve the effectiveness of asset retrieval. Once the system is completed in this phase, the system is put in the testing and deployment stage for validation.
+
+The main activity is the user acceptance testing (UAT) with the end\-users, namely independent game developers. The users are expected to interact with the system by making use of the system for asset management by doing things like uploading files, searching for files, utilizing AI\-based tagging system, controlling access right, and checking previous versions of the assets.
+
+To evaluate functionality and user contentment, structured assessment methods such as the System Usability Scale (SUS) are implemented. Questionnaires are disseminated via online means to gather feedback from users regarding system performance and usability, thus gathering information regarding overall user experience. The collected data is analyzed to see if the system fulfills its intended purpose and addresses the issues pointed out in previous sections.
+
+Following the successful validation and solving of minor problems, the system moves into the deployment stage. The application is deployed onto a cloud hosting platform, thus providing the opportunity of easy access to users. At the same time, all project documents are completed, from documentation to technical reports and manuals. The result of this stage is a validated and operational platform, which signals the end of the development process.
+
+## <a id="_Toc237556034"></a>Gantt Chart
+
+![](source_converted_files/image_022.png)
+
+<a id="_Toc236834060"></a><a id="_Toc236860094"></a>Figure 3.7 Gantt Chart of FYP 1
+
+The project timeline for the AI Enhanced Collaborative Digital Asset Management Platform is illustrated in Figure 3.7, spanning 14 weeks of the first stage of FYP, starting on May 28, 2026, and finishing on August 25, 2026.
+
+The project starts in Week 1 with Topic Selection, where the purpose and aims of the project are defined. Chapters 1 is written in Week 2 and 3, where the background, problem statements, objectives, and scope of the project are discussed. After that, Chapter 2 is executed during Weeks 3 to 5 with the focus on Digital Asset Management (DAM), Role\-Based Access control (RBAC), AI\-based metadata production, and other digital asset management systems.
+
+Following the completion of the literature review, Chapter 3: Methodology is crafted during Weeks 5 to 6 in order to introduce the development method, project framework, and methodology of the proposed system. Based on the confirmed requirements and methodologies, chapter four is developed during Weeks 6 to 10, which includes the system architecture, database construction, UML diagrams, and user interface design. During this period, the core components and functions of the proposed platform are modeled and described.
+
+The system prototype development and completion of chapter five Implementation are planned between Weeks 8 and 11. This stage of the project involves implementing the proposed model as an interactive prototype, showcasing its main functions such as workspace management, asset administration, and AI\-based tagging. Chapter six is completed during Week 11 and presents the achievements, limitations, and the recommendations for the future work.
+
+Once each section of the report is written, the work on the report enters the phase of processing within Weeks 12 and 13, which is followed by the phase of review by the supervisor and document formatting. The supervisor feedback enables quality improvement of the report in terms of consistency and completeness. In parallel stage final version of the report is created.
+
+At the final stage, presentation preparation takes place within Weeks 13 and 14 to create the presentation materials and rehearse the presentation. The project comes to the end when the final presentation takes place in Week 14, where the AI Enhanced Collaborative Digital Asset Management Platform, as well as its prototype, is presented.
+
+# <a id="_Toc237556035"></a>Design
+
+## <a id="_Toc237556036"></a>Introduction
+
+## <a id="_Toc237556037"></a>Use Case Diagram
+
+This section presents the use case diagrams of the proposed AI\-Enhanced Digital Asset Management System. The diagrams show the main actors involved in the system along with the functional interactions among the system components and users. The use cases are grouped according to the main modules of the system that include management of account and workspace, asset management, asset retrieval, collaborative functions, version management, and management of administration. These diagrams give the high\-level view of requirements of the system and responsibilities of users with respect to the Role\-Based Access Control model.
+
+### <a id="_Toc237556038"></a>Overall Use Case Diagram
+
+![](source_converted_files/image_023.png)
+
+<a id="_Toc236834061"></a><a id="_Toc236860095"></a>Figure 4.1 Overall Use Case Diagram
+
+The overall use case diagram depicting the AI\-based collaborative digital asset management platform has been presented in figure 4.1. The overall use case diagram shows different important modules and actors that are used in the system. The diagram illustrated in figure 4.1 identifies four actors including the system administrator, workspace owner, workspace manager and collaborator. The AI\-based digital asset management system implements role\-based access control which means that higher\-role actors are able to inherit permissions of lower\-role actors through actor generalization.
+
+The role of collaborator represents the ordinary user of workspace who has access to different important functions such as functioning related to asset management, asset search functionalities and collaboration. The role of workspace manager is an expansion of collaborator role which means that workspace manager has some additional functions which are related to workspace administration and AI\-assisted tagging. The role of workspace owner encompasses all the permissions of the workspace manager and provides authority to control and manage all the activities in the workspace.
+
+At the level of the system, the System Administrator is liable for account management and general system operation management. The most important functional modules of the system include Account and Workspace Management, Management of Assets, Searching, Versioning, and Collaboration, AI Tagging, and System Administration. In their totality, the modules provide a secure environment for cooperation, established formats for asset categorization, automated metadata generation and efficient management of digital assets in the game development industry.
+
+### <a id="_Toc237556039"></a>Account and Workspace Management Use Case Diagram
+
+![](source_converted_files/image_024.png)
+
+<a id="_Toc236834062"></a><a id="_Toc236860096"></a>Figure 4.2 Account and Workspace Management Use Case Diagram
+
+The Account and Workspace Management Use Case Diagram depicted in Figure 4.2 illustrates the functions that are embedded in the system with respect to user authentication and subsequent participation in workspaces. Any visitor can create an account, log in, and gain access to their account once the necessary password reset process is completed. Once they have successfully authenticated, the user is referred to as the authenticated user and provided with an access to account management functions, including picking a profile and logging out.
+
+Functions related to workspace management can be accessed by the authenticated users and contribute to collaboration while organising projects. The users can open their workspaces, join other workspaces via invitation code sharing, check their chosen workspace, switch from one workspace to another, and take advantage of other possibilities based on their privileges. The system is built on the principles of Role\-Based Access Control (RBAC), which implies that the permissions of people, acting in roles of the Workspace Owner, Workspace Manager, or Collaborators, depend on their responsibilities within a particular workspace.
+
+### <a id="_Toc237556040"></a>Asset and AI Tagging Management Use Case Diagram
+
+![](source_converted_files/image_025.png)
+
+<a id="_Toc236834063"></a><a id="_Toc236860097"></a>Figure 4.3 Asset and AI Tagging Management Use Case Diagram
+
+In the AI\-Enhanced Digital Asset Management System, the Use Case Diagram for Asset and AI Tagging Management is portrayed in Figure 4.3. The diagram demonstrates how members of the workspace interact with the different features of the asset management system. Using the Role\-Based Access Control (RBAC) strategy, people with superior titles in the organization like Workspace Owner, Asset Manager, or Workspace Manager hold power over accessibility functions of lower titles along with some extra powers to execute managerial tasks.
+
+With the Asset Management feature, users can browse through asset repositories, check the asset data, upload assets, download assets, provide metadata, or remove assets from the repository when needed. When the asset is uploaded, the system checks the uploaded asset, places the asset in the repository, and collects the necessary data for thorough processing of the newly uploaded asset.
+
+The AI Tagging Management feature enhances the asset management process by automatically creating metadata tags. The assigned users perform reviews and management on the tags created for the uploaded assets. This capability lowers the need for manual tagging, increases metadata integrity and makes it easier to find assets in the repository.
+
+It can be concluded from the use case diagram that the merging of asset management and AI\-assisted tagging contributes to the effective management of digital assets while providing security and role\-based access control.
+
+### <a id="_Toc237556041"></a>Search and Asset Retrieval Use Case Diagram
+
+![](source_converted_files/image_026.png)
+
+<a id="_Toc236834064"></a><a id="_Toc236860098"></a>Figure 4.4 Search and Asset Retrieval Use Case Diagram
+
+The AI\-Enhanced Digital Asset Management System's Asset Search and Retrieval Use Case Diagram is shown in Figure 4.4. The diagram represents the process through which users locate, access, and retrieve information from the repository. Based on the RBAC access model, the user receives access rights in compliance with their user roles, thus allowing for selective access to the assets.
+
+The asset search feature allows its users information on access to the asset library, to perform the asset search by typing in keywords and to see the search results in real time. In addition, the asset search feature allows its users to filter results to locate an asset faster. This feature is vital in large repositories containing different types of assets and AI produced metadata.
+
+The Asset Retrieval module is concerned with bringing more details about the asset that has been chosen. The details related to the asset, associated metadata, tags, or even the content of the asset are available for the users. The fact that the system integrates search, filtering, and retrieval functions leads to enhancing the discoverability of the assets as well as to the better time\-efficiency of locating the information needed.
+
+In general, the given use case diagram indicates how the platform facilitates access to information regarding digital assets through the structured search and retrieval mechanisms as well as through the AI\-led metadata management provided by the platform.
+
+### <a id="_Toc237556042"></a>Version and Collaboration Use Case Diagram
+
+![](source_converted_files/image_027.png)
+
+<a id="_Toc236834065"></a><a id="_Toc236860099"></a>Figure 4.5 Version and Collaboration Use Case Diagram
+
+Figure 4.5 shows the use case diagram of the proposed Collaborative AI\-Enhanced Digital Asset Management System for version management and asset collaboration. The diagram provides insight about the systems’ capabilities to manage versions and support collaboration among users working in a workspace.
+
+The version management module enables users to check the version history, load new version of an asset, as well as access older versions of an asset when necessary. The process of uploading a new version includes several steps: the system checks the uploaded file, saves the new version, and keeps a log of version changes to provide a comprehensive version history. All these functionalities contribute to the conflict\-free use of digital assets and improve traceability of their usage.
+
+The Asset Collaboration module includes the capabilities for comment\-based communication, which allows users to discuss assets. Members of the workspace have the option to view comments, make their own comments and respond to comments made by other users. People with higher privileges, such as Workspace Owner and Workspace Manager, can also edit or delete comments if they are necessary for moderation purposes.
+
+Together, the version management and collaboration features support coordinated teamwork, improve communication among project members, and ensure that asset changes are properly documented and traceable throughout development.
+
+### <a id="_Toc237556043"></a>Workspace and System Administration Use Case Diagram
+
+![](source_converted_files/image_028.png)
+
+<a id="_Toc236834066"></a><a id="_Toc236860100"></a>Figure 4.6 Workspace and System Administration Use Case Diagram
+
+In the proposed Collaborative AI\-Enhanced Digital Asset Management System, the Use Case Diagram on Workspace and System Administration is presented in Figure 4.6. The diagram shows what administrative functions are available at the workspace level and system level for effective management of users, permissions, and collaborative workspaces.
+
+At the workspace level, the workspace membership and configuration is managed by users with roles which include Workspace Owners, Workspace Administrators, and Workspace Managers. The functions that they perform include creating invitation codes, checking workspace members, changing member roles, expelling members, and configuring the workspace.
+
+The invitation code helps control access to workspaces, as it allows authorized users to invite new members who will then join the workspace via the invitation. Member management functions allow for using the Role\-Based Access Control (RBAC) mechanism, as they guarantee that all permissions given to members are adequate for their roles in the workspace.
+
+Administrative functions at the system level are confined to only the System Administrator. These tasks require activities like viewing and looking for system users, reviewing user account information, and controlling user account status through various activation and deactivation processes. Therefore, the system administrator can control the overall use of the platform, keep accounts safe, and manage user access.
+
+### <a id="_Toc237556044"></a>Use Case Descriptions
+
+<a id="_Toc236823784"></a><a id="_Toc237556085"></a>Table 4.1 UC\-01 Log In
+
+| [Use Case ID] Name | [UC-01] Log In |
+| --- | --- |
+| Description | This use case allows a registered system user to access the system by entering valid login credentials. |
+| Actor | Visitor |
+| Pre-condition | 1. The user has registered an account.<br>2. The user is not currently logged in.<br>3. The login page is accessible. |
+| Post-condition | 1. The user is successfully authenticated.<br>2. A valid user session is created.<br>3. The user is redirected to the workspace access page or the active workspace dashboard. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | 1. The system displays the login form.<br>2. The system validates the entered information.<br>3. The system searches for the user account associated with the email address.<br>4. The system verifies the entered password against the stored password.<br>5. The system confirms that the user account is active.<br>6. The system creates an authenticated session for the user.<br>7. The system redirects the user to the workspace access page or active workspace dashboard. |
+
+<a id="_Toc236823785"></a><a id="_Toc237556086"></a>Table 4.2 UC\-02 Create Workspace
+
+| [Use Case ID] Name | [UC-02] Create Workspace |
+| --- | --- |
+| Description | This use case allows an authenticated workspace member to create a new workspace for storing, organizing and collaborating on game assets. |
+| Actor | Workspace Member |
+| Pre-condition | 1. The user has successfully logged in. 2. The user has access to the workspace creation function. |
+| Post-condition | 1. A new workspace is created. 2. The creator is registered as a member of the workspace. 3. The creator is assigned the Workspace Owner role. 4. The new workspace becomes the active workspace. 5. The workspace dashboard is displayed. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays the workspace creation form.<br>The system validates the workspace information.<br>The system creates the new workspace.<br>The system creates a membership record for the user.<br>The system assigns the Workspace Owner role to the creator.<br>The system activates the newly created workspace.<br>The system displays a workspace creation success message.<br>8. The system redirects the user to the new workspace dashboard. |
+
+<a id="_Toc237556087"></a>Table 4.3 UC\-03 Join Workspace
+
+| [Use Case ID] Name | [UC-03] Join Workspace |
+| --- | --- |
+| Description | This use case allows an authenticated workspace member to join an existing workspace using a valid invitation code. |
+| Actor | Workspace Member |
+| Pre-condition | 1. The user has successfully logged in.<br>2. An existing workspace invitation has been generated.<br>3. The user has obtained the invitation code. |
+| Post-condition | 1. The user is registered as a member of the workspace.<br>2. The user is assigned the Collaborator role.<br>3. The joined workspace becomes the active workspace.<br>4. The workspace dashboard is displayed. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays the invitation code form.<br>The system validates the format of the invitation code.<br>The system retrieves the invitation associated with the code.<br>The system verifies that the invitation exists and has not expired.<br>The system checks that the user is not already a member of the workspace.<br>The system creates a membership record for the user.<br>The system assigns the Collaborator role to the user.<br>The system activates the joined workspace.<br>The system displays a successful joining message.<br>The system redirects the user to the workspace dashboard. |
+
+<a id="_Toc237556088"></a>Table 4.4 Upload Asset and AI Tagging
+
+| [Use Case ID] Name | [UC-04] Upload Asset and AI Tagging |
+| --- | --- |
+| Description | This use case allows a workspace member to upload a digital asset to the active workspace. The system validates and stores the asset, while supported assets are analysed by the AI service to generate suggested tags. The user can review and confirm the suggested tags before they are saved. |
+| Actor | Workspace Member |
+| Pre-condition | The user is logged into the system.<br>The user has access to an active workspace.<br>The user has permission to upload assets. |
+| Post-condition | The asset is successfully stored in the workspace.<br>The asset information is recorded by the system.<br>Confirmed AI-generated tags are associated with the asset, when applicable. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays the asset upload form.<br>The system stores the asset and creates the asset record.<br>The system determines whether the asset supports AI tagging.<br>The system analyses the supported asset and generates suggested tags.<br>The system displays the suggested tags to the user.<br>The system saves the confirmed tags and completes the upload.<br>The system displays the uploaded asset details. |
+
+<a id="_Toc237556089"></a>Table 4.5 Search and Retrieve Asset
+
+| [Use Case ID] Name | [UC-05] Search and Retrieve Asset |
+| --- | --- |
+| Description |  |
+| Actor | Workspace Member |
+| Pre-condition | 1. The user has successfully logged in. 2. The user has access to an active workspace. 3. The user has access to the Asset Library. |
+| Post-condition | Assets matching the search criteria are displayed.<br>The selected asset information is displayed.<br>The user can preview or download the selected asset. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays assets from the active workspace.<br>The system searches for assets based on the specified criteria.<br>The system displays the matching search results.<br>The system displays the selected asset details.<br>The system provides the asset preview or download. |
+
+<a id="_Toc237556090"></a>Table 4.6 Upload New Asset Version
+
+| [Use Case ID] Name | [UC-06] Upload New Asset Version |
+| --- | --- |
+| Description |  |
+| Actor | Workspace Member |
+| Pre-condition | The user has successfully logged in.<br>The user has access to an active workspace.<br>The selected asset already exists in the workspace.<br>The user has permission to update the asset. |
+| Post-condition | A new version of the asset is stored.<br>The asset version history is updated.<br>The new version becomes the current version of the asset. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays the asset information and available actions.<br>The system displays the new version upload form.<br>The system validates the selected file and information.<br>The system stores the new version and updates the version history.<br>The system displays the updated asset details. |
+
+<a id="_Toc237556091"></a>Table 4.7 Add or Reply to Comment
+
+| [Use Case ID] Name | [UC-07] Add or Reply to Comment |
+| --- | --- |
+| Description | This use case allows a workspace member to communicate with other members by adding a comment or replying to an existing comment on an asset. |
+| Actor | Workspace Member |
+| Pre-condition | The user has successfully logged in.<br>The user has access to an active workspace.<br>The selected asset exists and is accessible to the user. |
+| Post-condition | The new comment or reply is saved.<br>The updated discussion is displayed on the asset. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays the asset details and existing discussion.<br>The system accepts the entered comment or reply.<br>The system saves the comment or reply.<br>The system refreshes and displays the updated discussion. |
+
+<a id="_Toc237556092"></a>Table 4.8 Manage Workspace Members and Roles
+
+| [Use Case ID] Name | [UC-08] Manage Workspace Members and Roles |
+| --- | --- |
+| Description | This use case allows an authorized workspace member to manage workspace members by viewing members, changing their roles, or removing them from the workspace. |
+| Actor | Workspace Owner |
+| Pre-condition | The user has successfully logged in.<br>The user has access to an active workspace.<br>The user has permission to manage workspace members. |
+| Post-condition | The selected member's role or membership is updated.<br>The updated workspace member list is displayed. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system verifies the user's permission and displays the workspace members.<br>The system displays the selected member's information and available actions.<br>The system processes the selected action.<br>The system updates the member's role or membership.<br>The system displays the updated member list. |
+
+<a id="_Toc237556093"></a>Table 4.9 Manage User Account Status
+
+| [Use Case ID] Name | [UC-09] Manage User Account Status |
+| --- | --- |
+| Description | This use case allows the system administrator to manage registered user accounts by activating or deactivating their account status. |
+| Actor | System Administrator |
+| Pre-condition | The administrator has successfully logged in.<br>The administrator has permission to access user management functions.<br>The target user account exists in the system. |
+| Post-condition | The selected user’s account status is updated.<br>The updated user information list is displayed. |
+| Main Success Path |  |
+| Actor Action | System Response |
+|  | The system displays the registered user accounts.<br>The system displays the selected user's account information.<br>The system processes the selected action.<br>The system updates the user's account status.<br>The system displays the updated user information. |
+
+## <a id="_Toc237556045"></a>Sequence Diagram
+
+This section presents the sequence diagrams of the proposed AI\-Enhanced Digital Asset Management System. The diagrams show the interactions of the actors, graphical user interfaces, controllers, services, repositories, and databases in the time sequence while the major functions of the system are performed. Each sequence diagram shows all the details of the messages exchange and processing logic involved in a particular use case thus allowing to clarify the way the components of the system operate.
+
+### <a id="_Toc237556046"></a>User Authentication Sequence Diagram
+
+![](source_converted_files/image_029.png)
+
+<a id="_Toc236834067"></a><a id="_Toc236860101"></a>Figure 4.7 User Authentication Sequence Diagram
+
+Figure 4.7 illustrates the User Authentication Sequence Diagram of the proposed AI\-Assisted Game Asset Management System. The flowchart illustrates the process of authenticating users before they can access any protected system resources. The authentication process is essential to guarantee that only authorized users who possess valid credentials and active accounts are allowed to use the system and comply with the requirements stipulated by Role\-Based Access Control (RBAC). 
+
+The authentication starts when the user provides his email address and password using the login page. The provided credentials go through the Authentication Controller for validation before being passed to the Authentication Service. The corresponding user account is fetched from the User Repository while the password is verified against the stored password hash in the database. Once the credentials are successfully validated, the account status is checked to see if the account is active or not. If the authentication is successful, the Session Service generates a session token with the user’s identity and role information as a successful outcome of the authentication process.
+
+In addition to the regular authentication procedure, the sequence diagram demonstrates several alternative flows that can take place during the authentication process. Some examples of these flows include wrong formats of user input, non\-existing user accounts, wrong passwords and inactive accounts. In any of these cases, the authentication process is cancelled, and the user is informed about the failure through an error message.
+
+### <a id="_Toc237556047"></a>Workspace Access Sequence Diagram
+
+![](source_converted_files/image_030.png)
+
+<a id="_Toc236834068"></a><a id="_Toc236860102"></a>Figure 4.8 Workspace Access Sequence Diagram
+
+Figure 4.8 illustrates the overall workspace access process of the proposed AI‑Enhanced Digital Asset Management System. The sequence diagram describes the interactions between authenticated users and the workspace management components when accessing, creating, joining, or switching workspaces. The process involves the Workspace Controller, Workspace Service, repositories, and the Workspace Context Service to ensure that workspace membership and user roles are properly validated before access is granted.
+
+Since workspace access consists of multiple operational scenarios, the process can be divided into workspace creation, workspace joining, and workspace switching workflows. Each workflow is described separately in the following subsections.
+
+#### Workspace Creation Process
+
+![](source_converted_files/image_031.png)
+
+<a id="_Toc236834069"></a><a id="_Toc236860103"></a>Figure 4.9 Workspace Creation Process Sequence Diagram
+
+Figure 4.9 illustrates the workspace creation process. Prior to taking any steps involving their workspace, the user must go to the Workspace Access Page, which is a resource meant for general workspace operations. When this page is opened, all workspaces available for the user will be shown, in addition to their options in each of these workspaces. Depending on the group the user belongs to, they will be able to either create a new workspace or join any of their available workspaces.
+
+The Workspace Access page plays an important role as a main access point for activities related to workspace. Users who have not joined any workspace yet may opt to create a new workspace or join an already\-existing workspace by means of invitation code. If the user has joined different workspaces already, he or she will also be able to use the same interface to change workspaces according to the permissions granted to them.
+
+The workflow starts with the authorized user entering a workspace name and the request to create a workspace. The system checks the workspace name for its validity before passing the request to Workspace Service. If the validation succeeds, the new workspace record is created, and an owner membership is assigned to the creator. The new workspace will be activated in the Workspace Context Service, and the user gets access to the newly introduced workspace dashboard. There are alternative flows to follow in case of an invalid or already\-used workspace name.
+
+#### Workspace Joining Process
+
+![](source_converted_files/image_032.png)
+
+<a id="_Toc236834070"></a><a id="_Toc236860104"></a>Figure 4.10 Workspace Joining Process Sequence Diagram
+
+Figure 4.10 illustrates the workspace joining process. The workflow starts with the entry of the invitation code and the join workspace request by the user. The system checks the validity of the invitation code and proceeds with checking whether the user is already in the membership database or not. If the invitation is correct and the user is not already a member, a new workspace membership is created by assigning the default role of a collaborator. The workspace is subsequently activated, allowing the user to access the workspace dashboard. Alternative flows are included to handle invalid invitation codes and duplicate memberships
+
+#### Workspace Switching Process
+
+![](source_converted_files/image_033.png)
+
+<a id="_Toc236834071"></a><a id="_Toc236860105"></a>Figure 4.11 Workspace Switching Process Sequence Diagram
+
+Figure 4.11 illustrates the workspace switching process. The workflow begins when a user selects an available workspace and submits a switch request. The system verifies the user’s membership and role for the selected workspace. If access permissions are valid, the Workspace Context Service updates the active workspace and associated role information. The user is then redirected to the selected workspace dashboard. If the user does not belong to the requested workspace, access is denied and an appropriate error message is displayed.
+
+### <a id="_Toc237556048"></a>Asset Upload and AI Tagging Sequence Diagram
+
+![](source_converted_files/image_034.png)
+
+<a id="_Toc236860106"></a>Figure 4.12 Asset Upload and AI Tagging Sequence Diagram
+
+Figure 4.12 illustrates the asset upload and AI tagging sequence of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The sequence diagram describes how the user interacts with the user interface, asset service, storage of files, database, and AI service when uploading a digital asset in the repository. The sequence shows how assets are validated, stored, processed and enriched by AI\-generated metadata before being available in the system.
+
+The workflow starts with user choosing an asset file, filling in the required information about the asset and submitting the asset through user interface. The user interface then passes the asset with required information to the Asset service, which performs the validation to make sure that both the file and metadata submitted meet the requirements of the system. An alternative validation process is added in case the uploads are invalid. If validation fails, the validation message is displayed to the user, and the process stops.
+
+Once an uploaded asset has passed the validation procedure, the Asset Service saves the asset's file in the file storage module and creates an asset record in the database. After the asset's record is made, the Asset Service sends the asset to the AI Service for content analysis. The AI Service analyses the asset that has been uploaded and prepares a list of suggested metadata tags relevant to the asset's content.
+
+The tags are then sent back to the Asset Service, which presents them to the user through the interface. The user can then review the suggested tags and approve them or make changes before confirming the final metadata set. After the user has confirmed the tags, the Asset Service stores the metadata in the database and finishes the upload process.
+
+The user receives a notification that the uploading process is complete and the information related to the uploaded digital asset is displayed in the Asset Detail Page. The application uses AI\-driven tags\-making facilitations during the uploading process that result in cutting down the manual operation of classifying the asset by providing correct information about it to be found in the repository.
+
+### <a id="_Toc237556049"></a>Asset Search and Retrieval Sequence Diagram
+
+![](source_converted_files/image_035.png)
+
+<a id="_Toc236860107"></a>Figure 4.13 Asset Search and Retrieval Sequence Diagram
+
+Figure 4.13 illustrates the asset search and retrieval process of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The sequence diagram describes the interaction between a user, the user interface, the search service, the database, and the file storage system while searching for, finding, and inspecting digital resources in a repository. It demonstrates how the user can easily search for the digital assets in the current workspace through keyword\-based and metadata\-assisted searching methods.
+
+The process commences with the opening of the Asset Library page by the user. The user interface forwards the request for the digital assets connected to the active workspace to the Search Service. In turn, the Search Service receives the required asset details from the database and provides them to the user interface, which exhibits the assets to the user.
+
+In order for the user to find a certain asset, the user will input either a keyword or several search criteria into the system interface. After the search criteria have been entered, the search request gets forwarded to the Search Service, which uses the search criteria to query the database. As a result, the database returns the requested information. Once this has been done, it is returned to the user interface.
+
+In the diagram of the sequence, we have two potential outcomes to the search process. At first, if there are some assets that match the criteria entered by the user, the results will be shown to the user. The user can then select an asset they are interested in. In this case, the user interface will ask the Search Service for the details of the asset selected by the user, and that will allow the Search Service to get the asset information from the database and deliver it back to the user interface.
+
+The user can browse the available assets and initiate a preview or download after examining the asset information. Again, the user interface generates an asset file request to the Search Service to obtain the asset file from the corresponding files storage component. After retrieving the asset file from file storage, the system displays either a preview of the selected asset or presents a downloadable asset file on the user interface, depending on the requests made by the user.
+
+Alternatively, if the search does not return any matching assets, the system provides an empty result to the user interface and informs the user that no matching assets are produced based on the search criteria. This alternative scenario confirms that the user stays informed when his/her search does not yield results.
+
+### <a id="_Toc237556050"></a>Asset Version and Collaboration Sequence Diagram
+
+![](source_converted_files/image_036.png)
+
+<a id="_Toc236860108"></a>Figure 4.14 Asset Version and Collaboration Sequence Diagram
+
+Figure 4.14 illustrates the asset version management and collaboration process of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The diagram of the sequence describes the interactions of different elements, such as an end\-user, user interface, asset service, file storage, and database, while processing the versions of an asset and communicating about the asset. The work process performed within this workflow allows tracking the assets and communicating due to the functions of versioning and communication being merged into the Asset Details Page.
+
+The process commences with the opening of the Asset Details Page by the user. After that, the user interface requests any related asset data from the Asset Service, with the latter obtaining the required information from the database. Once the dat is available to the user, he can either upload a new version, check any previous versions, or take part in asset\-related discussions.
+
+In case a user uploads a newer version of an asset file, he/she has to create a new asset file, provide some version note including version information, and submit the new version. The Asset Service system checks the uploaded version, transfers the new asset file to the file storage, and creates a new version entry in the database. When the information on versions is updated, the user gets a message which says that the uploaded file is successful.
+
+On the other hand, the user may want to know the version history regarding an asset. In this case, the Asset Service pulls the version information and presents the available versions. The user can choose to review the previous version he/she wishes. Besides, the users can post comments or reply on some other threads. The new comment is successfully saved in the database.
+
+## <a id="_Toc237556051"></a>Class Diagram
+
+<a id="_Toc236834072"></a><a id="_Toc236860109"></a>Figure 4.15 Class Diagram of the Proposed System
+
+![](source_converted_files/image_037.png)
+
+Figure 4.15 illustrates the class diagram of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. This diagram describes the important classes of the design with their attributes, methods, and relationships. The major areas covered by the design are user management, workspace collaboration, digital asset management, AI\-assisted metadata creation, version management, and collaboration. The design uses a modular approach to ensure ease of maintenance and scalability. All classes are divided into three modules: User and Workspace Management; Asset and AI Metadata Management; and Version Management and Collaboration.
+
+The User and Workspace Management module handles authentication, user\-related permissions, and workspace management. The User class acts as a primary entity responsible for holding account\-related data, authentication procedures, and control over account status. Users can create more than one workspace and keep active sessions through a UserSession class.
+
+The workspace class describes a collaborative setting where digital resources are organized and shared between users. The membership of a workspace is controlled via the WorkspaceMember class through which roles and rights are assigned according to a role\-based access control policy. The Invitation class provides users with the ability to use invitation codes to access workspaces.
+
+The Asset and AI Metadata Management module is in charge of the organization and management of stored digital assets. The Asset entity acts as the core concept and keeps track of the basic information of assets such as name, type, description, category, and project link. All assets belong to a workspace and can be managed in the system.
+
+The AssetMetadata entity stores structured metadata related to each asset while the AssetTag entity enables the user to manage tags that can be created either automatically or manually, making the asset more searchable. The class of the physical asset is represented by StoredFile, which keeps track of the storage details including the location, the total size of the files, and their checksum.
+
+In order to facilitate efficient asset management, all activities involving AI processing are represented using the AIProcessingJob class. This class is used for monitoring all AI\-related activities, such as the processes of metadata extraction and generating tags, performed by the multi\-modal pipeline of AI.
+
+The Version and Collaboration module offers the ability to track versions and engage in discussions with other members of the workspace. The AssetVersion class makes it possible to keep track of the history of uploaded versions which makes it possible to download old pictures and record necessary changes that need to be made during the creation process.
+
+The Comment class allows collaborating through associating comments with the pictures being discussed. There is an opportunity to comment, respond to existing comments, edit the comment made and manage threads. The recursive nature of the relationship created by the Comment class allows for maintaining the connection in case of nesting the responses, thus providing the possibility of organized discussions related to the pictures kept in the repository.
+
+The class diagram shows how the new system connects all the elements of user management, workspace collaboration, smart asset management, AI\-enabled metadata development, version control, and communications. The relationships between the classes stretch the structure of the system, help maintain data accuracy, provide role\-based access, and ensure that the structure of the system allows implementation of all functionalities described in the use case and sequence diagrams.
+
+## <a id="_Toc237556052"></a>Activity Diagram
+
+The activity diagrams of the proposed AI\-Enhanced Collaborative Digital Asset Management Platform are presented in this segment. Using these diagrams, various systems can be understood, as the organization shows the flow of each functional capability, starting at the point of implementation through the steps of execution throughout its phases. Helped by the diagrams, users have alternative routes and validation procedures available to create an understanding of how the system implements user request, enabling the satisfaction of the functions mentioned in the case diagrams.
+
+### <a id="_Toc237556053"></a>User Authentication Activity Diagram
+
+![](source_converted_files/image_038.png)
+
+<a id="_Toc236834073"></a><a id="_Toc236860110"></a>Figure 4.16 User Authentication Activity Diagram
+
+Figure 4.16 illustrates the user authentication process of the AI\-Enhanced Collaborative Digital Asset Management Platform. The diagram illustrates the entire process of user login and user registration, wherein the user interacts with the system and the database. The process initiates when the system shows the login page. Then the user selects whether he/she wants to log in or register.
+
+In the case of logging in, the user is required to submit his/her email and password. The system checks the input details and retrieves the relevant user's account from the database. After that the system checks the password entered by the user and confirms whether the account is valid. If the credentials are entered incorrectly, the system shows an error message stating that the login attempt has failed and instructs the user to make another attempt. If the details are correct, the system sets up a user session and saves the related session information.
+
+If the authenticated user is identified as an administrator, the user gains direct access to the Admin Dashboard. If not, the system determines whether the user belongs to any existing workspace. Participants in any workspace will be assigned an active workspace and directed to the User Dashboard. Otherwise, if not a member of any workspace, the participants will be sent to the Workspace Setup Page to create or join any workspace.
+
+While in the registration process, the user provides a username, email, and password. The system then verifies the input data and checks whether the email has been registered already. The user is notified with appropriate error messages in case of invalid information or duplicate email address, on the other hand, a data entry will result in the creation of new user account in the system.
+
+### <a id="_Toc237556054"></a>Workspace Access Activity Diagram
+
+![](source_converted_files/image_039.png)
+
+<a id="_Toc236834074"></a><a id="_Toc236860111"></a>Figure 4.17 Workspace Access Activity Diagram
+
+Figure 4.17 illustrates the workspace access workflow of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The diagram illustrates the way of access of the authorized users to the collaborative workspace by means of all these processes of creation, joining and switching the workspace. All the mentioned functions allow the users to create different collaborative environments, join the current collaborative workspace and control and manage access to different workspaces based on actual permissions.
+
+The process begins when the user reproduces the workspace access page and chooses the necessary action. In the framework of the given procedure, the system offers three options. Three options include create a workspace, join a workspace by an invitation code and finally change the workspace.
+
+In case the user decides on the action of creating a new workspace, they need to fill out all the required information required for the workspace and send the workspace creation request. The system makes the new entry in the workspace database, automatically assigns the user as the Workspace Owner, activates the newly created workspace, and brings the user to the Workspace Dashboard. This way the users are able to create shared places to work with digital assets and coordinate the team working activities.
+
+As an alternative option, the user may proceed with joining the workspace that already exists. In that case, they need to provide the invitation code and send the request to join. The system confirms the validity of the invitation code verifying its existence. If the provided code is wrong, a suitable error is shown. If the invitation code is valid, the entry of the user into the workspace is registered and the user receives access to working with the activated workspace.
+
+For users who find themselves in multiple workspaces, it is also possible to switch workspaces on the platform. Users can access a list of workspaces they have access to and choose any of the available workspaces. The platform updates the active workspace context and takes users to the dashboard of the chosen workspace. Thus, it allows users to easily move between different workspaces that support collaboration without needing to authenticate again.
+
+In general, the diagram shows how the process of creating a workspace, joining a workspace, and switching workspaces are fused into a single workspace access workflow. This flexibility reinforces the management of collaborative environments and makes it possible to have secure access to digital assets by means of the Role‑Based Access Control (RBAC) used in the platform.
+
+### <a id="_Toc237556055"></a>Asset Upload and AI Tagging Activity Diagram
+
+![](source_converted_files/image_040.png)
+
+<a id="_Toc236834075"></a><a id="_Toc236860112"></a>Figure 4.18 Asset Upload and AI Tagging Activity Diagram
+
+Figure 4.18 illustrates the asset upload and AI tagging workflow of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The figure presents the connections among the user, system, and AI service in the uploading and metadata generation of a digital asset. The entire process ensures that all uploaded assets are validated, saved, and enriched with their descriptive metadata. It is designed in such a way that it helps the process of organizing and searching for the assets. 
+
+The process starts when a user picks a file and then enters the necessary asset data for uploading the asset. At this point, the system verifies whether the file and the data are valid and correct. If the process fails at this stage, the system displays the relevant error message and asks the user to revise the input before trying again.
+
+If the validation process is successful, the system saves the uploaded file and produces an asset record in the repository. For those assets that go through the AI tagging service, the system sends the assets to the AI service for processing, where the AI service retrieves the information about the asset and creates a list of recommended metadata tags that will be sent back for storing by the system.
+
+After the recommended tags are created, the suggested metadata becomes available for the user to review the results from the AI. The user may choose what to do with the tags \- accept, change, or deny them. Once the user clicks on the appropriate button, the system saves the selected metadata tags for the uploaded asset and sends a confirmation message to the user. In brief, the activity diagram illustrates the interaction between metadata generation with the human involvement in the uploading process.
+
+### <a id="_Toc237556056"></a>Asset Search and Retrieval Activity Diagram
+
+![](source_converted_files/image_041.png)
+
+<a id="_Toc236834076"></a><a id="_Toc236860113"></a>Figure 4.19 Asset Search and Retrieval Activity Diagram
+
+Figure 4.19 illustrates the asset search and retrieval workflow of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The diagram illustrates how users search for, find, preview, and obtain digital assets that are kept in the repository. The flow of work reflects the relationship between users and the system ensuring that they can discover and acquire the needed assets through a structured searching process.
+
+When the user opens the Asset Library page, the system gets the assets associated with the current workspace and shows them to the user so the user can view their repository. If the user needs to find some particular assets, users might type certain keywords or apply filters before searching.
+
+After a request has been received, the system carries out a search for suitable assets based on the given criteria. The search takes into account the asset details that the repository stores such as filenames, metadata, tags, and others. When matching assets are located, the search results are shown to the user. Otherwise, a notification message informs the user that there are no suitable assets available.
+
+After reviewing the results of the search, the user is free to select a particular property for further exploration. The system will provide detailed information regarding the property under review, including metadata, tags etc. The user is then allowed to preview or download the asset from the Asset Details page according to the access rules set by the Role\-Based Access Control (RBAC).
+
+Finally, the process ends once the system produces the desired asset preview or download option. The integration of asset browsing, keyword\-based searching, filtering, and retrieval within one process enhances asset searchability, thereby shortening the time needed to find the relevant materials. The activity diagram illustrates how the process of search and retrieval is carried out productively while adding to the features of the new approach given in the study.
+
+### <a id="_Toc237556057"></a>Asset Version and Collaboration Activity Diagram
+
+![](source_converted_files/image_042.png)
+
+<a id="_Toc236834077"></a><a id="_Toc236860114"></a>Figure 4.20 Asset Version and Collaboration Activity Diagram
+
+Figure 4.20 illustrates the asset version management and collaboration workflow of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform. The diagram illustrates the manner in which the users make use of the supportive features of the Asset Details Page including version tracking and collaborative discussion. The operations flow includes features such as the management of history, the process of updating the asset version and using comments to aid teamwork as well as get the records of the assets throughout the process of development.
+
+The procedure starts once the asset details page is opened by the user. The systems takes the necessary asset details and displays them on the page so that the user can consider the details and make any decisions. The user can either review the version history and upload a new version of the asset, or take part in the discussions by means of the comments and replies.
+
+When the user chooses the option for version history, the platform reveals all the existing versions related to the asset. The user has the opportunity to look through the historical information and pick the particular version to study it further. The system will show the preview or copy the version giving the user an opportunity to analyze the previous editions and see what changes have taken place during the asset lifespan. 
+
+The user is able to upload the asset’s new version. For this process, the user has to choose a new file, write a version note describing how the asset has been modified and submit the new version. The system checks the uploaded document, saves the new version and makes a record about it in the version history database. After the procedure is successfully finished, the version history will be changed and the user will be informed.
+
+The collaborative workflow enables users to converse within the context of an asset. They may be able to leave a new comment or respond to an existing conversation about that particular asset. However, at the point of submission, the application records the comment, modifies the conversation details, and updates the collaborative interface. This allows team players to share their opinions with each other, discuss the changes made, and work on the asset\-related operations.
+
+In summary, the activity diagram shows how version control and collaboration features are unified into a single workflow. In particular, the use of version tracking, controlled updates of the asset, and discussions make the process more effective and allow for better collaboration within the team of game developers.
+
+## <a id="_Toc237556058"></a>Summary
+
+This chapter detailed the system design associated with the proposed AI\-Enhanced Collaborative Digital Asset Management Platform. Different UML modelling methods were utilized to depict the structural and behavior aspects of the design, demonstrating that the functional requirements specified in earlier chapters were transformed into a clean and precise design.
+
+Use case diagrams were used to show the interactions between different users and the main functional modules of the platform like workspace management, asset management, asset searching, AI tagging, collaboration, versioning, and administration. These diagrams provided a general overview of what the system is able to do and what each user role is responsible for according to the Role Based Access Control.
+
+In addition to that, sequence diagrams were introduced in order to show how users and components of the system interact chronologically while the key operations are completed. The class diagram described the most important objects, their features, methods, and connections for providing necessary support for the platform, while activity diagrams described the workflow logic and making decisions about the key system functions.
+
+Summing up, the design, which is considered in the chapter, forms the basis for a detailed design of the suggested platform. Together with structural and behavioral modeling and workflow modeling, it gives a solid base for the implementation of the secure, user\-friendly, AI\-augmented digital asset management platform that will be used by independent game developers.
+
+# <a id="_Toc237556059"></a>Preliminary Implementation 
+
+## <a id="_Toc237556060"></a>Introduction
+
+This chapter presents the prototype implementation of the proposed AI\-Enhanced Collaborative Digital Asset Management Platform. This chapter presents several different user interfaces that the system has developed such as user authentication, asset management, collaboration, workspace management, AI\-based tagging, asset retrieval, version control, administrative functions, etc. Along with every interface, screenshots of the corresponding interface are provided and described concisely in terms of their meaning and expected operation.
+
+## <a id="_Toc237556061"></a>System Prototype
+
+### <a id="_Toc237556062"></a>Login Page
+
+![](source_converted_files/image_043.png)
+
+<a id="_Toc236834078"></a><a id="_Toc236860115"></a>Figure 5.1 Login Page
+
+Figure 5.1 illustrates the login page of the AI\-Enhanced Collaborative Digital Asset Management Platform. The interface acts as the key point of authentication for the users who have registered themselves in the system. The users will have to provide their email address and password for gaining access to the system. The credentials that are submitted will be checked using the authentication module before granting access. 
+
+The page also performs extra account\-related functions such as recovering the password and registering the user in the system. Once the user is authenticated, user will be directed to the Workspace Access Page where user can create, switch and join the workspaces according to the assigned role and privileges given to user. This interface will have the Role\-based Access Control system which is also applied to the system.
+
+### <a id="_Toc237556063"></a>User Registration Page
+
+![](source_converted_files/image_044.png)
+
+<a id="_Toc236834079"></a><a id="_Toc236860116"></a>Figure 5.2 User Registration Page
+
+Figure 5.2 illustrates the User Registration Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. This interface will enable the new users to register for an account and then gain access to the entire system. In order to create an account, the users will need to provide their username, email, password, and confirm the password. The system will ensure that all required fields are completed, the email is unique, and that the password abides by the specific security policies.
+
+Once the user registers successfully, the new user will have an account that will be stored in the database of the system. The registered user will have access to the login page that will enable them to log in with the credentials created. After completing their first login process, the user is transferred to the Workspace Access Page from where they are able to create a new workspace or join the existing one using the invitation code issued for them.
+
+### <a id="_Toc237556064"></a>Workspace Setup Page
+
+![](source_converted_files/image_045.png)
+
+<a id="_Toc236834080"></a><a id="_Toc236860117"></a>Figure 5.3 Workspace Setup Page: Create Workspace Interface
+
+![](source_converted_files/image_046.png)
+
+<a id="_Toc236834081"></a><a id="_Toc236860118"></a>Figure 5.4 Workspace Setup Page: Join Workspace Interface
+
+Figure 5.3 and Figure 5.4 illustrates the Workspace Setup Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. This is the interface which establishes itself as an onboarding page for authenticated users who still have not activated a workspace. The potential user is provided with two options to access a workspace: to establish a new workspace or to enter the existing workspace through an invitation code.
+
+The interface shown in Figure 5.3 allows the user to establish a new workspace simply by entering the workspace name and sending the ‘create workspace’ request. In case of successful establishment of the workspace, the user becomes automatically assigned a Workspace Owner role and the created workspace functions as the active workspace.
+
+The interface shown in Figure 5.4 illustrates joining the workspace. The user enters the proper invitation code provided by the administrator or the workspace owner. Once entering the code successfully, the user is added to the list of collaborators and the workspace is activated.
+
+### <a id="_Toc237556065"></a>Workspace Dashboard Page
+
+![](source_converted_files/image_047.png)
+
+<a id="_Toc236834082"></a><a id="_Toc236860119"></a>Figure 5.5 Workspace Dashboard Page
+
+Figure 5.5 illustrates the Workspace Dashboard of the AI‑Enhanced Collaborative Digital Asset Management Platform. This interface is the main entry point, which gives users a summary of the activities taking place in the workspace, the statistics on the assets, and the collaboration information.
+
+The dashboard provides the important workspace indicators such as the total number of assets, the number of workspace members, and asset comments. Moreover, the dashboard also provides the visual summaries like trends in uploads and the types of assets which the users can use to analyze the repository’s usage and the content.
+
+Additionally, the dashboard allows users to see the recent assets section and the activity feed, which shows what assets have been uploaded and what activity has been performed by workspace members. Users are also able to execute some routine tasks directly from the dashboard, like searching through the assets, going to the system modules, changing active workspaces, and uploading new assets by clicking the shortcut button.
+
+### <a id="_Toc237556066"></a>Asset Library Page
+
+![](source_converted_files/image_048.png)
+
+<a id="_Toc236834083"></a><a id="_Toc236860120"></a>Figure 5.6 Asset Library Page
+
+Figure 5.6 illustrates the Asset Library Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. This interface serves as the central repository for viewing and managing digital assets stored within the active workspace. All uploaded assets are presented in a visual card\-based layout, allowing users to quickly identify different asset types such as images, audio files, scripts, and 3D models.
+
+The page displays essential asset information including asset name, file type, file size, upload date, and preview thumbnail where applicable. Different asset categories are visually distinguished to improve usability and asset discoverability. Users can browse the asset collection, navigate between pages using the pagination controls, and select individual assets to view more detailed information.
+
+In addition, quick access functions such as asset searching and asset uploading are available directly from the interface. The search bar enables users to locate assets by filename, while the upload button provides immediate access to the asset upload workflow. These capabilities support efficient organization, retrieval, and management of digital assets within collaborative game development environments.
+
+### <a id="_Toc237556067"></a>Asset Details Page
+
+![](source_converted_files/image_049.png)
+
+<a id="_Toc236834084"></a><a id="_Toc236860121"></a>Figure 5.7 Asset Details Page
+
+Figure 5.7 illustrates the Asset Details Page of the AI\-Enhanced Collaborative Digital Asset Management Platform. The page presents all necessary information concerning a chosen asset and is the main interface for the inspection of assets, management of the metadata related to them, review and management of AI\-generated tags, and other operations associated with assets.
+
+The page contains the main information about the asset such as asset name, asset type, asset size, preview content, and repository tags. The users who work with visual assets can make use of a large preview window that displays an image and makes it possible for them to review the asset without the need for downloading it. The tabs for recognition of different features of the asset are also available on the page.
+
+The AI Enrichment part of the page contains AI\-generated metadata in addition to the metadata that is managed manually. The tags generated automatically help people to understand and classify the assets in better and quicker ways. Users have the right to change, remove, or review the AI\-generated tags.
+
+The interface also offers various asset management functionalities like downloading and deleting files according to the permissions set through the Role\-Based Access control (RBAC) system. Therefore, being incorporated in a single section, the asset preview, metadata handling, and AI tagging contribute to the successful identification and effective usability of the data.
+
+![](source_converted_files/image_050.png)
+
+<a id="_Toc236834085"></a><a id="_Toc236860122"></a>Figure 5.8 Asset Version History Tab
+
+Figure 5.8 illustrates the Asset Version History interface, which allows users to track and manage modifications made to a digital asset throughout its lifecycle. This version management function keeps the records of past versions of the assets as well as the relevant information about them, including version identifiers, the explanations of what was changed, timestamps, and authors’ names.
+
+Thus, authorized users can create new versions of the asset while keeping the previous ones for any future reference purposes. This feature includes the option of taking snapshots to capture the specific state of the assets before the introduction of the major changes. The created versions are maintained in the system and can be downloaded later.
+
+![](source_converted_files/image_051.png)
+
+<a id="_Toc236834086"></a><a id="_Toc236860123"></a>Figure 5.9 Asset Collaboration Tab
+
+Figure 5.9 illustrates the Asset Collaboration interface, which allows members of a workspace to have the discussion of different asset matters within the system. This feature allows users to communicate about the assets that they exchange information. Users can leave posts, respond to already created post, and edit their own comments if needed. Depending on their roles and rights, users who are workspace managers or owners may additionally perform moderation of discussions, which means that they can modify or delete comments left by other users.
+
+### <a id="_Toc237556068"></a>Asset Upload Page
+
+![](source_converted_files/image_052.png)
+
+<a id="_Toc236834087"></a><a id="_Toc236860124"></a>Figure 5.10 Asset Upload Page
+
+Figure 5.10 illustrates the Asset Upload Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. It offers a way to those users in the workspace with authorization to upload digital assets into the repository and start the processing of uploaded assets. The application accepts many types of assets used in developing games including images, sounds, 3D models, scripts, and data files.
+
+Users can upload an asset either by dragging and dropping a file in a designated area for upload or by choosing it from the local device. Prior to the upload, users can also indicate such organizational details as a description, category, and a project to which the asset is connected. Such information will be treated as preliminary metadata that makes it easier to identify assets and sort them in the repository.
+
+The interface of the system also shows the user the upload pipeline workflow that tells the user what happens during the automated processing stages that take place after the submission of an asset. The processing stages include secure file storage, AI\-powered metadata extraction and indexation. When the file upload has finished, the system generates the descriptive metadata and AI\-generated tags based on the content of the uploaded material, thus eliminating any necessity for manual tagging and improving the discoverability of the assets.
+
+### <a id="_Toc237556069"></a>Advanced Search Page
+
+![](source_converted_files/image_053.png)
+
+<a id="_Toc236834088"></a><a id="_Toc236860125"></a>Figure 5.11 Advanced Search Page
+
+Figure 5.11 illustrates the Advanced Search Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. Users can find digital assets quickly with the help of different attributes for searching. The purpose of searching in this manner is to make the search process more effective and time\-efficient than searching for specific keywords or file titles. 
+
+The users can search assets based on various attributes, including the original filename, metadata content, AI\-generated metadata, repository tags, asset type, upload date, and creator information. Many searching conditions can be used in combination to form various requests for obtaining more specific results.
+
+Unlike the conventional file management systems that mostly rely on folder browsing or naming conventions, this system involves the use of manually set and AI\-generated metadata, thus improving the retrieval process. Given this development, it is possible to find files based on semantic definitions, automatic keywords, audio transcription, or other data processed with AI, thus eliminating the need to remember the name of the file.
+
+### <a id="_Toc237556070"></a>Workspace Administration Page
+
+![](source_converted_files/image_054.png)
+
+<a id="_Toc236834089"></a><a id="_Toc236860126"></a>Figure 5.12 Workspace Administrator Page
+
+Figure 5.12 illustrates the Workspace Administration Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. This interface gives users with administrative rights, like Workspace Owners and Workspace Managers, certain features for managing their workspace. They can manage the workspace membership and role management in the collaborative workspace.
+
+The upper part of the page includes an invitation management application that produces a special\-code message, making it possible for external users to join the workspace. Users can enter this code in the initial workspace setup window to join the workspace. The administrator can save the introduced invitation code or change it to prevent former invitations from being used.
+
+The bottom part shows the workspace members list with role\-related data. Authorized users can look at which members are part of the workspace and at the join dates. The workspace administrator has the authority to promote or demote users across categories such as Collaborator, Workspace Manager, and Workspace Owner, depending on the permissions granted. Access may be denied to the workspace members if necessary.
+
+###  <a id="_Toc237556071"></a>System Administrator Page
+
+![](source_converted_files/image_055.png)
+
+<a id="_Toc236834090"></a><a id="_Toc236860127"></a>Figure 5.13 System Administrator Page
+
+Figure 5.13 illustrates the System Administration Page of the AI‑Enhanced Collaborative Digital Asset Management Platform. This interface can only be used by the System Administrator to ensure that all user accounts registered in the system are under central control hence making it easy for administrators to check the status of a certain account and thereby view user\-related information about the users and manage their access to the system. 
+
+The interface gives a list of all registered accounts along with the required information such as the username of the user, email address, account role, registration date, and account status. In order to make user management possible on a large\-scale level, the page has added the possibility to search and filter users according to name, email, role, and account status.
+
+The account details feature provides detailed information related to each registered account and gives the administrator access to that information. Furthermore, the controls to activate and deactivate an account are also available to the administrator. These controls help the administrator to manage the network, preventing unauthorized use of the platform and suspending those accounts which have been inactive for a long time.
+
+## <a id="_Toc237556072"></a>Summary
+
+This chapter presented the prototype implementation of the AI‑Enhanced Collaborative Digital Asset Management Platform. The prototype exhibits the main system interfaces created to assist asset management functions in collaborative game production settings, which consist of user authentication, workspace initiation, asset arrangement, asset retrieval, version tracking, cooperation, and administrative management.
+
+The system is designed to allow users to create and manage workspaces, upload and handle digital resources, check AI\-generated metadata, find assets according to different criteria, and check out information about assets. Version control and comments functionality allow for tracking asset alterations and communicating within the system. Also, team administrators can manage users and permissions based on RBAC system, while system administrators get tools for centralized user account and access control management.
+
+Overall, the system aims to provide users the chance to build and maintain workspaces, establish and manage their digital assets, check AI\-provided metadata, discover the needed resources in terms of different characteristics and read the information concerning the assets. In addition, version control and commenting options make it possible to monitor the status of the assets and communicate through the system. Important to note that admins may control users and permissions through RBAC in addition to granting centralized control over users and access to the system itself.
+
+# <a id="_Toc237556073"></a>Conclusion
+
+## <a id="_Toc237556074"></a>Introduction
+
+This chapter concludes the work completed during the Final Year Project 1 (FYP 1) phase. It summarizes the achievements accomplished throughout the project, discusses the limitations encountered during the current development stage, and outlines the future work planned for the next phase of the project. The chapter also provides an overall summary of the proposed AI‑Enhanced Collaborative Digital Asset Management Platform and its contribution to addressing asset management challenges in independent game development.
+
+## <a id="_Toc237556075"></a>Achievements
+
+During the FYP 1 phase, notable accomplishments were achieved in the area of creating and developing an AI\-augmented Digital Asset Management system that could be utilized by independent game developers. The project made a significant step towards the framework and technical development of the designed digital asset management tool.
+
+One of the essential achievements of the project was the strengthening of knowledge in the area of Digital Asset Management (DAM) and its application in the context of collaborative game development. The literature review and analysis of other systems such as Google Drive, LottieFiles, and Eagle contributed to gaining important information about the factors related to asset organization, metadata management, collaboration, and access control. This allowed stakeholders to identify the shortcomings of current solutions and to substantiate the necessity of developing a more specialized platform.
+
+Moreover, information on Role\-Based Access Control (RBAC) and metadata management was obtained for the study. This work gave insight into structured permission models for enhanced collaborative security and the means of using artificial intelligence for automation of metadata creation and classification. Several AI technologies, ranging from CLIP to YAMNet, were studied in terms of their applicability for management of multimedia assets.
+
+The project also enriched technical knowledge concerning web application systems' architecture and software development techniques. The system architecture was built utilizing React.js, Node.js with Express.js, PostgreSQL, MinIO, Redis, FastAPI, and Docker. As a result of this work, hands\-on experience was received in frontend development, backend services, object storage, database operations, and artificial intelligence applications.
+
+Futhermore, the project afforded the team important experience with software engineering practices and system modelling techniques. The team drew up various types of UML diagrams such as use case diagrams and sequence diagrams that facilitated modelling system functionality and user interactions. The team also put in place database structures, user workflows, and system architecture so that the implementation phase could be supported. These endeavours deepened the understanding of system analysis, requirement engineering as well as programming methodologies.
+
+Another significant achievement involves creating a working prototype that illustrates the concept's main functions. The prototype comprises user authentication capabilities, workspace administration, asset management, AI\-assisted labelling, advanced searching, version control, collaboration properties, and administration options. It clearly lays out what the complete system will look like and serves as a base for implementation and evaluation during the FYP 2 phase.
+
+In general, the accomplishments acquired during the FYP 1 phase have enabled obtaining theoretical understanding and practical skills in the field of digital asset management, integrating artificial intelligence, designing collaborative systems, and developing contemporary web applications. These results create a solid foundation for the following implementation, testing, and evaluation activities at the next phase of the project.
+
+## <a id="_Toc237556076"></a>Limitations
+
+Currently, the scope of this initiative is completely restricted to the analysis of the systems, designing systems, and creating prototypes. So far as the architecture of the system, database design, workflows for the users, and interface prototypes are concerned, these have been worked out. However, the system and all its components have not yet been implemented. The pending items include the AI\-based tagging pipeline, object storage solution, asynchronous processing methods, as well as the environment of deployment.
+
+The subsequent point is that the efficiency of the functionality associated with AI tagging has not been verified on real datasets. Although the appropriate AI models, such as CLIP, KeyBERT, YAMNet, and Whisper, have been found and included in the system architecture design, their accuracy and quality of the metadata created have not been verified by experiments showing real results. Therefore, it is not possible to evaluate the efficiency of the method of the AI\-assisted metadata generation.
+
+Moreover, no evaluations have been conducted for usability and user acceptance at this time. As the system is still in proof\-of\-concept, no independent game developers have been able to provide any feedback about the usability, user satisfaction, and work process efficiency of the system. Hence, the proposed platform has not yet been quantitatively tested for the extent to which it improves asset management.
+
+In addition, also performance\-related matters such as system scalability, response time, storage efficiency, and the ability to support multiple concurrent users are waiting for testing too. These evaluations need a fully working system and a wide testing environment, which would be provided in the next stage of the project.
+
+Despite these limitations, the work done during the FYP 1 phase has enabled the establishment of conceptual, architectural, and functional basis needed for the project in phases FYP 2.
+
+## <a id="_Toc237556077"></a>Future Work
+
+The next step in FYP 2 will involve implementing the system architecture studied in FYP 1. The project will involve integrating the essential components including the front\-end written in React, the back\-end created with Node.js, the database deployed with PostgreSQL, the object storage achieved with MinIO, the message queue using Redis, the AI microservice through the use of FastAPI, as well as the deployment done with Docker, into a working system.
+
+Furthermore, the AI\-based tagging pipeline will be executed and incorporated into the asset uploading process. For this purpose, the AI models: CLIP, KeyBERT, YAMNet, and Whisper will be configured and tested using real assets of game development. Thus, the automatic generation of metadata of visual, text, and audio assets will be enabled so the efficiency of the suggested AI\-based metadata management approach is tested in practice.
+
+Following the completion of the implementation phase, the process of testing will start to validate the proper functioning and reliability of the system. Functional testing will be conducted to confirm that every component works as intended. Special focus will be placed on areas such as authentication, workspaces, managing assets, generating metadata, search capabilities, tracking versions, collaboration, and admin features.
+
+In addition, usability evaluation will involve independent game developers and potential users during the User Acceptance Testing process. This will allow us to obtain feedback from users regarding the effectiveness and usability of the platform. In order to obtain valid and measurable feedback, we may also utilize the System Usability Scale (SUS).
+
+Eventually, in the future versions of the system, various potential improvements may be addressed. In particular, we may consider implementing more efficient AI technologies for metadata processing, integrating the system with other game creation instruments and engines, enabling the opportunity for real\-time editing, and developing mobile versions of the application as well.
+
+## <a id="_Toc237556078"></a>Summary
+
+This chapter presented the conclusion of the work completed during the Final Year Project 1 (FYP 1) phase. The achievements obtained throughout the project were discussed, including the knowledge gained in Digital Asset Management (DAM), Role\-Based Access Control (RBAC), artificial intelligence\-assisted metadata management, and modern web application development technologies. The project also successfully produced the required system analysis, literature review, system architecture, database design, UML diagrams, and interface prototypes for the proposed AI‑Enhanced Collaborative Digital Asset Management Platform.
+
+The final chapter concludes the work conducted in the course of the Final Year Project 1 (FYP 1) phase. It outlines the results obtained in the framework of the project, which were connected with the insights gained in various fields, such as Digital Asset Management (DAM), Role\-based Access Control (RBAC), AI\-aided metadata management, as well as contemporary technologies of web development. The project also managed to develop all the documents needed, such as system analysis, literature review, system architecture, database design, UML models, and prototypes of interface for the proposed AI Enhanced Collaborative Digital Asset Management Platform.
+
+Moreover, the limitations of the current project phase have been identified, namely those related to the lack of the full implementation of the system and testing. All these limitations are expected in the first semester of FYP, and they will be eliminated during the next phase of work. Future works concerning the full implementation of the system, integration of AI\-based model, functional testing, user acceptance testing, and usability evaluation were highlighted after that.
+
+In general, all goals of the FYP 1 phase have been reached successfully. The project lays solid theoretical, technical, and design foundations for further development of a digital asset management platform that incorporates the idea of AI\-assisted metadata creation, role\-based access rights, main repository for digital assets, and collaborative features of the system. The results of this stage clarify the paths of creation and testing of the planned system in the second stage of the project.
+
+<a id="_Toc237556079"></a>References
+
+Alkhard, A. (2024). Enhancing Asset Management Through Integrated Facilities Data, Digital Asset Management, and Metadata Strategies. *Construction Economics and Building *, *24*(3), 76–94. https://doi.org/10.5130/AJCEB.v24i3.8741
+
+Allen Hamilton Internal, B., Ayers, R. B., Beaubien, J. M., Keithley, R., Booz Allen Hamilton, P., Bates Winston Bennett Jr, M., & Llc, C. (2023). Best Practices and Lessons Learned for Digital Training Asset Repositories. *MODSIM World*, *5129*. https://www.modsimworld.org/papers/2023/MODSIM\_2023\_paper\_5129.pdf
+
+Angerri, X., Vázquez, J., & Gibert, K. (2025). A machine\-readable metadata model for intelligent data analysis. *Cognitive Systems Research*, *93*, 101388. https://doi.org/10.1016/J.COGSYS.2025.101388
+
+Currall, J. E. P., & Moss, M. S. (2011). Digital Asset Management. In M. J. Bates (Ed.), *Understanding Information Retrieval Systems : Management, Types, and Standards* (pp. 189–211). Auerbach Publishers, Incorporated. http://ebookcentral.proquest.com/lib/sclib\-ebooks/detail.action?docID=840405.
+
+Ferraiolo, D., Chandramouli, R., & Kuhn, D. R. (2007). *Role\-based access control* (2nd ed.). Artech House.
+
+Gendron, M., Fontaine, J.\-F., Provencher, B., Yen, E., Piché, N., & Marsh, M. (2021). Centralizing digital resources for data management, processing, and analysis for enterprise scale imaging research. *Microscopy and Microanalysis*, *27*(S1), 1084–1085. https://doi.org/10.1017/S1431927621004086
+
+Horodyski, J. (2006). Making metadata work in digital asset management and video game production. *Journal of Digital Asset Management*, *2*(5), 255–261. https://doi.org/10.1057/palgrave.dam.3650041
+
+Idowu, S., Strüber, D., & Berger, T. (2023). Asset Management in Machine Learning: State\-of\-research and State\-of\-practice. *ACM Computing Surveys*, *55*(7). https://doi.org/10.1145/3543847
+
+Lal, B. (2024). *Systems Analysis and Design* (1st ed.). Toronto Academic Press. http://ebookcentral.proquest.com/lib/sclib\-ebooks/detail.action?docID=31545545.
+
+Liao, G., & Abadi, D. J. (2023). FileScale: Fast and Elastic Metadata Management for Distributed File Systems. *ACM Symposium on Cloud Computing (SoCC ’23)*. https://doi.org/10.1145/3620678.3624784
+
+Male, V. R. (2025). Decoding Role\-Based Access Control (RBAC). *International Journal of Scientific Research in Computer Science, Engineering and Information Technology*, *11*(1), 2082–2090. https://doi.org/10.32628/cseit251112211
+
+Owoade, S., Kisina, D., Adanigbo, O. S., Uzoka, A. C., Daraojimba, A. I., & Gbenle, T. P. (2023). Advances in Access Control Systems Using Policy\-Driven and Role\-Based Authorization Models. *International Journal of Management and Organizational Research*, *2*(2), 128–134. https://doi.org/10.54660/ijmor.2023.2.2.128\-134
+
+Oyighan, D., Ukubeyinje, E. S., \-West, B. T. D., & Oladokun, B. D. (2024). The Role of AI in Transforming Metadata Management: Insights on Challenges, Opportunities, and Emerging Trends. *Asian Journal of Information Science and Technology*, *14*(2), 20–26. https://doi.org/10.70112/AJIST\-2024.14.2.4277
+
+Pallante, L., Meriggi, P., D’Amico, F., Gagliardi, V., Napolitano, A., Paolacci, F., Quinci, G., Lorello, M., & de Felice, G. (2024). An Integrated Data\-Driven System for Digital Bridge Management. *Buildings 2024, Vol. 14, Page 253*, *14*(1), 253. https://doi.org/10.3390/BUILDINGS14010253
+
+Ratican, J., & Hutson, J. (2024). Video game development 3.0: AI\-driven collaborative co\-creation. *Metaverse*, *5*(2), 2904. https://doi.org/10.54517/m2904
+
+Rodriguez Castañeda, I. (2025). *Navigating Challenges in Indie Game Development: A Study of the Nordic\-Baltic Region*. https://www.theseus.fi/handle/10024/886307
+
+Salhab, M. A. (2025). Enhancing Team Efficiency and Quality. *International Journal of Academic Research in Business and Social Sciences*, 952–955. http://dx.doi.org/10.6007/IJARBSS/v15\-i3/25023
+
+Sandoval\-Castañeda, M., Copti, S., & Shasha, D. (2024). AutoTag: automated metadata tagging for film post\-production. *Multimedia Tools and Applications*, *83*(3), 6731–6753. https://doi.org/10.1007/s11042\-023\-15565\-w
+
+Saraiya, S. (2025). REVOLUTIONIZING MEDIA ASSET MANAGEMENT THROUGH AUTOMATED METADATA ENRICHMENT. *INTERNATIONAL JOURNAL OF COMPUTER ENGINEERING AND TECHNOLOGY*, *16*(1), 34–44. https://doi.org/10.34218/ijcet\_16\_01\_004
+
+Stickland, S., Athauda, R., & Scott, N. (2021). Design and evaluation of a scalable real\-time online digital audio workstation collaboration framework. *Journal of the Audio Engineering Society*, *69*(6), 410–431. https://doi.org/10.17743/JAES.2021.0016
+
+Sulyma, Y. (2025). Addressable Service for Unity: A Methodology for Rapid Packaging and Management of Game Assets. *Universal Library of Engineering Technology*, 61–70. https://doi.org/10.70315/uloap.ulete.2025.0203012
+
+Xing, M. (2021). What Are the Core Elements Necessary for Effective Digital Asset and Media Management Practice? *Open Journal of Social Sciences*, *9*, 339–350. https://doi.org/10.4236/jss.2021.910024
+
+Yang, W., Fu, R., Muhammad, ·, Amin, B., & Kang, B. (2025). The Impact of Modern AI in Metadata Management. *Human\-Centric Intelligent Systems*, *5*, 323–350. https://doi.org/10.1007/s44230\-025\-00106\-5
+
+Yuliana, B. D. H. (2026). Digital Asset and Records Management towards Digital Preservation: A Practitioner’s Perspective from an Indonesian Game Development Studio PENULIS KEY WORDS. *Khazanah: Jurnal Pengembangan Kearsipan*, *19*(1), 31–49. https://doi.org/10.22146/khazanah.108536
+
+Zhang, Z., Pan, Y., Wang, Y., Xiang, N., Wang, D., & Xu, Z. (2025). Ethnographic study of collaborative music making among professional musicians: Work practices and technological integration. *First Monday*, *30*(6). https://firstmonday.org/ojs/index.php/fm/article/view/14213
+

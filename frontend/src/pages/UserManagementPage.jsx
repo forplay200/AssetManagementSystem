@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Building2, Eye, LoaderCircle, RefreshCw, Search, UserCheck, UsersRound, UserX, X } from 'lucide-react';
-import { accountRoleLabel } from '../auth/roles';
+import { ACCOUNT_ROLES, accountRoleLabel, workspaceRoleLabel } from '../auth/roles';
 import PageHeader from '../components/common/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { getApiError } from '../services/api';
 import { userService } from '../services/userService';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
-const roleOptions = ['systemAdministrator', 'user', 'developer', 'designer', 'collaborator'];
+const roleOptions = [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR, ACCOUNT_ROLES.USER];
 
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
@@ -121,7 +121,7 @@ function UserDetailsModal({ state, pending, currentUserId, onClose, onStatusChan
   return <div className="fixed inset-0 z-50 grid place-items-center p-4"><button className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} aria-label="Close user details" /><section className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-white/[0.10] bg-aether-surface p-5 shadow-floating sm:p-6" role="dialog" aria-modal="true" aria-labelledby="user-details-title"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-wider text-aether-primary">System user details</p><h2 id="user-details-title" className="mt-2 font-display text-xl font-semibold text-zinc-100">{user?.username || 'Loading account…'}</h2></div><button className="icon-action" onClick={onClose} aria-label="Close"><X size={15} /></button></div>
     {state.loading ? <div className="grid min-h-56 place-items-center"><LoaderCircle className="animate-spin text-aether-primary" /></div> : state.error ? <div className="mt-6 rounded border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200" role="alert">{state.error}</div> : <>
       <dl className="mt-6 grid gap-3 sm:grid-cols-2"><Detail label="Email address" value={user.email} /><Detail label="Account role" value={accountRoleLabel(user.role)} /><Detail label="Account status" value={active ? 'Active' : 'Inactive'} /><Detail label="Registered" value={formatDateTime(user.createdAt)} /><Detail label="Last account update" value={formatDateTime(user.updatedAt)} /><Detail label="System user ID" value={`USR-${String(user.id).padStart(4, '0')}`} mono /></dl>
-      <section className="mt-6 border-t border-white/[0.08] pt-5"><h3 className="flex items-center gap-2 font-display text-sm font-semibold text-zinc-100"><Building2 size={15} className="text-aether-secondary" /> Workspace role assignments</h3><p className="mt-1 text-xs text-zinc-600">Read-only. Workspace Owners control these assignments.</p>{memberships.length ? <div className="mt-4 space-y-2">{memberships.map((membership) => <div key={membership.id} className="flex items-center justify-between gap-4 rounded border border-white/[0.07] bg-black/20 px-4 py-3"><div><p className="text-sm text-zinc-300">{membership.team?.name || 'Unknown workspace'}</p><p className="mt-1 font-mono text-[9px] uppercase text-zinc-600">Joined {formatDate(membership.createdAt)}</p></div><span className="tag-chip">{accountRoleLabel(membership.role)}</span></div>)}</div> : <p className="mt-4 rounded border border-white/[0.06] bg-black/20 px-4 py-4 text-sm text-zinc-600">No workspace role assignments.</p>}</section>
+      <section className="mt-6 border-t border-white/[0.08] pt-5"><h3 className="flex items-center gap-2 font-display text-sm font-semibold text-zinc-100"><Building2 size={15} className="text-aether-secondary" /> Workspace role assignments</h3><p className="mt-1 text-xs text-zinc-600">Read-only. Workspace Owners control these assignments.</p>{memberships.length ? <div className="mt-4 space-y-2">{memberships.map((membership) => <div key={membership.id} className="flex items-center justify-between gap-4 rounded border border-white/[0.07] bg-black/20 px-4 py-3"><div><p className="text-sm text-zinc-300">{membership.team?.name || 'Unknown workspace'}</p><p className="mt-1 font-mono text-[9px] uppercase text-zinc-600">Joined {formatDate(membership.createdAt)}</p></div><span className="tag-chip">{workspaceRoleLabel(membership.role)}</span></div>)}</div> : <p className="mt-4 rounded border border-white/[0.06] bg-black/20 px-4 py-4 text-sm text-zinc-600">No workspace role assignments.</p>}</section>
       <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-5"><StatusBadge active={active} /><button className={active ? 'danger-button' : 'success-button'} disabled={pending || (active && Number(user.id) === Number(currentUserId))} onClick={() => onStatusChange(user)}>{pending ? <LoaderCircle size={15} className="animate-spin" /> : active ? <UserX size={15} /> : <UserCheck size={15} />}{active ? 'Deactivate account' : 'Activate account'}</button></div>
     </>}</section></div>;
 }
@@ -135,7 +135,7 @@ function StatusBadge({ active }) {
 }
 
 function RoleBadge({ role }) {
-  const system = ['admin', 'systemAdministrator'].includes(role);
+  const system = role === ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR;
   return <span className={`inline-flex rounded-full border px-2.5 py-1 font-mono text-[9px] uppercase tracking-wide ${system ? 'border-violet-400/20 bg-violet-400/[0.08] text-violet-300' : 'border-white/[0.08] bg-white/[0.04] text-zinc-400'}`}>{accountRoleLabel(role)}</span>;
 }
 

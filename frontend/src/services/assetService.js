@@ -21,6 +21,22 @@ export const assetService = {
     const { data } = await api.get(`/assets/${assetId}/tags`);
     return data;
   },
+  async getVocabulary(assetId) {
+    const { data } = await api.get(`/assets/${assetId}/vocabulary`);
+    return data;
+  },
+  async approveVocabularyEntry(assetId, entry) {
+    const { data } = await api.post(`/assets/${assetId}/vocabulary`, { ...entry, confirmed: true });
+    return data;
+  },
+  async removeVocabularyEntry(assetId, entryId) {
+    const { data } = await api.delete(`/assets/${assetId}/vocabulary/${entryId}`);
+    return data;
+  },
+  async generateAiTags(assetId) {
+    const { data } = await api.post('/assets/ai/job', { assetId: Number(assetId), jobType: 'auto_tag' });
+    return data;
+  },
   async addTag(assetId, tag) {
     const { data } = await api.post(`/assets/${assetId}/tags`, { tag });
     return data;

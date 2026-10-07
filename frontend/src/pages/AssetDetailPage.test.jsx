@@ -11,7 +11,7 @@ jest.mock('../services/assetService', () => ({
   },
 }));
 jest.mock('../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => false }) }));
-jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { id: 7, role: 'developer' } }) }));
+jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { id: 7, role: 'user' } }) }));
 jest.mock('../components/assets/AssetPreview', () => () => <div>3D asset preview</div>);
 
 beforeEach(() => {

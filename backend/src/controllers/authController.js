@@ -4,10 +4,10 @@ const crypto = require('crypto');
 const db = require('../models');
 const logger = require('../utils/logger');
 const { hashResetToken } = require('../utils/resetToken');
+const { ACCOUNT_ROLES } = require('../utils/roles');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const JWT_EXPIRES_IN = '1h';
-const PUBLIC_ACCOUNT_ROLES = new Set(['user', 'developer', 'designer', 'collaborator']);
 
 async function preferredMembership(userId) {
   if (!db.TeamMember || !db.Team) return null;
@@ -46,7 +46,7 @@ async function authResponse(user) {
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password } = req.body;
     // Check if user already exists
     let user = await db.User.findOne({ where: { email } });
     if (user) {
@@ -56,12 +56,11 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     // Create user
-    const requestedRole = process.env.ALLOW_PUBLIC_ROLE_REGISTRATION === 'true' && PUBLIC_ACCOUNT_ROLES.has(role) ? role : 'user';
     user = await db.User.create({
       username,
       email,
       passwordHash,
-      role: requestedRole,
+      role: ACCOUNT_ROLES.USER,
       isActive: true
     });
     res.status(201).json(await authResponse(user));

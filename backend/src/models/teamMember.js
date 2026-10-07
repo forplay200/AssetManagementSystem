@@ -1,3 +1,5 @@
+const { WORKSPACE_ROLES } = require('../utils/roles');
+
 module.exports = (sequelize, DataTypes) => {
   const TeamMember = sequelize.define('TeamMember', {
     id: {
@@ -16,9 +18,9 @@ module.exports = (sequelize, DataTypes) => {
       references: { model: 'Users', key: 'id' }
     },
     role: {
-      type: DataTypes.ENUM('owner', 'manager', 'collaborator'),
+      type: DataTypes.ENUM(...Object.values(WORKSPACE_ROLES)),
       allowNull: false,
-      defaultValue: 'collaborator'
+      defaultValue: WORKSPACE_ROLES.COLLABORATOR
     }
   }, {
     indexes: [{ unique: true, fields: ['teamId', 'userId'] }]

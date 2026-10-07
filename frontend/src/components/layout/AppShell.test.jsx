@@ -6,7 +6,7 @@ let mockRole = 'systemAdministrator';
 const mockRefreshTeam = jest.fn();
 
 jest.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 1, username: 'tester', role: mockRole, accountRole: mockRole, teamRole: ['owner', 'manager', 'collaborator'].includes(mockRole) ? mockRole : null, team: ['owner', 'manager', 'collaborator'].includes(mockRole) ? { id: 4, name: 'Studio' } : null }, logout: jest.fn(), refreshTeam: mockRefreshTeam }),
+  useAuth: () => ({ user: { id: 1, username: 'tester', role: mockRole, accountRole: mockRole === 'systemAdministrator' ? mockRole : 'user', teamRole: ['workspaceOwner', 'workspaceManager', 'collaborator'].includes(mockRole) ? mockRole : null, team: ['workspaceOwner', 'workspaceManager', 'collaborator'].includes(mockRole) ? { id: 4, name: 'Studio' } : null }, logout: jest.fn(), refreshTeam: mockRefreshTeam }),
 }));
 jest.mock('../../hooks/usePermissions', () => ({ usePermissions: () => {
   const { hasPermission } = jest.requireActual('../../auth/permissions');
@@ -29,7 +29,7 @@ test('System Administrator sees only the platform module in main navigation', ()
   expect(screen.queryByText('Workspace switcher')).not.toBeInTheDocument();
 });
 
-test.each(['owner', 'manager', 'collaborator', 'user'])('%s cannot see System Administration navigation', (role) => {
+test.each(['workspaceOwner', 'workspaceManager', 'collaborator', 'user'])('%s cannot see System Administration navigation', (role) => {
   mockRole = role;
   const view = renderShell();
   expect(screen.queryByRole('link', { name: /system users/i })).not.toBeInTheDocument();

@@ -4,7 +4,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import PermissionRoute from './components/auth/PermissionRoute';
 import WorkspaceRoute from './components/auth/WorkspaceRoute';
 import WorkspaceAccountRoute from './components/auth/WorkspaceAccountRoute';
-import { isSystemAdministrator } from './auth/roles';
+import { ACCOUNT_ROLES, isSystemAdministrator } from './auth/roles';
 import { useAuth } from './context/AuthContext';
 import AssetDetailPage from './pages/AssetDetailPage';
 import AssetsPage from './pages/AssetsPage';
@@ -25,7 +25,7 @@ import RouteAccessibility from './components/common/RouteAccessibility';
 function AuthenticatedHome() {
   const { user } = useAuth();
   if (isSystemAdministrator(user)) return <Navigate to="/admin/users" replace />;
-  return <Navigate to={user?.role === 'user' && !user?.team ? '/workspace' : '/dashboard'} replace />;
+  return <Navigate to={user?.role === ACCOUNT_ROLES.USER && !user?.team ? '/workspace' : '/dashboard'} replace />;
 }
 
 export default function App() {

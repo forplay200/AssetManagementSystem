@@ -1,0 +1,28 @@
+{
+  "schema": "ppt-master.source_to_md.profile.v1",
+  "converter": "doc_to_md.py",
+  "conversion_type": "docx",
+  "source": {
+    "path": "C:/Users/User/Downloads/BTIS3103_2026B_B240077B.docx",
+    "name": "BTIS3103_2026B_B240077B.docx",
+    "suffix": ".docx",
+    "kind": "file",
+    "exists": true,
+    "size_bytes": 8038553
+  },
+  "outputs": {
+    "markdown": "source_converted",
+    "asset_dir": "source_converted_files",
+    "image_manifest": "source_converted_files/image_manifest.json",
+    "image_count": 55
+  },
+  "markdown": {
+    "line_count": 1529,
+    "char_count": 180231,
+    "heading_count": 86,
+    "table_count": 12,
+    "image_ref_count": 55,
+    "link_count": 141
+  },
+  "warnings": []
+}

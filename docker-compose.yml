@@ -55,6 +55,10 @@ services:
     restart: unless-stopped
     command: ["python", "-u", "worker.py"]
     environment:
+      - CLIP_DEVICE=${CLIP_DEVICE:-cpu}
+      - CLIP_IMAGE_MIN_SIMILARITY=${CLIP_IMAGE_MIN_SIMILARITY:-0.25}
+      - CLIP_MODEL_MIN_SIMILARITY=${CLIP_MODEL_MIN_SIMILARITY:-0.25}
+      - CLIP_MAX_SCORE_GAP=${CLIP_MAX_SCORE_GAP:-0.04}
       - DATABASE_URL=postgres://user:password@postgres:5432/db
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=minioadmin

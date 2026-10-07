@@ -1,8 +1,9 @@
 const crypto = require('crypto');
 const db = require('../models');
 const logger = require('../utils/logger');
+const { WORKSPACE_ROLES } = require('../utils/roles');
 
-const TEAM_ROLES = new Set(['owner', 'manager', 'collaborator']);
+const TEAM_ROLES = new Set(Object.values(WORKSPACE_ROLES));
 
 function newInviteCode() {
   return crypto.randomBytes(6).toString('hex').toUpperCase();
@@ -25,7 +26,7 @@ function membershipResponse(membership) {
 }
 
 async function ownerCount(teamId, transaction) {
-  return db.TeamMember.count({ where: { teamId, role: 'owner' }, transaction });
+  return db.TeamMember.count({ where: { teamId, role: WORKSPACE_ROLES.OWNER }, transaction });
 }
 
 async function rollbackIfActive(transaction) {
@@ -55,9 +56,9 @@ exports.createTeam = async (req, res) => {
       inviteCode: await uniqueInviteCode(),
       createdBy: req.user.id
     }, { transaction });
-    await db.TeamMember.create({ teamId: team.id, userId: req.user.id, role: 'owner' }, { transaction });
+    await db.TeamMember.create({ teamId: team.id, userId: req.user.id, role: WORKSPACE_ROLES.OWNER }, { transaction });
     await transaction.commit();
-    res.status(201).json({ team: { id: team.id, name: team.name, inviteCode: team.inviteCode }, role: 'owner' });
+    res.status(201).json({ team: { id: team.id, name: team.name, inviteCode: team.inviteCode }, role: WORKSPACE_ROLES.OWNER });
   } catch (error) {
     await rollbackIfActive(transaction);
     logger.error(error);
@@ -72,7 +73,7 @@ exports.joinTeam = async (req, res) => {
     if (!team) return res.status(404).json({ message: 'Invite code is invalid or expired' });
     const [membership, created] = await db.TeamMember.findOrCreate({
       where: { teamId: team.id, userId: req.user.id },
-      defaults: { role: 'collaborator' }
+      defaults: { role: WORKSPACE_ROLES.COLLABORATOR }
     });
     res.status(created ? 201 : 200).json({ team: { id: team.id, name: team.name }, role: membership.role });
   } catch (error) {
@@ -99,7 +100,7 @@ exports.getCurrentTeam = async (req, res) => {
       team: {
         id: team.id,
         name: team.name,
-        inviteCode: req.user.teamRole === 'owner' ? team.inviteCode : undefined,
+        inviteCode: req.user.teamRole === WORKSPACE_ROLES.OWNER ? team.inviteCode : undefined,
         createdAt: team.createdAt,
         members: team.memberships.map(member => ({
           membershipId: member.id,
@@ -134,7 +135,7 @@ exports.updateMemberRole = async (req, res) => {
       await rollbackIfActive(transaction);
       return res.status(404).json({ message: 'Team member not found' });
     }
-    if (membership.role === 'owner' && role !== 'owner' && await ownerCount(req.user.teamId, transaction) <= 1) {
+    if (membership.role === WORKSPACE_ROLES.OWNER && role !== WORKSPACE_ROLES.OWNER && await ownerCount(req.user.teamId, transaction) <= 1) {
       await rollbackIfActive(transaction);
       return res.status(400).json({ message: 'A team must have at least one owner' });
     }
@@ -160,7 +161,7 @@ exports.removeMember = async (req, res) => {
       await rollbackIfActive(transaction);
       return res.status(404).json({ message: 'Team member not found' });
     }
-    if (membership.role === 'owner' && await ownerCount(req.user.teamId, transaction) <= 1) {
+    if (membership.role === WORKSPACE_ROLES.OWNER && await ownerCount(req.user.teamId, transaction) <= 1) {
       await rollbackIfActive(transaction);
       return res.status(400).json({ message: 'The last owner cannot be removed' });
     }

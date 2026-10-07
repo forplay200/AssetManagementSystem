@@ -74,19 +74,20 @@ User accounts retain an indexed `isActive` flag. Deactivation preserves the user
 - RBAC Authorization
 
 Workspace roles:
-- Owner
-- Manager
-- Collaborator
+- Workspace Owner (`workspaceOwner`)
+- Workspace Manager (`workspaceManager`)
+- Collaborator (`collaborator`)
 
-Platform role:
-- System Administrator (`systemAdministrator`; legacy `admin` is a compatibility alias)
+Account roles:
+- User (`user`)
+- System Administrator (`systemAdministrator`)
 - May view/search accounts, inspect role assignments, and activate/deactivate accounts
 - Has no workspace or asset capability unless represented by a separate non-administrator account
 
 Account lifecycle:
 - A newly registered User has no repository access until they create or join a team.
 - Team membership roles are independent from account identity.
-- Legacy Administrator, Developer, and Designer account roles remain supported during migration; Developer and Designer map to Manager capabilities.
+- Stored legacy `admin` accounts migrate to `systemAdministrator`. Stored `developer`, `designer`, and account-level `collaborator` accounts migrate to `user`; their workspace memberships remain intact.
 
 Authorization context:
 - JWT identifies the account.

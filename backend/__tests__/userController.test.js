@@ -56,7 +56,7 @@ test('system-user search supports text, status, and canonical role filters', asy
   await controller.getAllUsers({ query: { q: 'alex', status: 'inactive', role: 'systemAdministrator' } }, res);
   assert.equal(listOptions.where.isActive, false);
   assert.ok(listOptions.where[Op.or]);
-  assert.deepEqual(listOptions.where.role[Op.in], ['systemAdministrator', 'admin']);
+  assert.equal(listOptions.where.role, 'systemAdministrator');
   assert.deepEqual(res.payload, []);
 });
 

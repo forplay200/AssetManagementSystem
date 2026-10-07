@@ -2,20 +2,21 @@
 
 ## Status
 
-Implemented as a backward-compatible migration increment on 2026-07-14.
+Implemented on 2026-07-14. Canonical role values were updated on 2026-10-07.
 
 ## Account and Membership Model
 
 - A newly registered account has the account role `user` and no asset-repository access.
 - A User can create a team or join one with an invite code.
-- Creating a team creates an `owner` membership for the creator.
+- Creating a team creates a `workspaceOwner` membership for the creator.
 - Joining a team creates a `collaborator` membership by default.
 - Team membership roles are stored independently in `TeamMembers` and are evaluated in the active team context.
-- Existing `admin`, `developer`, `designer`, and `collaborator` account roles continue to work for installations that have not completed team migration.
+- Account roles are `user` and `systemAdministrator`. Workspace roles are `workspaceOwner`, `workspaceManager`, and `collaborator`.
+- The role migration converts legacy `admin` to `systemAdministrator`, legacy `developer`, `designer`, and account-level `collaborator` to `user`, and workspace `owner`/`manager` to `workspaceOwner`/`workspaceManager`. Existing memberships remain attached to their accounts.
 
 ## Permission Matrix
 
-| Capability | Owner | Manager | Collaborator | User |
+| Capability | Workspace Owner | Workspace Manager | Collaborator | User |
 | --- | --- | --- | --- | --- |
 | View, preview, search, download | Yes | Yes | Yes | No |
 | Comment and reply | Yes | Yes | Yes | No |
@@ -24,7 +25,7 @@ Implemented as a backward-compatible migration increment on 2026-07-14.
 | Delete assets | Yes | No | No | No |
 | Invite/remove members and assign roles | Yes | No | No | No |
 
-Legacy Developer and Designer permissions remain compatible with the previous management behavior. `systemAdministrator` is the canonical platform role, while legacy `admin` remains a compatibility alias. Both are restricted to System Administration and receive no workspace, team-invitation, or asset permission from the platform role.
+`systemAdministrator` is the only platform administrator role. It is restricted to System Administration and receives no workspace, team-invitation, or asset permission from the account role.
 
 ## Authentication Context
 
@@ -33,14 +34,14 @@ JWT continues to identify the authenticated account. The frontend adds canonical
 ## Team APIs
 
 - `GET /api/teams` lists the account's memberships.
-- `POST /api/teams` creates a team and Owner membership.
+- `POST /api/teams` creates a team and Workspace Owner membership.
 - `POST /api/teams/join` joins by invite code as Collaborator.
 - `GET /api/teams/current` returns the active team and member list.
 - `PATCH /api/teams/current/members/:userId` changes a member role.
 - `DELETE /api/teams/current/members/:userId` removes a member.
 - `POST /api/teams/current/invite-code` rotates the invite code.
 
-Owner operations prevent removal or demotion of the final Owner.
+Workspace Owner operations prevent removal or demotion of the final Workspace Owner.
 
 ## Asset Ownership Migration
 
@@ -55,12 +56,11 @@ The `/admin/users` interface is the System Administration module and remains dis
 ## Risks and Deferred Work
 
 - Legacy null-workspace assets remain unavailable until ownership migration is completed.
-- Project-level and asset-level Manager assignments are not separate records yet; Manager is currently team-scoped.
+- Project-level and asset-level Workspace Manager assignments are not separate records yet; Workspace Manager is currently team-scoped.
 - The AI result callback remains on its existing internal-service contract and was not changed by this RBAC increment.
 
 ## Validation
 
-- Backend: 29 tests passed, including workspace role boundaries, strict asset isolation, empty-workspace dashboard scope, worker authentication, and legacy Administrator behavior.
-- Frontend: 36 tests passed, including permission mapping, `X-Workspace-Id` propagation, multi-workspace selection, route announcements, and legacy administration labeling.
-- Frontend lint passed.
+- Backend: 46 tests passed, including canonical role migration and permission boundaries.
+- Frontend: 50 tests passed, including permission mapping and workspace role presentation.
 - Optimized production build completed successfully.

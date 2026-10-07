@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Check, CornerDownRight, LoaderCircle, MessageSquare, Pencil, Reply, Send, Trash2, UserRound, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { WORKSPACE_ROLES } from '../../auth/roles';
 import { getApiError } from '../../services/api';
 import { assetService } from '../../services/assetService';
 import { formatDateTime } from '../../utils/formatters';
 
 export function canManageComment(user, comment) {
-  const role = String(user?.teamRole || user?.role || '').toLowerCase();
-  return !comment?.isDeleted && (role === 'owner' || Number(comment?.userId) === Number(user?.id));
+  return !comment?.isDeleted && (user?.teamRole === WORKSPACE_ROLES.OWNER || Number(comment?.userId) === Number(user?.id));
 }
 
 export function wasEdited(comment) {

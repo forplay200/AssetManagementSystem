@@ -1,25 +1,19 @@
+const { ACCOUNT_ROLES, WORKSPACE_ROLES } = require('../utils/roles');
+
 const roleInheritance = {
-  systemAdministrator: ['systemAdministrator'],
-  admin: ['systemAdministrator'],
-  developer: ['developer', 'designer', 'collaborator'],
-  designer: ['designer', 'collaborator'],
-  owner: ['owner', 'manager', 'collaborator', 'admin', 'developer', 'designer'],
-  manager: ['manager', 'collaborator', 'developer', 'designer'],
-  collaborator: ['collaborator'],
-  user: ['user']
+  [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR],
+  [ACCOUNT_ROLES.USER]: [ACCOUNT_ROLES.USER],
+  [WORKSPACE_ROLES.OWNER]: [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.MANAGER, WORKSPACE_ROLES.COLLABORATOR],
+  [WORKSPACE_ROLES.MANAGER]: [WORKSPACE_ROLES.MANAGER, WORKSPACE_ROLES.COLLABORATOR],
+  [WORKSPACE_ROLES.COLLABORATOR]: [WORKSPACE_ROLES.COLLABORATOR]
 };
 
 const rolePermissions = {
-  owner: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset', 'manageTeam', 'manageProjects'],
-  manager: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'comment', 'approveAsset'],
-  collaborator: ['viewAsset', 'downloadAsset', 'comment'],
-  user: [],
-  systemAdministrator: ['manageUsers'],
-  // `admin` is a compatibility alias for System Administrator and grants no
-  // workspace capability by itself.
-  admin: ['manageUsers'],
-  developer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset'],
-  designer: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset']
+  [WORKSPACE_ROLES.OWNER]: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset', 'manageTeam', 'manageProjects'],
+  [WORKSPACE_ROLES.MANAGER]: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'comment', 'approveAsset'],
+  [WORKSPACE_ROLES.COLLABORATOR]: ['viewAsset', 'downloadAsset', 'comment'],
+  [ACCOUNT_ROLES.USER]: [],
+  [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: ['manageUsers']
 };
 
 function effectiveRole(req) {
@@ -59,7 +53,7 @@ function authorizeAccountPermission(permission) {
 }
 
 function denySystemAdministrator(req, res, next) {
-  if (['systemAdministrator', 'admin'].includes(req.user?.role)) {
+  if (req.user?.role === ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR) {
     return res.status(403).json({ message: 'Forbidden: System Administrators cannot access workspace operations' });
   }
   next();

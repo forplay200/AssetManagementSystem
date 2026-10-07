@@ -76,7 +76,7 @@ paths:
         '200':
           description: Team memberships
     post:
-      summary: Create a team; the creator becomes Owner
+      summary: Create a team; the creator becomes Workspace Owner
       security:
         - bearerAuth: []
       requestBody:
@@ -127,14 +127,25 @@ paths:
         required: true
         schema: { type: integer }
     patch:
-      summary: Change a member workspace role (Owner only)
+      summary: Change a member workspace role (Workspace Owner only)
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [workspaceOwner, workspaceManager, collaborator]
       responses:
         '200':
           description: Team role updated
     delete:
-      summary: Remove a team member (Owner only)
+      summary: Remove a team member (Workspace Owner only)
       security:
         - bearerAuth: []
       responses:
@@ -142,7 +153,7 @@ paths:
           description: Team member removed
   /teams/current/invite-code:
     post:
-      summary: Rotate the active team invite code (Owner only)
+      summary: Rotate the active team invite code (Workspace Owner only)
       security:
         - bearerAuth: []
       parameters:
@@ -165,8 +176,8 @@ paths:
           schema: { type: string, enum: [active, inactive] }
         - in: query
           name: role
-          schema: { type: string }
-          description: Account-level role. systemAdministrator also matches the legacy admin alias.
+          schema: { type: string, enum: [user, systemAdministrator] }
+          description: Account-level role.
       responses:
         '200':
           description: User list
@@ -298,6 +309,67 @@ paths:
       responses:
         '200':
           description: Tag removed
+  /assets/{assetId}/vocabulary:
+    parameters:
+      - in: path
+        name: assetId
+        required: true
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/WorkspaceId'
+    get:
+      summary: List core and approved workspace visual concepts for this asset type
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Versioned vocabulary snapshot with prompts, aliases and concept scopes
+        '403':
+          description: Asset does not belong to the active workspace
+    post:
+      summary: Confirm a visual concept for future CLIP suggestions in this workspace
+      description: Requires workspaceOwner or workspaceManager. Repository tags are not automatically added to the vocabulary.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisualConceptApproval'
+      responses:
+        '200':
+          description: Concept approved, extended to another asset type, or already available
+        '400':
+          description: Invalid visual concept, unsupported 3D appearance, or missing confirmation
+        '403':
+          description: Insufficient workspace permission
+        '409':
+          description: Name or alias conflicts with another concept
+  /assets/{assetId}/vocabulary/{entryId}:
+    delete:
+      summary: Remove a workspace concept from future suggestions while preserving existing asset tags
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: assetId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Workspace vocabulary concept removed
+        '403':
+          description: Insufficient workspace permission
+        '404':
+          description: Concept not found in the active workspace
   /assets/{id}/versions/upload:
     post:
       summary: Upload a replacement file and preserve the previous current file in version history
@@ -329,7 +401,7 @@ paths:
         '400':
           description: Missing or unsupported replacement file
         '403':
-          description: Only the asset owner or an Administrator can replace the file
+          description: Only a Workspace Owner or Workspace Manager can replace the file
         '404':
           description: Asset not found
   /comments/{id}:
@@ -387,6 +459,42 @@ components:
       schema:
         type: integer
   schemas:
+    VisualConceptApproval:
+      type: object
+      required: [name, confirmed]
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          example: katana
+        confirmed:
+          type: boolean
+          enum: [true]
+        description:
+          type: string
+          maxLength: 240
+          example: a Japanese katana sword
+        facet:
+          type: string
+          enum: [content, form, style, appearance]
+          default: content
+        assetTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [image, 3d]
+        aliases:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 80
+        category:
+          type: string
+          maxLength: 80
+          default: workspace-custom
     UserRegister:
       type: object
       required:
@@ -405,11 +513,6 @@ components:
           type: string
           format: password
           example: secret123
-        role:
-          type: string
-          enum: [user]
-          default: user
-          description: Public registration always creates an unassigned User unless the legacy deployment override is explicitly enabled.
     UserLogin:
       type: object
       required:

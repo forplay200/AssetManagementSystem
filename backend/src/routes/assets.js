@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
 const { createComment, getCommentHistory } = require('../controllers/commentsController');
+const { getAssetVocabulary, approveVocabularyEntry, removeVocabularyEntry } = require('../controllers/vocabularyController');
 const auth = require('../middleware/auth');
 const { authorizePermission, denySystemAdministrator } = require("../middleware/rbac");
 const requireWorkspace = require('../middleware/requireWorkspace');
@@ -41,6 +42,10 @@ router.delete('/:assetId/tags/:tagId', workspaceAuth, authorizePermission('manag
 // GET /api/assets/:assetId/tags
 router.get('/:assetId/tags', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetTags);
 
+router.get('/:assetId/vocabulary', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetVocabulary);
+router.post('/:assetId/vocabulary', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, approveVocabularyEntry);
+router.delete('/:assetId/vocabulary/:entryId', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, removeVocabularyEntry);
+
 // Version control routes
 // POST /api/assets/:id/versions
 router.post('/:id/versions', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, createVersion);
@@ -63,7 +68,6 @@ router.get('/search', workspaceAuth, authorizePermission('viewAsset'), searchAss
 
 router.post('/ai/job', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, createAiJob);
 
-//router.post('/:id/ai-result', auth, authorize('admin', 'developer', 'designer', 'collaborator'), storeAiResult);
 router.post('/:id/ai-result', internalAiAuth, storeAiResult);
 
 // Internal AI worker compatibility endpoint. The worker uses this before it can

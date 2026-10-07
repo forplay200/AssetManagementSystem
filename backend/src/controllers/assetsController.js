@@ -2,12 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const { Op } = require('sequelize');
 const { Tag, User, Asset, Version, Comment, TeamMember } = require("../models");
+const { WORKSPACE_ROLES } = require('../utils/roles');
 
 const redisClient = require("../redisClient");
 const logger = require('../utils/logger');
 const { minioClient, BUCKET_NAME } = require('../utils/minioClient');
 const { buildAssetSearchWhere, findAiMatch } = require('../utils/searchQuery');
 const { workspaceAssetWhere, belongsToWorkspace } = require('../utils/workspaceScope');
+const { canonicalizeTagName, getVisualAssetType, getVocabularySnapshot, normalizeTagName } = require('../utils/clipVocabulary');
 
 const SUPPORTED_VERSION_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.mp3', '.wav', '.fbx', '.obj', '.cs', '.js', '.txt', '.json', '.xml']);
 
@@ -17,12 +19,12 @@ function workspaceAssetScope(req) {
 
 function canManageAsset(req, asset) {
   return belongsToWorkspace(asset, req.user)
-    && ['owner', 'manager'].includes(req.user.teamRole);
+    && [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.MANAGER].includes(req.user.teamRole);
 }
 
 function canDeleteAsset(req, asset) {
   return belongsToWorkspace(asset, req.user)
-    && req.user.teamRole === 'owner';
+    && req.user.teamRole === WORKSPACE_ROLES.OWNER;
 }
 
 const streamToBuffer = async (stream) => {
@@ -43,7 +45,7 @@ exports.createVersion = async (req, res) => {
     if (!asset) {
       return res.status(404).json({ message: 'Asset not found' });
     }
-    // Owners and administrators can preserve a version.
+    // Workspace Owners and Workspace Managers can preserve a version.
     if (!canManageAsset(req, asset)) {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to create a version for this asset' });
     }
@@ -128,11 +130,6 @@ exports.getVersionHistory = async (req, res) => {
     if (!asset) {
       return res.status(404).json({ message: 'Asset not found' });
     }
-    // Permission check: only the owner can view version history? We'll allow any authenticated user for now.
-    // If you want to restrict to owner, uncomment the next line.
-    // if (asset.userId !== req.user.id) {
-    //   return res.status(403).json({ message: 'Forbidden: You do not have permission to view this asset' });
-    // }
     const versions = await Version.findAll({
       where: { assetId: asset.id },
       order: [['versionNumber', 'ASC']],
@@ -156,12 +153,6 @@ exports.getVersion = async (req, res) => {
     if (!version) {
       return res.status(404).json({ message: 'Version not found' });
     }
-    // Permission check: only the owner can view the version? We'll allow any authenticated user for now.
-    // If you want to restrict to owner, uncomment the next lines.
-    // const asset = await Asset.findByPk(assetId);
-    // if (asset.userId !== req.user.id) {
-    //   return res.status(403).json({ message: 'Forbidden: You do not have permission to view this version' });
-    // }
     res.json(version);
   } catch (error) {
     logger.error(error);
@@ -374,10 +365,10 @@ exports.storeAiResult = async (req, res) => {
       return res.status(404).json({ message: "Asset not found" });
     }
 
-    // Permission check: only the owner or admin can update the asset's metadata
-    //if (asset.userId !== req.user.id && req.user.role !== 'admin') {
-    //  return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-    //}
+
+    if (metadata.ai?.clip?.sourceFilename && metadata.ai.clip.sourceFilename !== asset.filename) {
+      return res.status(409).json({ message: 'The asset file changed while visual tagging was in progress. Queue tagging for the current file.' });
+    }
 
     // Update the asset's metadata
     
@@ -739,9 +730,9 @@ exports.addTagToAsset = async (req, res) => {
     const { assetId } = req.params;
     const { tag } = req.body;
 
-    if (!tag) {
+    if (typeof tag !== 'string' || !tag.trim() || normalizeTagName(tag).length > 80) {
       return res.status(400).json({
-        message: "Tag is required"
+        message: "A tag of 1 to 80 characters is required"
       });
     }
 
@@ -757,11 +748,13 @@ exports.addTagToAsset = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const [tagRecord] = await Tag.findOrCreate({
-      where: {
-        name: tag.trim()
-      }
+    const canonicalName = await canonicalizeTagName(asset.workspaceId, tag);
+    // Reuse legacy case variants without rewriting historical tags or their links.
+    const existingTag = await Tag.findOne({
+      where: { name: { [Op.iLike]: canonicalName.replace(/[\\%_]/g, '\\$&') } },
+      order: [['id', 'ASC']]
     });
+    const tagRecord = existingTag || (await Tag.findOrCreate({ where: { name: canonicalName } }))[0];
 
     await asset.addTag(tagRecord);
 
@@ -871,12 +864,15 @@ exports.getAssetInfo = async (req, res) => {
       });
     }
 
+    const assetType = getVisualAssetType(asset);
     res.json({
       id: asset.id,
       filename: asset.filename,
       originalname: asset.originalname,
       mimetype: asset.mimetype,
-      size: asset.size
+      size: asset.size,
+      workspaceId: asset.workspaceId,
+      ...(assetType ? { clipVocabulary: await getVocabularySnapshot(asset.workspaceId, assetType) } : {})
     });
 
   } catch (error) {
