@@ -1,7 +1,6 @@
-const fs = require('fs');
 const path = require('path');
 const { Op } = require('sequelize');
-const { Tag, User, Asset, Version, Comment, TeamMember } = require("../models");
+const { sequelize, Tag, User, Asset, Version, Comment, TeamMember } = require("../models");
 const { WORKSPACE_ROLES } = require('../utils/roles');
 
 const redisClient = require("../redisClient");
@@ -11,7 +10,61 @@ const { buildAssetSearchWhere, findAiMatch } = require('../utils/searchQuery');
 const { workspaceAssetWhere, belongsToWorkspace } = require('../utils/workspaceScope');
 const { canonicalizeTagName, getVisualAssetType, getVocabularySnapshot, normalizeTagName } = require('../utils/clipVocabulary');
 
-const SUPPORTED_VERSION_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.mp3', '.wav', '.fbx', '.obj', '.cs', '.js', '.txt', '.json', '.xml']);
+const crypto = require('crypto');
+const sharp = require('sharp');
+const packages = require('../utils/modelPackage');
+
+function assetResponse(asset) {
+  return { id: asset.id, filename: asset.filename, originalname: asset.originalname,
+    mimetype: asset.mimetype, size: asset.size, userId: asset.userId,
+    workspaceId: asset.workspaceId, uploadedAt: asset.uploadedAt,
+    package: packages.packageSummary(asset.packageManifest) };
+}
+function versionResponse(version) {
+  const value = typeof version.toJSON === 'function' ? version.toJSON() : { ...version };
+  const { packageManifest, ...rest } = value;
+  return { ...rest, package: packages.packageSummary(packageManifest) };
+}
+function reportUploadError(res, error) {
+  logger.error(error);
+  if (!res.headersSent) { res.removeHeader('Content-Disposition'); res.removeHeader('Content-Type'); }
+  if (!res.headersSent) res.status(error.status || 500).json({
+    message: error.status ? error.message : 'Server error',
+    ...(error.diagnostics ? { diagnostics: error.diagnostics } : {})
+  });
+}
+async function queueAsset(asset) {
+  try {
+    await redisClient.lPush('ai_jobs', JSON.stringify({ assetId: asset.id, jobType: 'auto_tag', createdAt: new Date().toISOString() }));
+    return { status: 'queued' };
+  } catch (error) {
+    logger.error(error);
+    return { status: 'queue-failed', message: 'Files were saved. AI processing can be retried from the Metadata panel.' };
+  }
+}
+async function preserveCurrent(asset, req, transaction, writtenKeys) {
+  let fileName = asset.filename;
+  if (!asset.packageManifest) {
+    fileName = 'versions/' + asset.id + '/' + crypto.randomUUID() + '/' + path.basename(asset.filename);
+    writtenKeys.push(fileName);
+    await minioClient.copyObject(BUCKET_NAME, fileName, '/' + BUCKET_NAME + '/' + asset.filename);
+  }
+  const versionNumber = (await Version.max('versionNumber', { where: { assetId: asset.id }, transaction }) || 0) + 1;
+  return Version.create({ assetId: asset.id, versionNumber, fileName,
+    originalName: asset.originalname, mimeType: asset.mimetype, size: asset.size,
+    packageManifest: asset.packageManifest || null, createdBy: req.user.id,
+    changeLog: req.body.changeLog || 'Preserved before updating the current file' }, { transaction });
+}
+async function streamFile(res, key, mime, name, disposition = 'inline') {
+  const stream = await minioClient.getObject(BUCKET_NAME, key);
+  res.setHeader('Content-Type', mime || 'application/octet-stream');
+  res.setHeader('Content-Disposition', disposition + "; filename*=UTF-8''" + encodeURIComponent(name));
+  res.setHeader('Cache-Control', 'private, no-store');
+  stream.on('error', error => { logger.error(error); if (!res.headersSent) res.status(500).json({ message: 'File streaming failed' }); else res.destroy(error); });
+  res.once('close', () => stream.destroy());
+  stream.pipe(res);
+}
+
 
 function workspaceAssetScope(req) {
   return workspaceAssetWhere(req.user);
@@ -27,98 +80,22 @@ function canDeleteAsset(req, asset) {
     && req.user.teamRole === WORKSPACE_ROLES.OWNER;
 }
 
-const streamToBuffer = async (stream) => {
-  const chunks = [];
-  await new Promise((resolve, reject) => {
-    stream.on('data', chunk => chunks.push(chunk));
-    stream.on('end', resolve);
-    stream.on('error', reject);
-  });
-  return Buffer.concat(chunks);
-};
-
 // Create a new version for an asset
 exports.createVersion = async (req, res) => {
+  const writtenKeys = [];
+  let committed = false;
   try {
-    const assetId = req.params.id;
-    const asset = await Asset.findByPk(assetId);
-    if (!asset) {
-      return res.status(404).json({ message: 'Asset not found' });
-    }
-    // Workspace Owners and Workspace Managers can preserve a version.
-    if (!canManageAsset(req, asset)) {
-      return res.status(403).json({ message: 'Forbidden: You do not have permission to create a version for this asset' });
-    }
-    // Determine the next version number
-    const versionCount = await Version.count({ where: { assetId: asset.id } });
-    const versionNumber = versionCount + 1;
-    // Create a version record with placeholder file info (we'll update after copying the file)
-    const version = await Version.create({
-      assetId: asset.id,
-      versionNumber: versionNumber,
-      fileName: '', // temporary
-      originalName: '',
-      mimeType: '',
-      size: 0,
-      createdBy: req.user.id,      changeLog: req.body.changeLog,
+    const version = await sequelize.transaction(async transaction => {
+      const asset = await Asset.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!asset) throw Object.assign(new Error('Asset not found'), { status: 404 });
+      if (!canManageAsset(req, asset)) throw Object.assign(new Error('Forbidden'), { status: 403 });
+      return preserveCurrent(asset, req, transaction, writtenKeys);
     });
-    // Create directory for this version: uploads/versions/{assetId}/{version.id}
-    const versionObjectKey =
-  `versions/${asset.id}/${version.id}/${asset.filename}`;
-
-    // 读取原始对象
-    const stream = await minioClient.getObject(
-      BUCKET_NAME,
-      asset.filename
-    );
-
-    // 转 Buffer
-    const chunks = [];
-
-    await new Promise((resolve, reject) => {
-      stream.on('data', chunk => chunks.push(chunk));
-      stream.on('end', resolve);
-      stream.on('error', reject);
-    });
-
-    const buffer = Buffer.concat(chunks);
-
-    // 存为版本对象
-    await minioClient.putObject(
-      BUCKET_NAME,
-      versionObjectKey,
-      buffer,
-      buffer.length,
-      {
-        'Content-Type': asset.mimetype
-      }
-    );
-
-    // 更新 Version 记录
-    version.fileName = versionObjectKey;
-    version.originalName = asset.originalname;
-    version.mimeType = asset.mimetype;
-    version.size = asset.size;
-
-    await version.save();
-    // Return the version record
-    res.status(201).json({
-      message: 'Version created successfully',
-      version: {
-        id: version.id,
-        assetId: version.assetId,
-        versionNumber: version.versionNumber,
-        fileName: version.fileName,
-        originalName: version.originalName,
-        mimeType: version.mimeType,
-        size: version.size,
-        createdAt: version.createdAt,     changeLog: version.changeLog,
-        createdBy: version.createdBy
-      }
-    });
+    committed = true;
+    res.status(201).json({ message: 'Version created successfully', version: versionResponse(version) });
   } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: 'Server error' });
+    if (!committed) try { await packages.removeObjects(writtenKeys); } catch (cleanupError) { logger.error(cleanupError); }
+    reportUploadError(res, error);
   }
 };
 
@@ -133,9 +110,9 @@ exports.getVersionHistory = async (req, res) => {
     const versions = await Version.findAll({
       where: { assetId: asset.id },
       order: [['versionNumber', 'ASC']],
-      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog']
+      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog', 'packageManifest']
     });
-    res.json(versions);
+    res.json(versions.map(versionResponse));
   } catch (error) {
     logger.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -148,12 +125,12 @@ exports.getVersion = async (req, res) => {
     const { id, versionId } = req.params;
     const version = await Version.findOne({
       where: { id: versionId, assetId: id },
-      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog']
+      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog', 'packageManifest']
     });
     if (!version) {
       return res.status(404).json({ message: 'Version not found' });
     }
-    res.json(version);
+    res.json(versionResponse(version));
   } catch (error) {
     logger.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -163,55 +140,11 @@ exports.getVersion = async (req, res) => {
 // Download a specific version
 exports.downloadVersion = async (req, res) => {
   try {
-    const { id, versionId } = req.params;
-
-    const version = await Version.findOne({
-      where: {
-        id: versionId,
-        assetId: id
-      }
-    });
-
-    if (!version) {
-      return res.status(404).json({
-        message: "Version not found"
-      });
-    }
-
-    const stream = await minioClient.getObject(
-      BUCKET_NAME,
-      version.fileName
-    );
-
-    res.setHeader(
-      "Content-Type",
-      version.mimeType
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${version.originalName}"`
-    );
-
-    stream.on("error", (err) => {
-      logger.error(err);
-
-      if (!res.headersSent) {
-        res.status(500).json({
-          message: "Error streaming file"
-        });
-      }
-    });
-
-    stream.pipe(res);
-
-  } catch (error) {
-    logger.error(error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-  }
+    const version = await Version.findOne({ where: { id: req.params.versionId, assetId: req.params.id } });
+    if (!version) return res.status(404).json({ message: 'Version not found' });
+    if (version.packageManifest && req.query.main !== 'true') return await packages.streamPackage(res, version.packageManifest, version.originalName);
+    await streamFile(res, version.fileName, version.mimeType, version.originalName, 'attachment');
+  } catch (error) { reportUploadError(res, error); }
 };
 // Search assets with filtering and pagination
 exports.searchAssets = async (req, res) => {
@@ -297,7 +230,7 @@ exports.searchAssets = async (req, res) => {
       order: [['uploadedAt', 'DESC']]
     });
     
-    let rows = result.rows;
+    let rows = result.rows.map(asset => { const value = asset.toJSON(); const { packageManifest, ...rest } = value; return { ...rest, package: packages.packageSummary(packageManifest) }; });
     const count = result.count;
 
     if (q) {
@@ -425,94 +358,25 @@ exports.getDashboardStats = async (req, res) => {
 }
 
 exports.uploadAsset = async (req, res) => {
+  const writtenKeys = [];
+  let committed = false;
   try {
-
-    if (!req.file) {
-      return res.status(400).json({
-        message: "No file uploaded"
-      });
-    }
-
-    const {
-      originalname,
-      mimetype,
-      size,
-      buffer
-    } = req.file;
-
-    const ext = path.extname(originalname);
-
-    const objectKey =
-      Date.now() +
-      "-" +
-      Math.round(Math.random() * 1E9) +
-      ext;
-
-    await minioClient.putObject(
-      BUCKET_NAME,
-      objectKey,
-      buffer,
-      size,
-      {
-        "Content-Type": mimetype
-      }
-    );
-
-    const asset = await Asset.create({
-      filename: objectKey,
-      originalname,
-      mimetype,
-      size,
-      path: objectKey,
-      userId: req.user.id,
-      workspaceId: req.user.workspaceId,
-      teamId: req.user.workspaceId
+    const prepared = await packages.prepareUpload(req);
+    const asset = await sequelize.transaction(async transaction => {
+      const record = await Asset.create({ filename: 'pending/' + crypto.randomUUID(),
+        path: 'pending', originalname: prepared.main.originalname, mimetype: prepared.main.mimetype,
+        size: prepared.main.size, userId: req.user.id, workspaceId: req.user.workspaceId, teamId: req.user.workspaceId }, { transaction });
+      const stored = await packages.persistUpload(prepared, req.user.workspaceId, record.id, writtenKeys);
+      record.filename = stored.filename; record.path = stored.filename; record.packageManifest = stored.manifest;
+      await record.save({ transaction });
+      return record;
     });
-
-    try {
-
-      const axios = require("axios");
-
-      await axios.post(
-        "http://ai-service:8000/jobs",
-        {
-          assetId: asset.id,
-          jobType: "auto_tag"
-        }
-      );
-
-      console.log(
-        `AI Job queued for asset ${asset.id}`
-      );
-
-    } catch (err) {
-
-      console.error(
-        "Failed to create AI job:",
-        err.message
-      );
-
-    }
-
-    res.status(201).json({
-      message: "Asset uploaded successfully",
-      asset
-    });
-
-    
-    console.log(
-      "Uploaded MIME type:",
-      mimetype
-    );
-
+    committed = true;
+    const processing = await queueAsset(asset);
+    res.status(201).json({ message: 'Asset uploaded successfully', asset: assetResponse(asset), processing });
   } catch (error) {
-
-    logger.error(error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    if (!committed) try { await packages.removeObjects(writtenKeys); } catch (cleanupError) { logger.error(cleanupError); }
+    reportUploadError(res, error);
   }
 };
 
@@ -520,145 +384,34 @@ exports.uploadAsset = async (req, res) => {
 
 exports.downloadAsset = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const asset = await Asset.findByPk(id);
-
-    if (!asset) {
-      return res.status(404).json({
-        message: "Asset not found"
-      });
-    }
-
-    const stream = await minioClient.getObject(
-      BUCKET_NAME,
-      asset.filename
-    );
-
-    res.setHeader(
-      "Content-Type",
-      asset.mimetype
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${asset.originalname}"`
-    );
-
-    stream.on("error", (err) => {
-      logger.error(err);
-
-      if (!res.headersSent) {
-        res.status(500).json({
-          message: "Error streaming file"
-        });
-      }
-    });
-
-    stream.pipe(res);
-
-  } catch (error) {
-    logger.error(error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-  }
+    const asset = await Asset.findByPk(req.params.id);
+    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    if (asset.packageManifest && req.query.main !== 'true') return await packages.streamPackage(res, asset.packageManifest, asset.originalname);
+    await streamFile(res, asset.filename, asset.mimetype, asset.originalname, 'attachment');
+  } catch (error) { reportUploadError(res, error); }
 };
 
 exports.deleteAsset = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const asset = await Asset.findByPk(id);
-
-    if (!asset) {
-      return res.status(404).json({
-        message: "Asset not found"
-      });
-    }
-
-    // 权限检查
-    if (!canDeleteAsset(req, asset)) {
-      return res.status(403).json({
-        message: "Forbidden"
-      });
-    }
-
-    try {
-      await minioClient.removeObject(
-        BUCKET_NAME,
-        asset.filename
-      );
-    } catch (minioError) {
-      logger.error(minioError);
-
-      return res.status(500).json({
-        message: "Failed to remove file from storage"
-      });
-    }
-
-    await asset.destroy();
-
-    res.json({
-      message: "Asset deleted successfully"
+    const asset = await Asset.findByPk(req.params.id);
+    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    if (!canDeleteAsset(req, asset)) return res.status(403).json({ message: 'Forbidden' });
+    const versions = await Version.findAll({ where: { assetId: asset.id } });
+    await packages.removeObjects([...packages.objectKeys(asset), ...versions.flatMap(packages.objectKeys)]);
+    await sequelize.transaction(async transaction => {
+      await Version.destroy({ where: { assetId: asset.id }, transaction });
+      await asset.destroy({ transaction });
     });
-
-  } catch (error) {
-    logger.error(error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-  }
+    res.json({ message: 'Asset deleted successfully' });
+  } catch (error) { reportUploadError(res, error); }
 };
 
 exports.previewAsset = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const asset = await Asset.findByPk(id);
-
-    if (!asset) {
-      return res.status(404).json({
-        message: "Asset not found"
-      });
-    }
-
-    const stream = await minioClient.getObject(
-      BUCKET_NAME,
-      asset.filename
-    );
-
-    res.setHeader(
-      "Content-Type",
-      asset.mimetype
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${asset.originalname}"`
-    );
-
-    stream.on("error", (err) => {
-      logger.error(err);
-
-      if (!res.headersSent) {
-        res.status(500).json({
-          message: "Error streaming preview"
-        });
-      }
-    });
-
-    stream.pipe(res);
-
-  } catch (error) {
-    logger.error(error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-  }
+    const asset = await Asset.findByPk(req.params.id);
+    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    await streamFile(res, asset.filename, asset.mimetype, asset.originalname);
+  } catch (error) { reportUploadError(res, error); }
 };
 
 exports.getAssetMetadata = async (req, res) => {
@@ -872,6 +625,7 @@ exports.getAssetInfo = async (req, res) => {
       mimetype: asset.mimetype,
       size: asset.size,
       workspaceId: asset.workspaceId,
+      packageId: asset.packageManifest?.packageId || null,
       ...(assetType ? { clipVocabulary: await getVocabularySnapshot(asset.workspaceId, assetType) } : {})
     });
 
@@ -887,102 +641,69 @@ exports.getAssetInfo = async (req, res) => {
 
 // Upload a new current file while preserving the previous current file in history.
 exports.uploadNewVersion = async (req, res) => {
-  let version;
-  let versionObjectKey;
-  let newObjectKey;
-
+  const writtenKeys = [];
+  let committed = false;
   try {
-    const asset = await Asset.findByPk(req.params.id);
-    if (!asset) return res.status(404).json({ message: 'Asset not found' });
-    if (!canManageAsset(req, asset)) {
-      return res.status(403).json({ message: 'Forbidden: You do not have permission to upload a version for this asset' });
-    }
-    if (!req.file) return res.status(400).json({ message: 'A replacement asset file is required' });
-
-    const extension = path.extname(req.file.originalname).toLowerCase();
-    if (!SUPPORTED_VERSION_EXTENSIONS.has(extension)) {
-      return res.status(400).json({ message: `Unsupported asset type: ${extension || 'unknown'}` });
-    }
-
-    const versionNumber = await Version.count({ where: { assetId: asset.id } }) + 1;
-    version = await Version.create({
-      assetId: asset.id,
-      versionNumber,
-      fileName: '',
-      originalName: asset.originalname,
-      mimeType: asset.mimetype,
-      size: asset.size,
-      createdBy: req.user.id,
-      changeLog: req.body.changeLog || `Replaced by ${req.file.originalname}`
+    const result = await sequelize.transaction(async transaction => {
+      const asset = await Asset.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!asset) throw Object.assign(new Error('Asset not found'), { status: 404 });
+      if (!canManageAsset(req, asset)) throw Object.assign(new Error('Forbidden'), { status: 403 });
+      const prepared = await packages.prepareUpload(req, asset);
+      const version = await preserveCurrent(asset, req, transaction, writtenKeys);
+      const stored = await packages.persistUpload(prepared, req.user.workspaceId, asset.id, writtenKeys);
+      const { ai: _staleAi, ...preservedMetadata } = asset.metadata || {};
+      asset.filename = stored.filename; asset.path = stored.filename;
+      asset.originalname = prepared.main.originalname; asset.mimetype = prepared.main.mimetype;
+      asset.size = prepared.main.size; asset.packageManifest = stored.manifest;
+      asset.uploadedAt = new Date(); asset.metadata = preservedMetadata;
+      await asset.save({ transaction });
+      return { asset, version };
     });
-
-    versionObjectKey = `versions/${asset.id}/${version.id}/${asset.filename}`;
-    const previousBuffer = await streamToBuffer(await minioClient.getObject(BUCKET_NAME, asset.filename));
-    await minioClient.putObject(BUCKET_NAME, versionObjectKey, previousBuffer, previousBuffer.length, { 'Content-Type': asset.mimetype });
-    version.fileName = versionObjectKey;
-    await version.save();
-
-    newObjectKey = `${Date.now()}-${Math.round(Math.random() * 1E9)}${extension}`;
-    await minioClient.putObject(BUCKET_NAME, newObjectKey, req.file.buffer, req.file.size, { 'Content-Type': req.file.mimetype });
-
-    const previousObjectKey = asset.filename;
-    const { ai: _staleAi, ...preservedMetadata } = asset.metadata || {};
-    asset.filename = newObjectKey;
-    asset.originalname = req.file.originalname;
-    asset.mimetype = req.file.mimetype;
-    asset.size = req.file.size;
-    asset.path = newObjectKey;
-    asset.uploadedAt = new Date();
-    asset.metadata = preservedMetadata;
-    await asset.save();
-
-    try { await minioClient.removeObject(BUCKET_NAME, previousObjectKey); } catch (cleanupError) { logger.error(cleanupError); }
-    try {
-      await redisClient.lPush('ai_jobs', JSON.stringify({ assetId: asset.id, jobType: 'auto_tag', createdAt: new Date().toISOString() }));
-    } catch (queueError) { logger.error(queueError); }
-
-    return res.status(201).json({
-      message: 'New asset version uploaded successfully',
-      version,
-      asset: {
-        id: asset.id,
-        filename: asset.filename,
-        originalname: asset.originalname,
-        mimetype: asset.mimetype,
-        size: asset.size,
-        userId: asset.userId,
-        uploadedAt: asset.uploadedAt
-      }
-    });
+    committed = true;
+    // Old objects remain owned by the preserved version, including the full package.
+    const processing = await queueAsset(result.asset);
+    res.status(201).json({ message: 'New asset version uploaded successfully',
+      asset: assetResponse(result.asset), version: versionResponse(result.version), processing });
   } catch (error) {
-    logger.error(error);
-    if (newObjectKey) try { await minioClient.removeObject(BUCKET_NAME, newObjectKey); } catch (cleanupError) { logger.error(cleanupError); }
-    if (versionObjectKey) try { await minioClient.removeObject(BUCKET_NAME, versionObjectKey); } catch (cleanupError) { logger.error(cleanupError); }
-    if (version?.destroy) try { await version.destroy(); } catch (cleanupError) { logger.error(cleanupError); }
-    return res.status(500).json({ message: 'Server error' });
+    if (!committed) try { await packages.removeObjects(writtenKeys); } catch (cleanupError) { logger.error(cleanupError); }
+    reportUploadError(res, error);
   }
 };
 
 exports.getAssetDetails = async (req, res) => {
   try {
     const asset = await Asset.findByPk(req.params.id);
+    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    res.json(assetResponse(asset));
+  } catch (error) { reportUploadError(res, error); }
+};
 
-    if (!asset) {
-      return res.status(404).json({ message: "Asset not found" });
-    }
-
-    res.json({
-      id: asset.id,
-      filename: asset.filename,
-      originalname: asset.originalname,
-      mimetype: asset.mimetype,
-      size: asset.size,
-      userId: asset.userId,
-      workspaceId: asset.workspaceId,
-      uploadedAt: asset.uploadedAt
-    });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
+// The workspace/asset middleware also protects every companion resource.
+async function packageRecord(req) {
+  if (req.params.versionId) return Version.findOne({ where: { id: req.params.versionId, assetId: req.params.id } });
+  return Asset.findByPk(req.params.id);
+}
+exports.getAssetPackage = async (req, res) => {
+  try {
+    const record = await packageRecord(req);
+    if (!record) return res.status(404).json({ message: 'Asset or version not found' });
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json({ package: packages.publicManifest(record.packageManifest) });
+  } catch (error) { reportUploadError(res, error); }
+};
+exports.getPackageResource = async (req, res) => {
+  try {
+    const record = await packageRecord(req);
+    if (!record) return res.status(404).json({ message: 'Asset or version not found' });
+    const file = record.packageManifest?.files.find(resource => resource.id === req.params.resourceId);
+    if (req.query.packageId && req.query.packageId !== record.packageManifest?.packageId) return res.status(409).json({ message: 'The model package changed. Reload the preview.' });
+    if (!file) return res.status(404).json({ message: 'Package resource not found' });
+    if (file.kind === 'texture' && req.query.preview === 'true') {
+      const image = sharp(await packages.readObject(file.objectKey), { limitInputPixels: 16777216 })
+        .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true }).png();
+      res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'private, no-store');
+      image.on('error', error => { if (res.headersSent) res.destroy(error); else reportUploadError(res, error); });
+      res.once('close', () => image.destroy()); image.pipe(res);
+    } else await streamFile(res, file.objectKey, file.mime, file.path);
+  } catch (error) { reportUploadError(res, error); }
 };

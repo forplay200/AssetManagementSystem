@@ -8,20 +8,20 @@ const { authorizePermission, denySystemAdministrator } = require("../middleware/
 const requireWorkspace = require('../middleware/requireWorkspace');
 const workspaceAssetAccess = require('../middleware/workspaceAssetAccess');
 const internalAiAuth = require('../middleware/internalAiAuth');
-const multer = require('multer');
-const path = require('path');
+const modelUpload = require('../middleware/modelUpload');
+const { getAssetPackage, getPackageResource } = require('../controllers/assetsController');
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 const workspaceAuth = [auth, denySystemAdministrator, requireWorkspace];
 // POST /api/assets/upload
-router.post('/upload', workspaceAuth, authorizePermission('uploadAsset'), upload.single('asset'), uploadAsset);
+router.post('/upload', workspaceAuth, authorizePermission('uploadAsset'), modelUpload, uploadAsset);
 
 // GET /api/assets/download/:id
 router.get('/download/:id', workspaceAuth, authorizePermission('downloadAsset'), workspaceAssetAccess, downloadAsset);
 
 // GET /api/assets/preview/:id
 router.get('/preview/:id', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, previewAsset);
+router.get('/:id/package', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetPackage);
+router.get('/:id/resources/:resourceId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getPackageResource);
 
 // GET /api/assets/:id/metadata
 router.get('/:id/metadata', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetMetadata);
@@ -50,7 +50,9 @@ router.delete('/:assetId/vocabulary/:entryId', workspaceAuth, authorizePermissio
 // POST /api/assets/:id/versions
 router.post('/:id/versions', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, createVersion);
 // POST /api/assets/:id/versions/upload
-router.post('/:id/versions/upload', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, upload.single('asset'), uploadNewVersion);
+router.post('/:id/versions/upload', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, modelUpload, uploadNewVersion);
+router.get('/:id/versions/:versionId/package', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetPackage);
+router.get('/:id/versions/:versionId/resources/:resourceId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getPackageResource);
 // GET /api/assets/:id/versions
 router.get('/:id/versions', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getVersionHistory);
 // GET /api/assets/:id/versions/:versionId

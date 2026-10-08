@@ -10,6 +10,10 @@ const Asset = sequelize.define('Asset', {
     type: DataTypes.JSON,
     allowNull: true
   },
+  packageManifest: {
+    type: DataTypes.JSONB,
+    allowNull: true
+  },
   originalname: {
     type: DataTypes.STRING,
     allowNull: false

@@ -30,6 +30,10 @@ const Version = sequelize.define('Version', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  packageManifest: {
+    type: DataTypes.JSONB,
+    allowNull: true
+  },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

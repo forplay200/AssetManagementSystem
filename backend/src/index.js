@@ -8,6 +8,7 @@ const path = require('path');
 const db = require('./models');
 const { backfillKnownWorkspaceOwnership } = require('./utils/workspaceMigration');
 const { up: migrateCanonicalRoles } = require('../migrations/20261007000000-canonicalize-roles');
+const { up: migrateModelPackages } = require('../migrations/20261008000000-add-model-packages');
 
 const authRoutes = require('./routes/auth');
 const assetsRoutes = require('./routes/assets');
@@ -19,7 +20,7 @@ const commentRoutes = require('./routes/comments');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({ exposedHeaders: ['Content-Disposition'] }));
 app.use(helmet());
 app.use(express.json());
 const rateLimit = require('express-rate-limit');
@@ -46,6 +47,7 @@ app.get('/', (req, res) => {
 });
 
 migrateCanonicalRoles(db.sequelize.getQueryInterface())
+  .then(() => migrateModelPackages(db.sequelize.getQueryInterface(), db.Sequelize))
   .then(() => db.sequelize.sync({ alter: true }))
   .then(async () => {
     const backfilledAssets = await backfillKnownWorkspaceOwnership(db.sequelize);

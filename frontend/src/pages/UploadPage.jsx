@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, FileText, FileUp, FolderKanban, Tags, UploadCloud, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
+import ModelPackageEditor from '../components/assets/ModelPackageEditor';
 import { getApiError } from '../services/api';
 import { assetService } from '../services/assetService';
 import { formatBytes } from '../utils/formatters';
@@ -11,6 +12,8 @@ const acceptedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'fbx', 'o
 
 export default function UploadPage() {
   const [file, setFile] = useState(null);
+  const [modelBundle, setModelBundle] = useState(null);
+  const [initialCompanions, setInitialCompanions] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState({ loading: false, error: '' });
@@ -18,9 +21,10 @@ export default function UploadPage() {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  const selectFile = (candidate) => {
+  const selectFile = (candidate, companions = []) => {
     setStatus({ loading: false, error: '' });
     if (!candidate) return;
+    if (candidate.size > 50 * 1024 * 1024) { setFile(null); setStatus({ loading: false, error: 'The main asset exceeds 50 MB.' }); return; }
     const extension = candidate.name.split('.').pop()?.toLowerCase();
     if (!acceptedExtensions.includes(extension)) {
       setFile(null);
@@ -28,16 +32,18 @@ export default function UploadPage() {
       return;
     }
     setFile(candidate);
+    setModelBundle(null);
+    setInitialCompanions(companions.map(companion => ({ id: crypto.randomUUID(), path: companion.name, kind: companion.name.toLowerCase().endsWith('.mtl') ? 'material' : 'texture', file: companion })));
     setProgress(0);
   };
 
   const upload = async () => {
-    if (!file) return;
+    if (!file || (isModel && !modelBundle?.canUpload)) return;
     setStatus({ loading: true, error: '' });
     try {
       const response = await assetService.upload(file, (event) => {
         if (event.total) setProgress(Math.round((event.loaded * 100) / event.total));
-      });
+      }, modelBundle || {});
       const initialMetadata = compactMetadata(metadata);
       let metadataWarning = '';
       if (Object.keys(initialMetadata).length) {
@@ -48,25 +54,27 @@ export default function UploadPage() {
           metadataWarning = getApiError(metadataError, 'The file uploaded, but its initial metadata could not be saved.');
         }
       }
-      navigate(`/assets/${response.asset.id}`, { state: { uploaded: true, metadataWarning } });
+      navigate(`/assets/${response.asset.id}`, { state: { uploaded: true, metadataWarning, processing: response.processing } });
     } catch (error) {
       setStatus({ loading: false, error: getApiError(error, 'The asset could not be uploaded.') });
     }
   };
+  const isModel = file && /\.(obj|fbx)$/i.test(file.name);
 
   return (
     <>
       <PageHeader eyebrow="Asset repository" title="Upload Asset" description="Add a supported game asset. AI metadata processing starts automatically after upload." actions={<Link to="/assets" className="secondary-button"><ArrowLeft size={16} /> Library</Link>} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="panel p-5 sm:p-7">
-          <input ref={inputRef} type="file" className="sr-only" accept={acceptedExtensions.map((ext) => `.${ext}`).join(',')} onChange={(event) => selectFile(event.target.files?.[0])} />
+          <input ref={inputRef} type="file" className="sr-only" disabled={status.loading} accept={acceptedExtensions.map((ext) => `.${ext}`).join(',')} onChange={(event) => { selectFile(event.target.files?.[0]); event.target.value = ''; }} />
           <button
             type="button"
+            disabled={status.loading}
             className={`upload-zone w-full ${dragging ? 'upload-zone-active' : ''}`}
             onClick={() => inputRef.current?.click()}
             onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
-            onDrop={(event) => { event.preventDefault(); setDragging(false); selectFile(event.dataTransfer.files?.[0]); }}
+            onDrop={(event) => { event.preventDefault(); setDragging(false); if (status.loading) return; const files = Array.from(event.dataTransfer.files || []); const models = files.filter(candidate => /\.(obj|fbx)$/i.test(candidate.name)); if (models.length > 1) { setStatus({ loading: false, error: 'Choose one main model per asset.' }); return; } const main = models[0] || files[0]; selectFile(main, models.length ? files.filter(candidate => candidate !== main && /\.(mtl|png|jpe?g)$/i.test(candidate.name)) : []); }}
           >
             <span className="grid h-14 w-14 place-items-center rounded-lg border border-violet-400/20 bg-violet-400/10 text-aether-primary"><UploadCloud size={26} /></span>
             <span className="mt-5 font-display text-lg font-semibold text-zinc-100">Drop an asset here</span>
@@ -81,9 +89,10 @@ export default function UploadPage() {
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-zinc-100">{file.name}</p><p className="mt-1 font-mono text-[10px] uppercase text-zinc-500">{formatBytes(file.size)} · Ready</p></div>
                 <button className="p-2 text-zinc-500 hover:text-zinc-200" onClick={() => setFile(null)} disabled={status.loading} aria-label="Remove selected file"><X size={18} /></button>
               </div>
-              {status.loading && <div className="mt-4"><div className="mb-2 flex justify-between font-mono text-[10px] uppercase text-zinc-500"><span>Uploading</span><span>{progress}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-aether-primary transition-all" style={{ width: `${progress}%` }} /></div></div>}
+              {status.loading && <div className="mt-4"><div className="mb-2 flex justify-between font-mono text-[10px] uppercase text-zinc-500"><span>{progress === 100 ? 'Saving files…' : 'Uploading'}</span><span>{progress}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-aether-primary transition-all" style={{ width: `${progress}%` }} /></div></div>}
             </div>
           )}
+          {isModel && <ModelPackageEditor key={`${file.name}-${file.lastModified}-${file.size}`} file={file} initialAttachments={initialCompanions} onChange={setModelBundle} disabled={status.loading} />}
           <div className="mt-6 border-t border-white/[0.08] pt-6">
             <div className="mb-4"><h2 className="font-display text-sm font-semibold text-zinc-100">Initial organization</h2><p className="mt-1 text-xs text-zinc-600">Optional metadata helps teammates retrieve this asset before AI processing completes.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -93,7 +102,7 @@ export default function UploadPage() {
             </div>
           </div>
           {status.error && <div className="mt-5 rounded border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200" role="alert">{status.error}</div>}
-          <div className="mt-6 flex justify-end gap-3"><Link to="/assets" className="secondary-button">Cancel</Link><button className="primary-button" disabled={!file || status.loading} onClick={upload}>{status.loading ? 'Uploading…' : 'Upload asset'}<FileUp size={16} /></button></div>
+          <div className="mt-6 flex justify-end gap-3"><Link to="/assets" className="secondary-button">Cancel</Link><button className="primary-button" disabled={!file || status.loading || (isModel && !modelBundle?.canUpload)} onClick={upload}>{status.loading ? 'Uploading…' : isModel ? modelBundle?.geometryOnly ? 'Upload geometry package' : 'Upload model package' : 'Upload asset'}<FileUp size={16} /></button></div>
         </section>
         <aside className="panel h-fit p-5">
           <h2 className="font-display text-sm font-semibold text-zinc-100">Upload pipeline</h2>
