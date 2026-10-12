@@ -9,7 +9,7 @@ export default function BrandMark({ compact = false }) {
       {!compact && (
         <span>
           <span className="block font-display text-base font-semibold tracking-tight text-white">Aether</span>
-          <span className="block font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-500">Asset Management</span>
+          <span className="block font-mono text-xs uppercase tracking-[0.18em] text-zinc-400">Asset Management</span>
         </span>
       )}
     </div>

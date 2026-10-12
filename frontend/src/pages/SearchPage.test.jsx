@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SearchPage from './SearchPage';
 import { assetService } from '../services/assetService';
@@ -44,4 +44,22 @@ test('maps the AI metadata field to the canonical q backend parameter', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Search assets' }));
 
   await waitFor(() => expect(assetService.search).toHaveBeenCalledWith(expect.objectContaining({ q: 'redis', page: 1, pageSize: 24 })));
+});
+
+test('reset ignores results that arrive from an earlier search', async () => {
+  let resolveSearch;
+  assetService.search.mockReturnValue(new Promise(resolve => { resolveSearch = resolve; }));
+  render(<MemoryRouter initialEntries={['/search?filename=old']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><SearchPage /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+  await act(async () => resolveSearch({ data: [{ id: 1, originalname: 'late-result.png' }], totalItems: 1 }));
+  expect(screen.queryByText('late-result.png')).not.toBeInTheDocument();
+  expect(screen.getByText('Build a precise search')).toBeInTheDocument();
+});
+
+test('request failures show retry without a misleading empty-result message', async () => {
+  assetService.search.mockRejectedValue(new Error('Offline'));
+  render(<MemoryRouter initialEntries={['/search?filename=hero']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><SearchPage /></MemoryRouter>);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Search could not be completed.');
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  expect(screen.queryByText('No matching assets')).not.toBeInTheDocument();
 });

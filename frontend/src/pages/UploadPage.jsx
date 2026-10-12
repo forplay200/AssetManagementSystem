@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, FileText, FileUp, FolderKanban, Tags, UploadCloud, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import useConfirmation from '../hooks/useConfirmation';
+import { useUnsavedChanges } from '../context/UnsavedChangesContext';
 import PageHeader from '../components/common/PageHeader';
 import ModelPackageEditor from '../components/assets/ModelPackageEditor';
 import { getApiError } from '../services/api';
@@ -20,14 +22,17 @@ export default function UploadPage() {
   const [metadata, setMetadata] = useState({ description: '', category: '', project: '' });
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const { confirm, confirmation } = useConfirmation();
+  const markClean = useUnsavedChanges(Boolean(file || Object.values(metadata).some(value => value.trim())), "Upload draft", status.loading);
 
-  const selectFile = (candidate, companions = []) => {
+  const selectFile = async (candidate, companions = []) => {
+    if (status.loading || !candidate) return;
+    if (file && modelBundle?.attachments?.length && !await confirm({ title: "Replace selected model?", description: "Selected companion files and material bindings will be reset. Organization fields will be kept.", confirmLabel: "Replace selection" })) return;
     setStatus({ loading: false, error: '' });
     if (!candidate) return;
-    if (candidate.size > 50 * 1024 * 1024) { setFile(null); setStatus({ loading: false, error: 'The main asset exceeds 50 MB.' }); return; }
+    if (candidate.size > 50 * 1024 * 1024) { setStatus({ loading: false, error: 'The main asset exceeds 50 MB. Your previous selection has been kept.' }); return; }
     const extension = candidate.name.split('.').pop()?.toLowerCase();
     if (!acceptedExtensions.includes(extension)) {
-      setFile(null);
       setStatus({ loading: false, error: `.${extension || 'unknown'} files are not supported.` });
       return;
     }
@@ -38,7 +43,7 @@ export default function UploadPage() {
   };
 
   const upload = async () => {
-    if (!file || (isModel && !modelBundle?.canUpload)) return;
+    if (status.loading || !file || (isModel && !modelBundle?.canUpload)) return;
     setStatus({ loading: true, error: '' });
     try {
       const response = await assetService.upload(file, (event) => {
@@ -54,6 +59,7 @@ export default function UploadPage() {
           metadataWarning = getApiError(metadataError, 'The file uploaded, but its initial metadata could not be saved.');
         }
       }
+      markClean();
       navigate(`/assets/${response.asset.id}`, { state: { uploaded: true, metadataWarning, processing: response.processing } });
     } catch (error) {
       setStatus({ loading: false, error: getApiError(error, 'The asset could not be uploaded.') });
@@ -70,31 +76,32 @@ export default function UploadPage() {
           <button
             type="button"
             disabled={status.loading}
+            style={file ? { minHeight: 160, paddingTop: 24, paddingBottom: 24 } : undefined}
             className={`upload-zone w-full ${dragging ? 'upload-zone-active' : ''}`}
             onClick={() => inputRef.current?.click()}
             onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
-            onDrop={(event) => { event.preventDefault(); setDragging(false); if (status.loading) return; const files = Array.from(event.dataTransfer.files || []); const models = files.filter(candidate => /\.(obj|fbx)$/i.test(candidate.name)); if (models.length > 1) { setStatus({ loading: false, error: 'Choose one main model per asset.' }); return; } const main = models[0] || files[0]; selectFile(main, models.length ? files.filter(candidate => candidate !== main && /\.(mtl|png|jpe?g)$/i.test(candidate.name)) : []); }}
+            onDrop={(event) => { event.preventDefault(); setDragging(false); if (status.loading) return; const files = Array.from(event.dataTransfer.files || []); const models = files.filter(candidate => /\.(obj|fbx)$/i.test(candidate.name)); if (!models.length && files.length > 1) { setStatus({ loading: false, error: 'Choose one main asset at a time. Multiple files are supported for model packages only.' }); return; } if (models.length > 1) { setStatus({ loading: false, error: 'Choose one main model per asset.' }); return; } const main = models[0] || files[0]; selectFile(main, models.length ? files.filter(candidate => candidate !== main && /\.(mtl|png|jpe?g)$/i.test(candidate.name)) : []); }}
           >
             <span className="grid h-14 w-14 place-items-center rounded-lg border border-violet-400/20 bg-violet-400/10 text-aether-primary"><UploadCloud size={26} /></span>
-            <span className="mt-5 font-display text-lg font-semibold text-zinc-100">Drop an asset here</span>
-            <span className="mt-2 text-sm text-zinc-500">or click to browse your files</span>
-            <span className="mt-5 font-mono text-[10px] uppercase tracking-wider text-zinc-600">Images · Audio · 3D · Scripts · Data</span>
+            <span className="mt-5 font-display text-lg font-semibold text-zinc-100">{file ? "Choose a different asset" : "Drop an asset here"}</span>
+            <span className="mt-2 text-sm text-zinc-400">or click to browse your files</span>
+            <span className="mt-5 font-mono text-xs uppercase tracking-wider text-zinc-400">Images · Audio · 3D · Scripts · Data · Main file up to 50 MB</span>
           </button>
 
           {file && (
             <div className="mt-5 rounded-lg border border-white/[0.08] bg-zinc-950/60 p-4">
               <div className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded bg-zinc-900 text-zinc-400"><FileUp size={19} /></span>
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-zinc-100">{file.name}</p><p className="mt-1 font-mono text-[10px] uppercase text-zinc-500">{formatBytes(file.size)} · Ready</p></div>
-                <button className="p-2 text-zinc-500 hover:text-zinc-200" onClick={() => setFile(null)} disabled={status.loading} aria-label="Remove selected file"><X size={18} /></button>
+                <div className="min-w-0 flex-1"><p className="text-sm font-medium text-zinc-100 [overflow-wrap:anywhere]">{file.name}</p><p className="mt-1 font-mono text-xs uppercase text-zinc-400">{formatBytes(file.size)} · Ready</p></div>
+                <button className="icon-action" onClick={async () => { if (!modelBundle?.attachments?.length || await confirm({ title: "Remove selected model?", description: "Selected companion files and material bindings will also be cleared.", confirmLabel: "Remove selection" })) { setFile(null); setModelBundle(null); setInitialCompanions([]); } }} disabled={status.loading} aria-label="Remove selected file"><X size={18} /></button>
               </div>
-              {status.loading && <div className="mt-4"><div className="mb-2 flex justify-between font-mono text-[10px] uppercase text-zinc-500"><span>{progress === 100 ? 'Saving files…' : 'Uploading'}</span><span>{progress}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-aether-primary transition-all" style={{ width: `${progress}%` }} /></div></div>}
+              {status.loading && <div className="mt-4"><div className="mb-2 flex justify-between font-mono text-xs uppercase text-zinc-400"><span>{progress === 100 ? 'Saving files…' : 'Uploading'}</span><span>{progress}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-aether-primary transition-all" style={{ width: `${progress}%` }} /></div></div>}
             </div>
           )}
           {isModel && <ModelPackageEditor key={`${file.name}-${file.lastModified}-${file.size}`} file={file} initialAttachments={initialCompanions} onChange={setModelBundle} disabled={status.loading} />}
           <div className="mt-6 border-t border-white/[0.08] pt-6">
-            <div className="mb-4"><h2 className="font-display text-sm font-semibold text-zinc-100">Initial organization</h2><p className="mt-1 text-xs text-zinc-600">Optional metadata helps teammates retrieve this asset before AI processing completes.</p></div>
+            <div className="mb-4"><h2 className="font-display text-sm font-semibold text-zinc-100">Initial organization</h2><p className="mt-1 text-xs text-zinc-400">Optional metadata helps teammates retrieve this asset before AI processing completes.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-2"><span className="label flex items-center gap-2"><FileText size={12} /> Description</span><textarea className="input mt-2 min-h-24 w-full resize-y py-3" maxLength={1000} value={metadata.description} onChange={(event) => setMetadata({ ...metadata, description: event.target.value })} disabled={status.loading} placeholder="Purpose, visual style, or usage notes…" /></label>
               <label><span className="label flex items-center gap-2"><Tags size={12} /> Category</span><input className="input mt-2 w-full" maxLength={80} value={metadata.category} onChange={(event) => setMetadata({ ...metadata, category: event.target.value })} disabled={status.loading} placeholder="e.g. Environment" /></label>
@@ -102,16 +109,17 @@ export default function UploadPage() {
             </div>
           </div>
           {status.error && <div className="mt-5 rounded border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200" role="alert">{status.error}</div>}
-          <div className="mt-6 flex justify-end gap-3"><Link to="/assets" className="secondary-button">Cancel</Link><button className="primary-button" disabled={!file || status.loading || (isModel && !modelBundle?.canUpload)} onClick={upload}>{status.loading ? 'Uploading…' : isModel ? modelBundle?.geometryOnly ? 'Upload geometry package' : 'Upload model package' : 'Upload asset'}<FileUp size={16} /></button></div>
+          <div className="editor-actions mt-6"><Link to="/assets" className="secondary-button">Cancel</Link><button className="primary-button" disabled={!file || status.loading || (isModel && !modelBundle?.canUpload)} onClick={upload}>{status.loading ? progress === 100 ? 'Saving files…' : 'Uploading…' : isModel ? modelBundle?.geometryOnly ? 'Upload geometry package' : 'Upload model package' : 'Upload asset'}<FileUp size={16} /></button></div>
         </section>
         <aside className="panel h-fit p-5">
           <h2 className="font-display text-sm font-semibold text-zinc-100">Upload pipeline</h2>
           <ol className="mt-5 space-y-5">
-            {['Secure file storage', 'AI metadata extraction', 'Search indexing'].map((item, index) => <li key={item} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded border border-white/10 bg-zinc-900 font-mono text-[10px] text-zinc-400">0{index + 1}</span><div><p className="text-sm text-zinc-300">{item}</p><p className="mt-1 text-xs leading-5 text-zinc-600">{index === 0 ? 'Stored in the protected object repository.' : index === 1 ? 'Tags and keywords are generated asynchronously.' : 'The asset becomes available to your team.'}</p></div></li>)}
+            {['Secure file storage', 'AI metadata extraction', 'Search indexing'].map((item, index) => <li key={item} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded border border-white/10 bg-zinc-900 font-mono text-xs text-zinc-400">0{index + 1}</span><div><p className="text-sm text-zinc-300">{item}</p><p className="mt-1 text-xs leading-5 text-zinc-400">{index === 0 ? 'Stored in the protected object repository.' : index === 1 ? 'Tags and keywords are generated asynchronously.' : 'The asset becomes available to your team.'}</p></div></li>)}
           </ol>
-          <div className="mt-6 flex items-start gap-2 rounded bg-emerald-400/[0.07] p-3 text-xs leading-5 text-emerald-200/80"><CheckCircle2 size={15} className="mt-0.5 shrink-0" />All PRD-supported asset formats are accepted.</div>
+          <div className="mt-6 flex items-start gap-2 rounded bg-emerald-400/[0.07] p-3 text-xs leading-5 text-emerald-200/80"><CheckCircle2 size={15} className="mt-0.5 shrink-0" />Choose a supported file. Model packages can include material and texture files.</div>
         </aside>
       </div>
+      {confirmation}
     </>
   );
 }

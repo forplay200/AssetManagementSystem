@@ -5,8 +5,8 @@ import { formatDateTime } from '../utils/formatters';
 import { ACCOUNT_ROLES, WORKSPACE_ROLES, isSystemAdministrator } from '../auth/roles';
 
 const roleDetails = {
-  [ACCOUNT_ROLES.USER]: { title: 'User', permissions: ['Update own profile', 'Create a team', 'Join a team'] },
-  [WORKSPACE_ROLES.OWNER]: { title: 'Workspace Owner', permissions: ['Manage team members and roles', 'Manage projects and assets', 'Approve assets', 'Participate in discussions'] },
+  [ACCOUNT_ROLES.USER]: { title: 'User', permissions: ['View own profile', 'Create a team', 'Join a team'] },
+  [WORKSPACE_ROLES.OWNER]: { title: 'Workspace Owner', permissions: ['Manage team members and roles', 'Manage workspace assets', 'Manage asset versions', 'Participate in discussions'] },
   [WORKSPACE_ROLES.MANAGER]: { title: 'Workspace Manager', permissions: ['Upload and manage assets', 'Review AI metadata', 'Manage versions', 'Participate in discussions'] },
   [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
   [WORKSPACE_ROLES.COLLABORATOR]: { title: 'Collaborator', permissions: ['View repository assets', 'Download permitted files', 'Provide feedback', 'Reply to discussions'] },
@@ -35,16 +35,16 @@ export default function ProfilePage() {
             <div className="profile-banner h-28 border-b border-white/[0.08]" />
             <div className="px-5 pb-6 sm:px-7">
               <div className="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex items-end gap-4"><span className="grid h-20 w-20 place-items-center rounded-xl border-4 border-aether-surface bg-violet-500 text-2xl font-semibold text-white shadow-floating">{initial}</span><div className="pb-1"><h2 className="font-display text-xl font-semibold text-zinc-50">{user?.username}</h2><p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-aether-primary">{role.title}</p></div></div>
+                <div className="flex items-end gap-4"><span className="grid h-20 w-20 place-items-center rounded-xl border-4 border-aether-surface bg-violet-500 text-2xl font-semibold text-white shadow-floating">{initial}</span><div className="pb-1"><h2 className="font-display text-xl font-semibold text-zinc-50">{user?.username}</h2><p className="mt-1 font-mono text-xs uppercase tracking-wider text-aether-primary">{role.title}</p></div></div>
                 <button className="secondary-button" disabled title="Profile updates are not available yet">Edit profile</button>
               </div>
               <dl className="mt-7 grid gap-4 sm:grid-cols-2">
-                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><UserRound size={13} /> Username</dt><dd className="mt-2 text-sm text-zinc-200">{user?.username}</dd></div>
-                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><Mail size={13} /> Email address</dt><dd className="mt-2 break-all text-sm text-zinc-200">{user?.email}</dd></div>
-                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><ShieldCheck size={13} /> {isSystemAdministrator(user) ? 'Platform role' : 'Workspace role'}</dt><dd className="mt-2 text-sm text-zinc-200">{role.title}</dd></div>
-                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600"><KeyRound size={13} /> User ID</dt><dd className="mt-2 font-mono text-xs text-zinc-300">USR-{String(user?.id || 0).padStart(4, '0')}</dd></div>
+                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-zinc-400"><UserRound size={13} /> Username</dt><dd className="mt-2 text-sm text-zinc-200">{user?.username}</dd></div>
+                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-zinc-400"><Mail size={13} /> Email address</dt><dd className="mt-2 break-all text-sm text-zinc-200">{user?.email}</dd></div>
+                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-zinc-400"><ShieldCheck size={13} /> {isSystemAdministrator(user) ? 'Platform role' : 'Workspace role'}</dt><dd className="mt-2 text-sm text-zinc-200">{role.title}</dd></div>
+                <div className="rounded border border-white/[0.08] bg-black/20 p-4"><dt className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-zinc-400"><KeyRound size={13} /> User ID</dt><dd className="mt-2 font-mono text-xs text-zinc-300">USR-{String(user?.id || 0).padStart(4, '0')}</dd></div>
               </dl>
-              <p className="mt-5 rounded border border-blue-400/15 bg-blue-400/[0.06] px-4 py-3 text-xs leading-5 text-blue-200/75">Profile editing will become available when a self-service profile endpoint is exposed by the platform.</p>
+              <p className="mt-5 rounded border border-blue-400/15 bg-blue-400/[0.06] px-4 py-3 text-xs leading-5 text-blue-200/75">Profile editing is not available yet. Your current account details are shown here.</p>
             </div>
           </section>
 
@@ -52,8 +52,8 @@ export default function ProfilePage() {
         </div>
 
         <aside className="space-y-5">
-          <section className="panel p-5"><h2 className="section-title"><KeyRound size={16} /> Session security</h2><div className="mt-5 flex items-center gap-3 rounded border border-emerald-400/15 bg-emerald-400/[0.06] p-3"><span className="h-2 w-2 rounded-full bg-aether-success shadow-[0_0_8px_rgba(16,185,129,.5)]" /><div><p className="text-sm font-medium text-emerald-200">Authenticated</p><p className="mt-0.5 text-xs text-emerald-300/50">JWT session is active</p></div></div>{expiry && <div className="mt-4 flex gap-3 border-t border-white/[0.06] pt-4"><Clock3 size={15} className="mt-0.5 shrink-0 text-zinc-600" /><div><p className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Session expires</p><p className="mt-1 text-xs text-zinc-400">{formatDateTime(expiry)}</p></div></div>}</section>
-          <section className="panel p-5"><h2 className="font-display text-sm font-semibold text-zinc-100">Account protection</h2><p className="mt-2 text-xs leading-5 text-zinc-500">Passwords are validated by the secure backend and never stored in this browser.</p><button className="secondary-button mt-5 w-full" disabled>Change password</button></section>
+          <section className="panel p-5"><h2 className="section-title"><KeyRound size={16} /> Session security</h2><div className="mt-5 flex items-center gap-3 rounded border border-emerald-400/15 bg-emerald-400/[0.06] p-3"><span className="h-2 w-2 rounded-full bg-aether-success shadow-[0_0_8px_rgba(16,185,129,.5)]" /><div><p className="text-sm font-medium text-emerald-200">Authenticated</p><p className="mt-0.5 text-xs text-emerald-300/50">Your session is active</p></div></div>{expiry && <div className="mt-4 flex gap-3 border-t border-white/[0.06] pt-4"><Clock3 size={15} className="mt-0.5 shrink-0 text-zinc-400" /><div><p className="font-mono text-xs uppercase tracking-wider text-zinc-400">Session expires</p><p className="mt-1 text-xs text-zinc-400">{formatDateTime(expiry)}</p></div></div>}</section>
+          <section className="panel p-5"><h2 className="font-display text-sm font-semibold text-zinc-100">Account protection</h2><p className="mt-2 text-xs leading-5 text-zinc-400">Password changes are not available from this page. Use account recovery from the sign-in screen if you need to reset your password.</p><button className="secondary-button mt-5 w-full" disabled>Change password</button></section>
         </aside>
       </div>
     </>
