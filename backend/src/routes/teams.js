@@ -4,6 +4,8 @@ const { authorizePermission, denySystemAdministrator } = require('../middleware/
 const { validate } = require('../middleware/validate');
 const teamController = require('../controllers/teamController');
 
+const requireWorkspace = require('../middleware/requireWorkspace');
+const validateName = require('../middleware/validateName');
 const router = express.Router();
 router.use(auth);
 router.use(denySystemAdministrator);
@@ -11,6 +13,7 @@ router.use(denySystemAdministrator);
 router.get('/', teamController.listTeams);
 router.post('/', validate({ body: { name: { type: 'string', required: true, minLength: 2 } } }), teamController.createTeam);
 router.post('/join', validate({ body: { inviteCode: { type: 'string', required: true, minLength: 6 } } }), teamController.joinTeam);
+router.patch('/current/name', requireWorkspace, authorizePermission('manageTeam'), validateName('name', 2, 100), teamController.renameTeam);
 router.get('/current', authorizePermission('viewAsset'), teamController.getCurrentTeam);
 router.patch('/current/members/:userId', authorizePermission('manageTeam'), teamController.updateMemberRole);
 router.delete('/current/members/:userId', authorizePermission('manageTeam'), teamController.removeMember);

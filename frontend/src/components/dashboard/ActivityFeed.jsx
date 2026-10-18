@@ -1,10 +1,11 @@
+import { getAssetDisplayName } from '../../utils/assetDisplayName';
 import { MessageSquare, Upload, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '../../utils/formatters';
 
 export default function ActivityFeed({ recentUploads = [], recentUsers = [], totalComments = 0 }) {
   const events = [
-    ...recentUploads.map((asset) => ({ id: `asset-${asset.id}`, type: 'upload', date: asset.uploadedAt, title: asset.originalname || asset.filename, detail: `${asset.uploader?.username || 'A team member'} uploaded an asset`, assetId: asset.id })),
+    ...recentUploads.map((asset) => ({ id: `asset-${asset.id}`, type: 'upload', date: asset.uploadedAt, title: getAssetDisplayName(asset), detail: `${asset.uploader?.username || 'A team member'} uploaded an asset`, assetId: asset.id })),
     ...recentUsers.map((user) => ({ id: `user-${user.id}`, type: 'user', date: user.createdAt, title: user.username, detail: 'Joined the workspace' })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
 

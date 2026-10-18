@@ -1,3 +1,4 @@
+import { getAssetDisplayName } from '../utils/assetDisplayName';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Files, MessageSquare, Plus, RefreshCw, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -58,7 +59,7 @@ export default function DashboardPage() {
           <UploadChart assets={assets} />
           <section className="panel overflow-hidden">
             <div className="section-title m-5 mb-0"><Files size={16} /> Recent assets <Link to="/assets" className="ml-auto flex items-center gap-1 text-xs font-normal text-zinc-400 transition hover:text-aether-primary">View library <ArrowRight size={13} /></Link></div>
-            {assets.length ? <div className="mt-4 divide-y divide-white/[0.06]">{assets.slice(0, 5).map((asset) => <Link key={asset.id} to={`/assets/${asset.id}`} className="grid gap-3 px-5 py-4 transition hover:bg-white/[0.025] sm:grid-cols-[36px_minmax(0,1fr)_auto] sm:items-center"><span className="grid h-9 w-9 place-items-center rounded border border-white/[0.08] bg-zinc-950 text-zinc-400"><AssetTypeIcon mime={asset.mimetype} size={17} /></span><div className="min-w-0"><p className="truncate text-sm font-medium text-zinc-300">{asset.originalname || asset.filename}</p><p className="mt-1 font-mono text-xs uppercase text-zinc-400">{assetType(asset.mimetype)} · {formatBytes(asset.size)}</p></div><span className="font-mono text-xs uppercase text-zinc-400">{formatDate(asset.uploadedAt)}</span></Link>)}</div> : <div className="px-6 py-10 text-center text-sm text-zinc-400">No recent assets are available.</div>}
+            {assets.length ? <div className="mt-4 divide-y divide-white/[0.06]">{assets.slice(0, 5).map((asset) => <Link key={asset.id} to={`/assets/${asset.id}`} className="grid gap-3 px-5 py-4 transition hover:bg-white/[0.025] sm:grid-cols-[36px_minmax(0,1fr)_auto] sm:items-center"><span className="grid h-9 w-9 place-items-center rounded border border-white/[0.08] bg-zinc-950 text-zinc-400"><AssetTypeIcon mime={asset.mimetype} size={17} /></span><div className="min-w-0"><p className="truncate text-sm font-medium text-zinc-300">{getAssetDisplayName(asset)}</p><p className="mt-1 font-mono text-xs uppercase text-zinc-400">{assetType(asset.mimetype)} · {formatBytes(asset.size)}</p></div><span className="font-mono text-xs uppercase text-zinc-400">{formatDate(asset.uploadedAt)}</span></Link>)}</div> : <div className="px-6 py-10 text-center text-sm text-zinc-400">No recent assets are available.</div>}
           </section>
         </div>
         <div className="space-y-5"><TypeDistribution assets={assets} /><ActivityFeed recentUploads={stats.recentUploads} recentUsers={stats.recentUsers} totalComments={stats.totalComments} /></div>

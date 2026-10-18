@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
+const { renameAsset, uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
 const { createComment, getCommentHistory } = require('../controllers/commentsController');
 const { getAssetVocabulary, approveVocabularyEntry, removeVocabularyEntry } = require('../controllers/vocabularyController');
 const auth = require('../middleware/auth');
@@ -9,9 +9,13 @@ const requireWorkspace = require('../middleware/requireWorkspace');
 const workspaceAssetAccess = require('../middleware/workspaceAssetAccess');
 const internalAiAuth = require('../middleware/internalAiAuth');
 const modelUpload = require('../middleware/modelUpload');
+const assetWriteAccess = require('../middleware/assetWriteAccess');
 const { getAssetPackage, getPackageResource } = require('../controllers/assetsController');
 
+const validateName = require('../middleware/validateName');
 const workspaceAuth = [auth, denySystemAdministrator, requireWorkspace];
+router.patch('/:id/name', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, validateName('displayName', 1, 200), renameAsset);
+
 // POST /api/assets/upload
 router.post('/upload', workspaceAuth, authorizePermission('uploadAsset'), modelUpload, uploadAsset);
 
@@ -50,7 +54,7 @@ router.delete('/:assetId/vocabulary/:entryId', workspaceAuth, authorizePermissio
 // POST /api/assets/:id/versions
 router.post('/:id/versions', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, createVersion);
 // POST /api/assets/:id/versions/upload
-router.post('/:id/versions/upload', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, modelUpload, uploadNewVersion);
+router.post('/:id/versions/upload', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, assetWriteAccess, modelUpload, uploadNewVersion);
 router.get('/:id/versions/:versionId/package', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetPackage);
 router.get('/:id/versions/:versionId/resources/:resourceId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getPackageResource);
 // GET /api/assets/:id/versions

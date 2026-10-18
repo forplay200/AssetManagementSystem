@@ -10,11 +10,12 @@ function postgresSearchSql(query) {
   return sequelize.dialect.queryGenerator.selectQuery('Assets', { where: buildAssetSearchWhere(query) }, Asset);
 }
 
-test('filename search prioritizes the original upload name and retains storage-key compatibility', () => {
+test('name search includes display name, original upload name and storage-key compatibility', () => {
   const where = buildAssetSearchWhere({ filename: 'dashboard' });
   const alternatives = where[Op.and][0][Op.or];
-  assert.equal(alternatives[0].originalname[Op.iLike], '%dashboard%');
-  assert.equal(alternatives[1].filename[Op.iLike], '%dashboard%');
+  assert.equal(alternatives[0].displayName[Op.iLike], '%dashboard%');
+  assert.equal(alternatives[1].originalname[Op.iLike], '%dashboard%');
+  assert.equal(alternatives[2].filename[Op.iLike], '%dashboard%');
 });
 
 test('metadata and AI searches cast JSON expressions to text for PostgreSQL', () => {

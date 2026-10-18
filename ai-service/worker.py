@@ -36,6 +36,9 @@ minio_client = Minio(
 r = redis.Redis(
     host="redis",
     port=6379,
+    # BRPOP waits indefinitely while idle; newer clients otherwise impose a
+    # socket read deadline and repeatedly restart the model-loading worker.
+    socket_timeout=None,
     decode_responses=True
 )
 

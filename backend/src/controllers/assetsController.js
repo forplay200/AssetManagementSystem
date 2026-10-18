@@ -1,13 +1,13 @@
 const path = require('path');
 const { Op } = require('sequelize');
 const { sequelize, Tag, User, Asset, Version, Comment, TeamMember } = require("../models");
-const { WORKSPACE_ROLES } = require('../utils/roles');
+const { canManageAsset, canDeleteAsset, ASSET_WRITE_DENIED } = require('../utils/assetPermissions');
 
 const redisClient = require("../redisClient");
 const logger = require('../utils/logger');
 const { minioClient, BUCKET_NAME } = require('../utils/minioClient');
 const { buildAssetSearchWhere, findAiMatch } = require('../utils/searchQuery');
-const { workspaceAssetWhere, belongsToWorkspace } = require('../utils/workspaceScope');
+const { workspaceAssetWhere } = require('../utils/workspaceScope');
 const { canonicalizeTagName, getVisualAssetType, getVocabularySnapshot, normalizeTagName } = require('../utils/clipVocabulary');
 
 const crypto = require('crypto');
@@ -15,7 +15,7 @@ const sharp = require('sharp');
 const packages = require('../utils/modelPackage');
 
 function assetResponse(asset) {
-  return { id: asset.id, filename: asset.filename, originalname: asset.originalname,
+  return { id: asset.id, filename: asset.filename, originalname: asset.originalname, displayName: asset.displayName ?? null,
     mimetype: asset.mimetype, size: asset.size, userId: asset.userId,
     workspaceId: asset.workspaceId, uploadedAt: asset.uploadedAt,
     package: packages.packageSummary(asset.packageManifest) };
@@ -70,16 +70,6 @@ function workspaceAssetScope(req) {
   return workspaceAssetWhere(req.user);
 }
 
-function canManageAsset(req, asset) {
-  return belongsToWorkspace(asset, req.user)
-    && [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.MANAGER].includes(req.user.teamRole);
-}
-
-function canDeleteAsset(req, asset) {
-  return belongsToWorkspace(asset, req.user)
-    && req.user.teamRole === WORKSPACE_ROLES.OWNER;
-}
-
 // Create a new version for an asset
 exports.createVersion = async (req, res) => {
   const writtenKeys = [];
@@ -88,7 +78,7 @@ exports.createVersion = async (req, res) => {
     const version = await sequelize.transaction(async transaction => {
       const asset = await Asset.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
       if (!asset) throw Object.assign(new Error('Asset not found'), { status: 404 });
-      if (!canManageAsset(req, asset)) throw Object.assign(new Error('Forbidden'), { status: 403 });
+      if (!canManageAsset(req.user, asset)) throw Object.assign(new Error(ASSET_WRITE_DENIED), { status: 403 });
       return preserveCurrent(asset, req, transaction, writtenKeys);
     });
     committed = true;
@@ -266,6 +256,7 @@ exports.createAiJob = async (req, res) => {
     if (!asset) {
       return res.status(404).json({ message: "Asset not found" });
     }
+    if (!canManageAsset(req.user, asset)) return res.status(403).json({ message: ASSET_WRITE_DENIED });
     // Prepare job data
     const job = {
       assetId,
@@ -329,7 +320,7 @@ exports.getDashboardStats = async (req, res) => {
         where: workspaceAssetScope(req),
         order: [['uploadedAt', 'DESC']],
         limit: 5,
-        attributes: ['id', 'filename', 'uploadedAt'],
+        attributes: ['id', 'filename', 'originalname', 'displayName', 'uploadedAt'],
         include: [{
           model: User,
           as: 'uploader',
@@ -395,7 +386,7 @@ exports.deleteAsset = async (req, res) => {
   try {
     const asset = await Asset.findByPk(req.params.id);
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
-    if (!canDeleteAsset(req, asset)) return res.status(403).json({ message: 'Forbidden' });
+    if (!canDeleteAsset(req.user, asset)) return res.status(403).json({ message: ASSET_WRITE_DENIED });
     const versions = await Version.findAll({ where: { assetId: asset.id } });
     await packages.removeObjects([...packages.objectKeys(asset), ...versions.flatMap(packages.objectKeys)]);
     await sequelize.transaction(async transaction => {
@@ -454,9 +445,9 @@ exports.updateAssetMetadata = async (req, res) => {
       });
     }
 
-    if (!canManageAsset(req, asset)) {
+    if (!canManageAsset(req.user, asset)) {
       return res.status(403).json({
-        message: "Forbidden"
+        message: ASSET_WRITE_DENIED
       });
     }
 
@@ -497,8 +488,8 @@ exports.addTagToAsset = async (req, res) => {
       });
     }
 
-    if (!canManageAsset(req, asset)) {
-      return res.status(403).json({ message: "Forbidden" });
+    if (!canManageAsset(req.user, asset)) {
+      return res.status(403).json({ message: ASSET_WRITE_DENIED });
     }
 
     const canonicalName = await canonicalizeTagName(asset.workspaceId, tag);
@@ -544,8 +535,8 @@ exports.removeTagFromAsset = async (req, res) => {
       });
     }
 
-    if (!canManageAsset(req, asset)) {
-      return res.status(403).json({ message: "Forbidden" });
+    if (!canManageAsset(req.user, asset)) {
+      return res.status(403).json({ message: ASSET_WRITE_DENIED });
     }
 
     const tagRecord = await Tag.findOne({
@@ -621,7 +612,7 @@ exports.getAssetInfo = async (req, res) => {
     res.json({
       id: asset.id,
       filename: asset.filename,
-      originalname: asset.originalname,
+      originalname: asset.originalname, displayName: asset.displayName ?? null,
       mimetype: asset.mimetype,
       size: asset.size,
       workspaceId: asset.workspaceId,
@@ -647,7 +638,7 @@ exports.uploadNewVersion = async (req, res) => {
     const result = await sequelize.transaction(async transaction => {
       const asset = await Asset.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
       if (!asset) throw Object.assign(new Error('Asset not found'), { status: 404 });
-      if (!canManageAsset(req, asset)) throw Object.assign(new Error('Forbidden'), { status: 403 });
+      if (!canManageAsset(req.user, asset)) throw Object.assign(new Error(ASSET_WRITE_DENIED), { status: 403 });
       const prepared = await packages.prepareUpload(req, asset);
       const version = await preserveCurrent(asset, req, transaction, writtenKeys);
       const stored = await packages.persistUpload(prepared, req.user.workspaceId, asset.id, writtenKeys);
@@ -706,4 +697,17 @@ exports.getPackageResource = async (req, res) => {
       res.once('close', () => image.destroy()); image.pipe(res);
     } else await streamFile(res, file.objectKey, file.mime, file.path);
   } catch (error) { reportUploadError(res, error); }
+};
+
+exports.renameAsset = async (req, res) => {
+  try {
+    const asset = await Asset.findByPk(req.params.id);
+    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    if (!canManageAsset(req.user, asset)) return res.status(403).json({ message: ASSET_WRITE_DENIED });
+    if (asset.displayName !== req.body.displayName) {
+      asset.displayName = req.body.displayName;
+      await asset.save({ fields: ['displayName'] });
+    }
+    res.json({ asset: assetResponse(asset) });
+  } catch (error) { logger.error(error); res.status(500).json({ message: 'Server error' }); }
 };

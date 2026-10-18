@@ -30,6 +30,10 @@ export function saveDownload({ blob, filename }) {
 }
 
 export const assetService = {
+  async rename(assetId, displayName) {
+    const { data } = await api.patch(`/assets/${assetId}/name`, { displayName });
+    return data;
+  },
   async search(params = {}) {
     const { data } = await api.get('/assets/search', { params });
     return data;

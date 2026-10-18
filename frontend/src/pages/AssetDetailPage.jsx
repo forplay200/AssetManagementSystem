@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Download, FileText, LoaderCircle, MessageSquare, Trash2, WandSparkles } from 'lucide-react';
+import { ArrowLeft, Download, FileText, LoaderCircle, MessageSquare, Pencil, Trash2, WandSparkles } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import RenameDialog from '../components/common/RenameDialog';
+import { getAssetDisplayName } from '../utils/assetDisplayName';
 import AssetPreview from '../components/assets/AssetPreview';
 import CommentThread from '../components/comments/CommentThread';
 import PageHeader from '../components/common/PageHeader';
@@ -8,7 +10,7 @@ import MetadataPanel from '../components/metadata/MetadataPanel';
 import VersionHistory from '../components/versions/VersionHistory';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../context/AuthContext';
-import { WORKSPACE_ROLES } from '../auth/roles';
+import { canManageAsset as mayManageAsset, canDeleteAsset as mayDeleteAsset, canManageWorkspaceVocabulary } from '../auth/assetPermissions';
 import { getApiError } from '../services/api';
 import { assetService, saveDownload } from '../services/assetService';
 import { assetType, formatBytes } from '../utils/formatters';
@@ -20,6 +22,9 @@ export default function AssetDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [state, setState] = useState({ loading: true, info: null, metadata: {}, tags: [], error: '' });
+  const [renaming, setRenaming] = useState(false);
+  const [notice, setNotice] = useState('');
+  const savedNames = useRef({});
   const [actionError, setActionError] = useState('');
   const [activePanel, setActivePanel] = useState('details');
   const [versionFormMode, setVersionFormMode] = useState(null);
@@ -32,22 +37,25 @@ export default function AssetDetailPage() {
   const sequence = useRef(0);
   const backTo = /^\/(assets|search)(\?|$)/.test(location.state?.from || '') ? location.state.from : '/assets';
   const { can } = usePermissions();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const identity = useRef(null);
+  identity.current = { assetId, token, workspaceId: user?.team?.id };
 
   const load = useCallback(async (showLoading = true) => {
     const request = ++sequence.current;
+    const nameRevision = savedNames.current[assetId];
     if (showLoading) setState((current) => ({ ...current, loading: true, error: '' }));
     try {
       const [info, metadataResult, tagsResult] = await Promise.all([
         assetService.getInfo(assetId), assetService.getMetadata(assetId), assetService.getTags(assetId),
       ]);
-      if (request === sequence.current) setState({ loading: false, info, metadata: metadataResult.metadata || {}, tags: tagsResult.tags || [], error: '' });
+      if (request === sequence.current) setState({ loading: false, info: savedNames.current[assetId] !== nameRevision ? { ...info, displayName: savedNames.current[assetId] } : info, metadata: metadataResult.metadata || {}, tags: tagsResult.tags || [], error: '' });
     } catch (error) {
       if (request === sequence.current) setState((current) => ({ ...current, loading: false, error: getApiError(error, 'Unable to load this asset.') }));
     }
   }, [assetId]);
 
-  useEffect(() => { const counter = sequence; setVisited({ details: true }); setActivePanel('details'); setVersionFormMode(null); setVersionRequest(0); load(); return () => { counter.current++; }; }, [load]);
+  useEffect(() => { const counter = sequence; setRenaming(false); setNotice(''); setVisited({ details: true }); setActivePanel('details'); setVersionFormMode(null); setVersionRequest(0); load(); return () => { counter.current++; }; }, [load]);
 
   const download = async (main = false) => {
     if (downloading) return;
@@ -60,7 +68,7 @@ export default function AssetDetailPage() {
   };
 
   const remove = async () => {
-    const removed = await confirm({ title: 'Delete this asset?', details: `${state.info.originalname} · ${user?.team?.name || 'Current workspace'}`, description: 'The current file, companion files and preserved versions will be deleted. This cannot be undone in the app.', confirmLabel: 'Delete asset', onConfirm: () => assetService.remove(assetId) });
+    const removed = await confirm({ title: 'Delete this asset?', details: `${getAssetDisplayName(state.info)} · ${user?.team?.name || 'Current workspace'}`, description: 'The current file, companion files and preserved versions will be deleted. This cannot be undone in the app.', confirmLabel: 'Delete asset', onConfirm: () => assetService.remove(assetId) });
     if (removed) requestLeave(() => navigate('/assets', { replace: true }), { discard: true });
   };
 
@@ -70,16 +78,15 @@ export default function AssetDetailPage() {
   if (state.error) return <div className="panel p-8 text-center"><p className="text-red-200">{state.error}</p><button className="secondary-button mt-5" onClick={load}>Try again</button></div>;
 
   const { info } = state;
-  const ownsAsset = Number(info.userId) === Number(user?.id);
-  const assetWorkspaceId = info.workspaceId || info.teamId;
-  const isWorkspaceAsset = Boolean(assetWorkspaceId && Number(assetWorkspaceId) === Number(user?.team?.id));
-  const canManageAsset = isWorkspaceAsset ? [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.MANAGER].includes(user?.teamRole) : ownsAsset;
-  const canDeleteAsset = isWorkspaceAsset ? user?.teamRole === WORKSPACE_ROLES.OWNER : ownsAsset;
+  const canManageAsset = mayManageAsset(user, info);
+  const canDeleteAsset = mayDeleteAsset(user, info);
+  const canManageVocabulary = canManageWorkspaceVocabulary(user, info);
   return (
     <>
       {location.state?.uploaded && <div className="mb-5 rounded border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">Asset files saved successfully. {location.state.processing?.status === 'queue-failed' ? 'AI processing can be retried from the Metadata panel.' : 'AI processing has been queued.'}</div>}
       {location.state?.metadataWarning && <div className="mb-5 rounded border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-sm text-amber-200/80">{location.state.metadataWarning} You can add it again from the Metadata panel.</div>}
-      <PageHeader eyebrow={assetType(info.mimetype)} title={info.originalname} description={`${formatBytes(info.package?.totalSize || info.size)} · ${info.package ? `${info.package.fileCount} package files` : info.mimetype}`} actions={<><Link to={backTo} state={{ restoreScroll: location.state?.scrollY }} className="secondary-button"><ArrowLeft size={16} />{backTo.startsWith("/search") ? "Search results" : "Library"}</Link><button className="primary-button" disabled={downloading} onClick={() => download()}><Download size={16} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button></>} />
+      <PageHeader eyebrow={assetType(info.mimetype)} title={<span className="flex items-start gap-3"><span className="min-w-0">{getAssetDisplayName(info)}</span>{canManageAsset && <button className="icon-action mt-1 shrink-0" aria-label="Rename asset" onClick={() => setRenaming(true)}><Pencil size={16} /></button>}</span>} description={`${formatBytes(info.package?.totalSize || info.size)} · ${info.package ? `${info.package.fileCount} package files` : info.mimetype}`} actions={<><Link to={backTo} state={{ restoreScroll: location.state?.scrollY }} className="secondary-button"><ArrowLeft size={16} />{backTo.startsWith("/search") ? "Search results" : "Library"}</Link><button className="primary-button" disabled={downloading} onClick={() => download()}><Download size={16} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button></>} />
+      {notice && <p role="status" className="mb-5 text-sm text-emerald-300">{notice}</p>}
       {actionError && <div className="mb-5 rounded border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{actionError}</div>}
       <div className="mb-5 flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded border border-white/[0.08] bg-aether-surface p-1" role="tablist" aria-label="Asset sections">
         {[['details', FileText, 'Details'], ['versions', WandSparkles, 'Versions'], ['comments', MessageSquare, 'Comments']].map(([id, Icon, label]) => <button key={id} id={`asset-tab-${id}`} role="tab" tabIndex={activePanel === id ? 0 : -1} aria-controls={`asset-panel-${id}`} aria-selected={activePanel === id} onKeyDown={event => { const keys = ["details", "versions", "comments"]; let next; if (event.key === "ArrowRight") next = keys[(keys.indexOf(id) + 1) % keys.length]; if (event.key === "ArrowLeft") next = keys[(keys.indexOf(id) + keys.length - 1) % keys.length]; if (event.key === "Home") next = keys[0]; if (event.key === "End") next = keys[keys.length - 1]; if (next) { event.preventDefault(); document.getElementById(`asset-tab-${next}`)?.focus(); } }} className={`detail-tab ${activePanel === id ? 'detail-tab-active' : ''}`} onClick={() => selectPanel(id)}><Icon size={15} />{label}</button>)}
@@ -92,10 +99,18 @@ export default function AssetDetailPage() {
           </section>
           <section className="panel flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="font-display text-sm font-semibold text-zinc-100">Asset actions</h2><p className="mt-1 text-xs text-zinc-400">{info.package ? 'Download the complete model package or its original main file.' : 'Download the current file.'}</p></div><div className="flex flex-wrap gap-2"><button className="secondary-button" disabled={downloading} onClick={() => download()}><Download size={15} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button>{info.package && <button className="secondary-button" disabled={downloading} onClick={() => download(true)}>Original main file</button>}{/\.(obj|fbx)$/i.test(info.originalname) && can('createVersion') && canManageAsset && <button className="secondary-button" onClick={() => { setVersionFormMode('companions'); setVersionRequest(value => value + 1); selectPanel('versions'); }}>Update materials / textures</button>}{can('deleteAsset') && canDeleteAsset && <button className="danger-button" disabled={pendingChanges} onClick={remove}><Trash2 size={15} /> Delete</button>}</div></section>
         </div>
-        <MetadataPanel key={assetId} active={activePanel === "details"} assetId={assetId} assetFilename={info.filename || info.originalname} metadata={state.metadata} repositoryTags={state.tags} canEdit={can('manageMetadata') && canManageAsset} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
+        <MetadataPanel key={assetId} active={activePanel === "details"} assetId={assetId} assetFilename={info.filename || info.originalname} metadata={state.metadata} repositoryTags={state.tags} canEdit={can('manageMetadata') && canManageAsset} canManageVocabulary={canManageVocabulary} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
       </div>
       <div id="asset-panel-versions" role="tabpanel" aria-labelledby="asset-tab-versions" hidden={activePanel !== "versions"}>{visited.versions && <VersionHistory key={assetId} assetId={assetId} assetName={info.originalname} assetInfo={info} active={activePanel === "versions"} initialMode={versionFormMode} modeRequest={versionRequest} canCreate={can('createVersion') && canManageAsset} onCurrentVersionChanged={() => load(false)} />}</div>
       <div id="asset-panel-comments" role="tabpanel" aria-labelledby="asset-tab-comments" hidden={activePanel !== "comments"}>{visited.comments && <CommentThread key={assetId} assetId={assetId} />}</div>
+      {renaming && <RenameDialog title="Rename asset" initialName={getAssetDisplayName(info)} sourceName={info.originalname} maxLength={200} onClose={() => setRenaming(false)} onSave={async name => {
+        const expected = identity.current;
+        const { asset } = await assetService.rename(assetId, name);
+        if (identity.current.assetId !== expected.assetId || identity.current.token !== expected.token || identity.current.workspaceId !== expected.workspaceId) return;
+        savedNames.current[assetId] = asset.displayName;
+        setState(current => ({ ...current, info: { ...current.info, displayName: asset.displayName } }));
+        setNotice('Asset name saved.');
+      }} />}
       {confirmation}
     </>
   );

@@ -8,24 +8,26 @@ import { useLeaveGuard } from '../../context/UnsavedChangesContext';
 
 export default function WorkspaceSwitcher({ onNavigate }) {
   const [state, setState] = useState({ loading: true, teams: [], error: '' });
-  const { user, activateTeam } = useAuth();
+  const { user, activateTeam, workspaceNames = {}, applyWorkspaceName, getNameRevision } = useAuth();
+  const teams = state.teams.map(team => ({ ...team, name: applyWorkspaceName ? applyWorkspaceName(team, state.nameRevision).name : workspaceNames[team.id] ?? team.name }));
   const navigate = useNavigate();
   const requestLeave = useLeaveGuard();
 
   const load = useCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: '' }));
     try {
+      const nameRevision = getNameRevision?.();
       const result = await teamService.list();
-      setState({ loading: false, teams: result.teams || [], error: '' });
+      setState({ loading: false, teams: result.teams || [], error: '', nameRevision });
     } catch {
       setState((current) => ({ ...current, loading: false, error: 'Workspaces unavailable' }));
     }
-  }, []);
+  }, [getNameRevision]);
 
   useEffect(() => { load(); }, [load]);
 
   const selectTeam = (event) => {
-    const team = state.teams.find((item) => String(item.id) === event.target.value);
+    const team = teams.find((item) => String(item.id) === event.target.value);
     if (!team || Number(team.id) === Number(user?.team?.id)) return;
     requestLeave(() => {
       activateTeam({ id: team.id, name: team.name }, team.role);
@@ -40,7 +42,7 @@ export default function WorkspaceSwitcher({ onNavigate }) {
         <label id="workspace-switcher-label" htmlFor="workspace-switcher" className="font-mono text-xs uppercase tracking-[0.16em] text-zinc-400">Active workspace</label>
         <Link to="/workspace" onClick={onNavigate} className="text-xs text-zinc-400 transition hover:text-aether-primary">Add</Link>
       </div>
-      {state.loading ? <div className="flex h-10 items-center gap-2 rounded border border-white/[0.08] bg-black/20 px-3 text-xs text-zinc-400"><LoaderCircle size={14} className="animate-spin" /> Loading workspaces</div> : state.error ? <button className="flex h-10 w-full items-center justify-between rounded border border-amber-400/15 bg-amber-400/[0.05] px-3 text-xs text-amber-200/70" onClick={load}><span>{state.error}</span><RefreshCw size={13} /></button> : <div className="relative"><Building2 size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-aether-primary" /><select id="workspace-switcher" aria-label="Active workspace" className="input h-10 w-full appearance-none truncate pl-9 pr-8 text-xs" value={user?.team?.id || ''} onChange={selectTeam}><option value="" disabled>{state.teams.length ? 'Select workspace' : 'No workspace yet'}</option>{state.teams.map((team) => <option key={team.id} value={team.id}>{team.name} · {workspaceRoleLabel(team.role)}</option>)}</select><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">▾</span></div>}
+      {state.loading ? <div className="flex h-10 items-center gap-2 rounded border border-white/[0.08] bg-black/20 px-3 text-xs text-zinc-400"><LoaderCircle size={14} className="animate-spin" /> Loading workspaces</div> : state.error ? <button className="flex h-10 w-full items-center justify-between rounded border border-amber-400/15 bg-amber-400/[0.05] px-3 text-xs text-amber-200/70" onClick={load}><span>{state.error}</span><RefreshCw size={13} /></button> : <div className="relative"><Building2 size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-aether-primary" /><select id="workspace-switcher" aria-label="Active workspace" className="input h-10 w-full appearance-none truncate pl-9 pr-8 text-xs" value={user?.team?.id || ''} onChange={selectTeam}><option value="" disabled>{state.teams.length ? 'Select workspace' : 'No workspace yet'}</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name} · {workspaceRoleLabel(team.role)}</option>)}</select><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">▾</span></div>}
       {user?.team && <p className="mt-2 truncate font-mono text-xs uppercase tracking-wide text-zinc-400">{workspaceRoleLabel(user.teamRole)} access</p>}
     </section>
   );

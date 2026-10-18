@@ -22,7 +22,7 @@ test('workspace roles follow the proposed team permission boundaries', () => {
   expect(hasPermission('workspaceOwner', 'manageTeam')).toBe(true);
   expect(hasPermission('workspaceOwner', 'deleteAsset')).toBe(true);
   expect(hasPermission('workspaceManager', 'manageMetadata')).toBe(true);
-  expect(hasPermission('workspaceManager', 'deleteAsset')).toBe(false);
+  expect(hasPermission('workspaceManager', 'deleteAsset')).toBe(true);
   expect(hasPermission('collaborator', 'downloadAsset')).toBe(true);
   expect(hasPermission('user', 'viewAsset')).toBe(false);
 });

@@ -37,7 +37,7 @@ test('asset router exposes the backward-compatible replacement upload route', ()
   assert.match(routeSource, /workspaceAssetAccess/);
   assert.match(routeSource, /router\.post\('\/:id\/ai-result', internalAiAuth, storeAiResult\)/);
   assert.match(routeSource, /router\.get\('\/:id\/info', internalAiAuth, getAssetInfo\)/);
-  assert.match(routeSource, /router\.post\('\/:id\/versions\/upload'.*upload\.single\('asset'\).*uploadNewVersion\)/);
+  assert.match(routeSource, /router\.post\('\/:id\/versions\/upload'.*assetWriteAccess, modelUpload, uploadNewVersion\)/);
   assert.match(routeSource, /router\.post\('\/:id\/versions'.*createVersion\)/);
 });
 

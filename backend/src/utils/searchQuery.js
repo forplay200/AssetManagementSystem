@@ -38,6 +38,7 @@ function buildAssetSearchWhere({ filename, metadata, aiTag, q, type, date } = {}
     const pattern = `%${filename.trim()}%`;
     conditions.push({
       [Op.or]: [
+        { displayName: { [Op.iLike]: pattern } },
         { originalname: { [Op.iLike]: pattern } },
         { filename: { [Op.iLike]: pattern } }
       ]

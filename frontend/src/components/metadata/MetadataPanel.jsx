@@ -24,7 +24,7 @@ const restoreType = (row) => {
   return row.value.trim();
 };
 
-export default function MetadataPanel({ assetId, assetFilename, metadata, repositoryTags, canEdit, active = true, onMetadataChange, onTagsChange }) {
+export default function MetadataPanel({ assetId, assetFilename, metadata, repositoryTags, canEdit, canManageVocabulary = false, active = true, onMetadataChange, onTagsChange }) {
   const [editing, setEditing] = useState(false);
   const [rows, setRows] = useState(() => makeRows(metadata));
   const [saving, setSaving] = useState(false);
@@ -50,7 +50,7 @@ export default function MetadataPanel({ assetId, assetFilename, metadata, reposi
   }, [assetId, active]);
 
   const save = async () => {
-    if (saving) return;
+    if (saving || !canEdit) return;
     const populated = rows.filter((row) => row.key.trim());
     const keys = populated.map((row) => row.key.trim());
     if (new Set(keys).size !== keys.length || keys.includes('ai')) {
@@ -81,13 +81,13 @@ export default function MetadataPanel({ assetId, assetFilename, metadata, reposi
   return (
     <aside ref={inspector} className="metadata-inspector" aria-label="Asset information"><div className="inspector-scroll space-y-5" tabIndex={0} role="region" aria-label="Metadata and AI results">
       <section className="panel p-5">
-        <div className="section-title"><FileText size={16} /> Metadata<div className="ml-auto flex gap-2">{canEdit && !editing && <button className="icon-action" onClick={() => setEditing(true)} disabled={tagsLocked} aria-label="Edit metadata" title="Edit metadata"><Edit3 size={14} /></button>}{editing && <><button className="icon-action" onClick={cancel} disabled={saving} aria-label="Cancel metadata changes"><X size={14} /></button><button className="icon-action icon-action-primary" onClick={save} disabled={saving} aria-label="Save metadata">{saving ? <LoaderCircle size={14} className="animate-spin" /> : <Save size={14} />}</button></>}</div></div>
+        <div className="section-title"><FileText size={16} /> Metadata<div className="ml-auto flex gap-2">{canEdit && !editing && <button className="icon-action" onClick={() => setEditing(true)} disabled={tagsLocked} aria-label="Edit metadata" title="Edit metadata"><Edit3 size={14} /></button>}{editing && <><button className="icon-action" onClick={cancel} disabled={saving} aria-label="Cancel metadata changes"><X size={14} /></button><button className="icon-action icon-action-primary" onClick={save} disabled={saving || !canEdit} aria-label="Save metadata">{saving ? <LoaderCircle size={14} className="animate-spin" /> : <Save size={14} />}</button></>}</div></div>
         {tagsLocked && !editing && <p className="mt-3 text-xs text-zinc-400">Finish your tag changes before editing metadata fields.</p>}
         {message.text && <div role={message.type === "error" ? "alert" : "status"} className={`mt-4 rounded border px-3 py-2 text-xs ${message.type === 'error' ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'}`}>{message.text}</div>}
-        {editing ? <fieldset disabled={saving} className="mt-4 space-y-3">{rows.map((row) => <div key={row.id} className="grid grid-cols-[minmax(0,.7fr)_minmax(0,1fr)_44px] gap-2"><input className="input h-9 min-w-0 font-mono text-xs" value={row.key} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, key: event.target.value } : item))} placeholder="field_name" aria-label="Metadata field name" /><input className="input h-9 min-w-0" value={row.value} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, value: event.target.value } : item))} placeholder="Value" aria-label="Metadata value" /><button className="icon-action hover:text-red-300" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))} aria-label="Remove metadata field"><Trash2 size={14} /></button></div>)}<button className="secondary-button mt-1" onClick={() => setRows((current) => [...current, { id: `${Date.now()}-${current.length}`, key: '', value: '', originalType: 'string' }])}><Plus size={14} /> Add field</button><div className="editor-actions"><button type="button" className="secondary-button" onClick={cancel}>Cancel</button><button type="button" className="primary-button" onClick={save} disabled={saving}><Save size={15} />{saving ? "Saving…" : "Save changes"}</button></div></fieldset> : <MetadataReadout rows={rows} />}
-        {!canEdit && <p className="mt-4 border-t border-white/[0.06] pt-3 text-xs text-zinc-400">Your role has read-only metadata access.</p>}
+        {editing ? <fieldset disabled={saving || !canEdit} className="mt-4 space-y-3">{rows.map((row) => <div key={row.id} className="grid grid-cols-[minmax(0,.7fr)_minmax(0,1fr)_44px] gap-2"><input className="input h-9 min-w-0 font-mono text-xs" value={row.key} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, key: event.target.value } : item))} placeholder="field_name" aria-label="Metadata field name" /><input className="input h-9 min-w-0" value={row.value} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, value: event.target.value } : item))} placeholder="Value" aria-label="Metadata value" /><button className="icon-action hover:text-red-300" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))} aria-label="Remove metadata field"><Trash2 size={14} /></button></div>)}<button className="secondary-button mt-1" onClick={() => setRows((current) => [...current, { id: `${Date.now()}-${current.length}`, key: '', value: '', originalType: 'string' }])}><Plus size={14} /> Add field</button><div className="editor-actions"><button type="button" className="secondary-button" onClick={cancel}>Cancel</button><button type="button" className="primary-button" onClick={save} disabled={saving}><Save size={15} />{saving ? "Saving…" : "Save changes"}</button></div></fieldset> : <MetadataReadout rows={rows} />}
+        {!canEdit && <p className="mt-4 border-t border-white/[0.06] pt-3 text-xs text-zinc-400">Only the uploader or a workspace owner can modify this asset.</p>}
       </section>
-      <AiEnrichment assetId={assetId} assetFilename={assetFilename} metadata={metadata} repositoryTags={repositoryTags} canEdit={canEdit && !editing} locked={editing || saving} onEditingChange={setTagsLocked} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />
+      <AiEnrichment assetId={assetId} assetFilename={assetFilename} metadata={metadata} repositoryTags={repositoryTags} canEdit={canEdit && !editing} canManageVocabulary={canManageVocabulary && !editing && !saving} locked={editing || saving} onEditingChange={setTagsLocked} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />
     </div>{confirmation}</aside>
   );
 }
@@ -96,7 +96,7 @@ function MetadataReadout({ rows }) {
   return rows.length ? <div className="mt-4"><ExpandableList items={rows} label="fields" className="divide-y divide-white/[0.06]" renderItem={row => <dl key={row.id} className="grid grid-cols-[minmax(0,.7fr)_minmax(0,1fr)] gap-4 py-3 text-sm"><dt className="break-words text-sm font-medium text-zinc-400">{row.key}</dt><dd className="min-w-0"><ExpandableText value={row.value} label={row.key} lines={4} /></dd></dl>} /></div> : <p className="mt-4 text-sm text-zinc-400">No custom metadata has been added.</p>;
 }
 
-function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdit, locked, onEditingChange, onMetadataChange, onTagsChange }) {
+function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdit, canManageVocabulary, locked, onEditingChange, onMetadataChange, onTagsChange }) {
   const ai = useMemo(() => metadata?.ai || {}, [metadata]);
   const visualAssetType = getVisualType(assetFilename, ai.type);
   const collections = useMemo(() => [
@@ -206,7 +206,7 @@ function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdi
         {visualAssetType && ai.clip?.status === 'failed' && <p className="text-sm text-zinc-400">AI visual tagging is unavailable for this asset. You can add repository tags manually.</p>}
         {!collections.length && !ai.summary && !ai.transcript && ai.type !== '3d' && !ai.clip?.status && <p className="rounded border border-dashed border-white/10 p-4 text-sm leading-6 text-zinc-400">No AI results are available yet. Refresh to check for results.</p>}
         <div className="border-t border-white/[0.06] pt-4"><p className="mb-2 font-mono text-xs uppercase tracking-wider text-zinc-400">Repository tags</p><ExpandableList items={repositoryTags} label="tags" className="flex flex-wrap gap-2" renderItem={(tag) => <span key={tag.id || tag.name} className="tag-chip inline-flex items-center gap-1.5">{tag.name}{canEdit && <button className="tag-action hover:text-red-300" disabled={Boolean(busy) || Boolean(editingTag)} onClick={() => removeRepositoryTag(tag)} aria-label={`Remove repository tag ${tag.name}`}><X size={11} /></button>}</span>} />{canEdit && <form className="mt-3 flex gap-2" onSubmit={addRepositoryTag}><input className="input h-9 min-w-0 flex-1" disabled={Boolean(busy) || Boolean(editingTag)} value={newTag} onChange={(event) => setNewTag(event.target.value)} maxLength={80} placeholder="Add repository tag" aria-label="New repository tag" /><button className="secondary-button h-9" disabled={!newTag.trim() || Boolean(busy) || Boolean(editingTag)}><Plus size={14} /> Add</button></form>}</div>
-        {visualAssetType && <VisualVocabulary assetId={assetId} assetType={visualAssetType} repositoryTags={repositoryTags} canEdit={canEdit} />}
+        {visualAssetType && <VisualVocabulary assetId={assetId} assetType={visualAssetType} repositoryTags={repositoryTags} canEdit={canManageVocabulary && !busy && !editingTag && !newTag.trim()} />}
       </div>{confirmation}
     </section>
   );

@@ -6,6 +6,22 @@ import { assetService } from '../../services/assetService';
 jest.mock('../../services/assetService', () => ({ assetService: { updateMetadata: jest.fn(), getMetadata: jest.fn() } }));
 beforeEach(() => jest.clearAllMocks());
 
+test('a denied save preserves the draft when refreshed permissions remove editing access', async () => {
+  const user = userEvent.setup();
+  const props = { assetId: '8', metadata: { description: 'Original' }, repositoryTags: [], onMetadataChange: jest.fn(), onTagsChange: jest.fn() };
+  assetService.updateMetadata.mockRejectedValue({ response: { status: 403, data: { message: 'Only the uploader or a workspace owner can modify this asset.' } } });
+  const view = render(<MetadataPanel {...props} canEdit />);
+  await user.click(screen.getByRole('button', { name: 'Edit metadata' }));
+  await user.clear(screen.getByRole('textbox', { name: 'Metadata value' }));
+  await user.type(screen.getByRole('textbox', { name: 'Metadata value' }), 'Kept draft');
+  await user.click(screen.getByRole('button', { name: 'Save metadata' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Only the uploader');
+  view.rerender(<MetadataPanel {...props} canEdit={false} />);
+  expect(screen.getByRole('textbox', { name: 'Metadata value' })).toHaveValue('Kept draft');
+  expect(screen.getByRole('button', { name: 'Save metadata' })).toBeDisabled();
+  expect(props.onMetadataChange).not.toHaveBeenCalled();
+});
+
 test('displays generated YAMNet audio tags without changing existing AI fields', () => {
   render(
     <MetadataPanel

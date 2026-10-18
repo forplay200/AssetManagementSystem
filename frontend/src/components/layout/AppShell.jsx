@@ -90,8 +90,8 @@ export default function AppShell() {
               className="input h-10 w-full pl-10 pr-16"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search assets by filename…"
-              aria-label="Search assets by filename"
+              placeholder="Search assets by name or filename…"
+              aria-label="Search assets by name or filename"
             />
             <span className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 font-mono text-xs text-zinc-400 sm:block">ENTER</span>
           </form> : <div className="min-w-0 flex-1"><p className="font-display text-sm font-semibold text-zinc-200">Platform administration</p><p className="mt-0.5 font-mono text-xs uppercase tracking-wider text-zinc-400">Account oversight</p></div>}

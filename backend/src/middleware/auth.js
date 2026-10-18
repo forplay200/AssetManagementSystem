@@ -20,6 +20,11 @@ module.exports = async (req, res, next) => {
     const requestedWorkspaceId = Number(
       req.header('X-Workspace-Id') || req.header('X-Team-Id') || decoded.workspaceId || decoded.teamId
     );
+    // JWT membership claims can be stale. Only a current database membership
+    // may populate this context, including when the client sends an invalid ID.
+    delete req.user.teamId;
+    delete req.user.workspaceId;
+    delete req.user.teamRole;
     if (Number.isInteger(requestedWorkspaceId) && requestedWorkspaceId > 0 && db.TeamMember) {
       const membership = await db.TeamMember.findOne({
         where: { teamId: requestedWorkspaceId, userId: decoded.id },

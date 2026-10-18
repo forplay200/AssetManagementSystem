@@ -10,6 +10,8 @@ const { backfillKnownWorkspaceOwnership } = require('./utils/workspaceMigration'
 const { up: migrateCanonicalRoles } = require('../migrations/20261007000000-canonicalize-roles');
 const { up: migrateModelPackages } = require('../migrations/20261008000000-add-model-packages');
 
+const { up: migrateAssetNames } = require('../migrations/20261013000000-add-asset-display-name');
+
 const authRoutes = require('./routes/auth');
 const assetsRoutes = require('./routes/assets');
 const healthRoutes = require('./routes/health');
@@ -48,6 +50,7 @@ app.get('/', (req, res) => {
 
 migrateCanonicalRoles(db.sequelize.getQueryInterface())
   .then(() => migrateModelPackages(db.sequelize.getQueryInterface(), db.Sequelize))
+  .then(() => migrateAssetNames(db.sequelize.getQueryInterface(), db.Sequelize))
   .then(() => db.sequelize.sync({ alter: true }))
   .then(async () => {
     const backfilledAssets = await backfillKnownWorkspaceOwnership(db.sequelize);

@@ -49,6 +49,10 @@ api.interceptors.response.use(
       const reason = inactiveSession ? 'account-inactive' : 'session-expired';
       if (!window.location.pathname.startsWith('/login')) window.location.assign(`/login?reason=${reason}`);
     }
+    if (error.response?.status === 403 && !inactiveSession
+        && /^\/?assets(?:\/|$)/.test(error.config?.url || '')) {
+      window.dispatchEvent(new Event('aether:workspace-permissions-changed'));
+    }
     return Promise.reject(error);
   },
 );

@@ -54,7 +54,7 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
   const changeMode = async mode => { if (await discardDraft()) { closeForm(); setFormMode(formMode === mode ? null : mode); } };
   const cancelForm = async () => { if (await discardDraft()) closeForm(); };
   const openCompanions = async () => {
-    if (!await discardDraft()) return;
+    if (!canCreate || !await discardDraft()) return;
     closeForm(); setFormMode('companions'); setSourceLoading(true); setError(''); setSuccess('');
     try {
       const manifest = await assetService.getPackage(assetId);
@@ -76,14 +76,14 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
   };
   useEffect(() => {
     const request = `${initialMode}:${modeRequest}`;
-    if (initialMode !== 'companions' || appliedModeRequest.current === request) return;
+    if (!canCreate || initialMode !== 'companions' || appliedModeRequest.current === request) return;
     appliedModeRequest.current = request;
     openCompanions();
-  }, [initialMode, modeRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialMode, modeRequest, canCreate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const create = async (event) => {
     event.preventDefault();
-    if (creating || !changeLog.trim()) return;
+    if (!canCreate || creating || !changeLog.trim()) return;
     setCreating(true);
     setError('');
     setSuccess('');
@@ -102,7 +102,7 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
 
   const upload = async (event) => {
     event.preventDefault();
-    if (creating || !replacementFile || !changeLog.trim() || (replacementIsModel && !modelBundle?.canUpload)) return;
+    if (!canCreate || creating || !replacementFile || !changeLog.trim() || (replacementIsModel && !modelBundle?.canUpload)) return;
     const nextAttachments = modelBundle?.attachments || [];
     const removed = existingCompanions.filter(item => !nextAttachments.some(next => next.id === item.id));
     if (!await confirm({ title: formMode === 'companions' ? 'Save material and texture changes?' : 'Replace the current asset file?', description: 'The current files will be preserved as a snapshot. Existing AI results will be cleared and processing requested for the new version.', details: <div className="space-y-2"><p>Current: {assetName}</p><p>New: {replacementFile.name} · {formatBytes(replacementFile.size)}</p><p>{nextAttachments.length} companion files in the new package.{formMode === 'companions' ? ` ${removed.length} removed from the current package.` : ' Only the selected files will be included.'}</p>{modelBundle?.geometryOnly && <p className="text-amber-200">Geometry only: materials and textures will not be displayed.</p>}<p>Version note: {changeLog}</p></div>, confirmLabel: 'Save new version', danger: false })) return;
@@ -149,7 +149,7 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
       </div>
 
       {formMode && (
-        <form className="border-b border-white/[0.08] bg-black/15 p-5" onSubmit={formMode === 'snapshot' ? create : upload}><fieldset disabled={creating || sourceLoading}>
+        <form className="border-b border-white/[0.08] bg-black/15 p-5" onSubmit={formMode === 'snapshot' ? create : upload}><fieldset disabled={creating || sourceLoading || !canCreate}>
           <div className="mb-4"><h3 className="font-display text-sm font-semibold text-zinc-200">{formMode === 'companions' ? 'Update model materials / textures' : formMode === 'upload' ? 'Replace current asset file' : 'Preserve current snapshot'}</h3><p className="mt-1 text-xs text-zinc-400">{formMode === 'companions' ? 'Reuse the current model. Keep, replace or add companion files; the full previous package is preserved.' : formMode === 'upload' ? 'The complete current asset is preserved before the replacement becomes active.' : 'Preserve all current files without changing the active asset.'}</p></div>
           {formMode === 'upload' && <label className="mb-4 block"><span className="label">Replacement file</span><input type="file" className="input mt-2 h-auto w-full cursor-pointer py-2 file:mr-3 file:rounded file:border-0 file:bg-violet-400/10 file:px-3 file:py-1.5 file:text-xs file:text-violet-200" accept={acceptedExtensions.map((extension) => `.${extension}`).join(',')} onChange={(event) => selectReplacement(event.target.files?.[0])} required /></label>}
           {sourceLoading && <p className="mb-4 flex items-center gap-2 text-xs text-zinc-400"><LoaderCircle size={14} className="animate-spin" /> Loading current model files…</p>}
@@ -160,6 +160,7 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
         </fieldset></form>
       )}
 
+      {formMode && !canCreate && <div className="m-5 rounded border border-amber-400/20 p-3 text-xs text-amber-200">Your permissions changed. This draft is preserved, but you cannot save it.<button type="button" className="secondary-button ml-3" onClick={cancelForm} disabled={creating || sourceLoading}>Discard draft</button></div>}
       {error && <div className="m-5 rounded border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200" role="alert">{error}</div>}
       {success && <div role="status" className="m-5 rounded border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{success}</div>}
 

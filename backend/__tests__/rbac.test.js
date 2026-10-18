@@ -47,7 +47,7 @@ test('uses the active workspace role instead of the account role', () => {
 test('enforces workspaceOwner, workspaceManager, collaborator, and unassigned user permissions', () => {
   assert.equal(checkPermission('user', 'manageTeam', 'workspaceOwner').nextCalled, true);
   assert.equal(checkPermission('user', 'manageMetadata', 'workspaceManager').nextCalled, true);
-  assert.equal(checkPermission('user', 'deleteAsset', 'workspaceManager').status, 403);
+  assert.equal(checkPermission('user', 'deleteAsset', 'workspaceManager').nextCalled, true);
   assert.equal(checkPermission('user', 'downloadAsset', 'collaborator').nextCalled, true);
   assert.equal(checkPermission('user', 'viewAsset').status, 403);
   assert.equal(checkPermission('user', 'manageUsers', 'workspaceOwner').status, 403);

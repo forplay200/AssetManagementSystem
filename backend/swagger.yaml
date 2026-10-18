@@ -2,11 +2,133 @@ openapi: 3.0.0
 info:
   title: Asset Management System API
   version: '1.0'
-  description: API for the AI-Enhanced Collaborative Digital Asset Management Platform
+  description: >-
+    API for the AI-Enhanced Collaborative Digital Asset Management Platform.
+    Asset writes require an active workspace membership: workspaceOwner can
+    manage any asset in that workspace; workspaceManager can manage only assets
+    whose original Asset.userId matches the authenticated user. Shared visual
+    vocabulary remains editable by both roles regardless of the asset uploader.
 servers:
   - url: http://localhost:3000/api
     description: Local server
 paths:
+  /assets/{id}/name:
+    patch:
+      summary: Rename asset display name
+      description: >-
+        Workspace Owner may rename any asset; Workspace Manager may rename only their own original uploads. Changes displayName only; source filenames, storage, packages, versions and AI are unaffected.
+        Names are trimmed, duplicates are allowed, length counts UTF-16 units.
+        Raw control characters U+0000–001F and U+007F–009F are rejected.
+        Missing, null and non-string names are rejected. Extra fields are ignored.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: Name saved; identical normalized name may skip database writes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset: { $ref: '#/components/schemas/Asset' }
+        '400':
+          description: Invalid token or validation failure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: Validation failed }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field: { type: string }
+                        location: { type: string, enum: [body] }
+                        message: { type: string }
+        '401':
+          description: Missing authentication token
+        '403':
+          description: Inactive account, forbidden role, missing membership or asset outside current workspace
+        '404':
+          description: Target not found
+        '500':
+          description: Server error
+  /teams/current/name:
+    patch:
+      summary: Rename current workspace
+      description: >-
+        Workspace Owner only. Changes the authenticated current workspace name only; IDs, invite code and memberships are unchanged.
+        Names are trimmed, duplicates are allowed, length counts UTF-16 units.
+        Raw control characters U+0000–001F and U+007F–009F are rejected.
+        Missing, null and non-string names are rejected. Extra fields are ignored.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        '200':
+          description: Name saved; identical normalized name may skip database writes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  team:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+                  role: { type: string, enum: [workspaceOwner] }
+        '400':
+          description: Invalid token or validation failure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: Validation failed }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field: { type: string }
+                        location: { type: string, enum: [body] }
+                        message: { type: string }
+        '401':
+          description: Missing authentication token
+        '403':
+          description: Inactive account, forbidden role, missing membership or asset outside current workspace
+        '404':
+          description: Target not found
+        '500':
+          description: Server error
   /auth/register:
     post:
       summary: Register a new user
@@ -245,7 +367,7 @@ paths:
         - in: query
           name: filename
           schema: { type: string }
-          description: Original upload name, with generated storage name as a compatibility fallback
+          description: Case-insensitive substring match across displayName, original upload name and storage filename within the current workspace
         - in: query
           name: metadata
           schema: { type: string }
@@ -297,18 +419,24 @@ paths:
           description: Asset tags
     post:
       summary: Add a repository tag
+      description: Workspace Owner or the original uploader with Workspace Manager membership; applies equally to the legacy /tags/{tagId} route.
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Tag added
+        '403':
+          description: Asset write permission denied
     delete:
       summary: Remove a repository tag
+      description: Removes only this asset's tag association; requires Workspace Owner or its original uploader with Workspace Manager membership. Legacy /tags/{tagId} follows the same rule.
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Tag removed
+        '403':
+          description: Asset write permission denied
   /assets/{assetId}/vocabulary:
     parameters:
       - in: path
@@ -328,7 +456,7 @@ paths:
           description: Asset does not belong to the active workspace
     post:
       summary: Confirm a visual concept for future CLIP suggestions in this workspace
-      description: Requires workspaceOwner or workspaceManager. Repository tags are not automatically added to the vocabulary.
+      description: Requires workspaceOwner or workspaceManager in the current workspace, independently of the asset uploader. Repository tags are not automatically added to the vocabulary; approval does not modify this asset or enqueue regeneration.
       security:
         - bearerAuth: []
       requestBody:
@@ -349,6 +477,7 @@ paths:
   /assets/{assetId}/vocabulary/{entryId}:
     delete:
       summary: Remove a workspace concept from future suggestions while preserving existing asset tags
+      description: Workspace Owner or Manager, independently of the asset uploader; entryId must belong to the active workspace.
       security:
         - bearerAuth: []
       parameters:
@@ -373,6 +502,7 @@ paths:
   /assets/{id}/versions/upload:
     post:
       summary: Upload a replacement file and preserve the previous current file in version history
+      description: Owner may replace any asset in the active workspace; Manager only their original uploads. Ownership is checked before multipart processing and again before storage changes. The original Asset.userId is preserved, including material/texture-only updates.
       security:
         - bearerAuth: []
       parameters:
@@ -401,9 +531,89 @@ paths:
         '400':
           description: Missing or unsupported replacement file
         '403':
-          description: Only a Workspace Owner or Workspace Manager can replace the file
+          description: Requires Workspace Owner or the original uploader with Workspace Manager membership in the active workspace
         '404':
           description: Asset not found
+  /assets/{id}:
+    delete:
+      summary: Delete an asset and its complete current and historical files
+      description: Requires Workspace Owner or the original uploader with Workspace Manager membership in the active workspace.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Asset deleted }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
+  /assets/{id}/metadata:
+    put:
+      summary: Update asset metadata including edited AI suggestions
+      description: Requires Workspace Owner or the original uploader with Workspace Manager membership in the active workspace.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metadata]
+              properties:
+                metadata: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Metadata saved }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
+  /assets/{id}/versions:
+    post:
+      summary: Preserve the current complete asset as a version snapshot
+      description: Requires Workspace Owner or the original uploader with Workspace Manager membership; does not transfer asset ownership.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '201': { description: Version preserved }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
+  /assets/ai/job:
+    post:
+      summary: Queue AI tagging through the authorized browser endpoint
+      description: Owner may regenerate any asset in the active workspace; Manager only their original uploads. Rejected requests do not enqueue. Direct FastAPI /jobs is internal and requires a service credential.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assetId, jobType]
+              properties:
+                assetId: { type: integer }
+                jobType: { type: string }
+      responses:
+        '201': { description: AI job queued }
+        '400': { description: Required fields missing }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
   /comments/{id}:
     parameters:
       - $ref: '#/components/parameters/WorkspaceId'
@@ -459,6 +669,20 @@ components:
       schema:
         type: integer
   schemas:
+    Asset:
+      type: object
+      description: Asset responses include displayName independently of source and storage filenames; existing rows default to null.
+      properties:
+        id: { type: integer }
+        displayName: { type: string, nullable: true, maxLength: 200 }
+        originalname: { type: string, description: Original upload filename used for file operations }
+        filename: { type: string, description: Storage object key }
+        mimetype: { type: string }
+        size: { type: integer }
+        userId: { type: integer }
+        workspaceId: { type: integer, nullable: true }
+        uploadedAt: { type: string, format: date-time }
+        package: { type: object, nullable: true }
     VisualConceptApproval:
       type: object
       required: [name, confirmed]

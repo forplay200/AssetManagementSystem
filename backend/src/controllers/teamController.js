@@ -187,3 +187,15 @@ exports.regenerateInviteCode = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+exports.renameTeam = async (req, res) => {
+  try {
+    const team = await db.Team.findByPk(req.user.workspaceId);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (team.name !== req.body.name) {
+      team.name = req.body.name;
+      await team.save({ fields: ['name'] });
+    }
+    res.json({ team: { id: team.id, name: team.name }, role: req.user.teamRole });
+  } catch (error) { logger.error(error); res.status(500).json({ message: 'Server error' }); }
+};

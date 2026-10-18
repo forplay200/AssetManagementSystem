@@ -1,3 +1,4 @@
+import { getAssetDisplayName } from '../../utils/assetDisplayName';
 import { ArrowUpRight } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { assetType, formatBytes, formatDate } from '../../utils/formatters';
@@ -6,7 +7,7 @@ import AssetThumbnail from './AssetThumbnail';
 export default function AssetCard({ asset }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const name = asset.originalname || asset.filename || `Asset ${asset.id}`;
+  const name = getAssetDisplayName(asset);
   return (
     <Link to={`/assets/${asset.id}`} state={{ from: location.pathname + location.search }} onClick={event => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

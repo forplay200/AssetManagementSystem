@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, LoaderCircle, RefreshCw, ShieldCheck, Trash2, UsersRound } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Check, Copy, LoaderCircle, Pencil, RefreshCw, ShieldCheck, Trash2, UsersRound } from 'lucide-react';
 import useConfirmation from '../hooks/useConfirmation';
+import RenameDialog from '../components/common/RenameDialog';
 import PageHeader from '../components/common/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -14,21 +15,32 @@ const roles = Object.values(WORKSPACE_ROLES);
 export default function TeamPage() {
   const [state, setState] = useState({ loading: true, team: null, error: '', copied: false, savingId: null });
   const { confirm, confirmation } = useConfirmation();
-  const { user, activateTeam } = useAuth();
+  const { user, token, activateTeam, updateWorkspaceName, applyWorkspaceName, getNameRevision } = useAuth();
+  const [renaming, setRenaming] = useState(false);
+  const [notice, setNotice] = useState('');
+  const sequence = useRef(0);
+  const identity = useRef(null);
+  identity.current = { token, workspaceId: user?.team?.id };
+  const workspaceId = user?.team?.id;
   const { can, role } = usePermissions();
 
   const load = useCallback(async () => {
+    const request = ++sequence.current;
+    const expected = { token, workspaceId, nameRevision: getNameRevision?.() };
     setState((current) => ({ ...current, loading: true, error: '' }));
     try {
       const { team, role: currentRole } = await teamService.current();
-      activateTeam({ id: team.id, name: team.name }, currentRole);
-      setState({ loading: false, team, error: '', copied: false, savingId: null });
+      if (request !== sequence.current || identity.current.token !== expected.token || identity.current.workspaceId !== expected.workspaceId) return;
+      const namedTeam = applyWorkspaceName ? applyWorkspaceName(team, expected.nameRevision) : team;
+      activateTeam({ id: team.id, name: namedTeam.name }, currentRole, expected);
+      setState({ loading: false, team: namedTeam, error: '', copied: false, savingId: null });
     } catch (error) {
+      if (request !== sequence.current) return;
       setState((current) => ({ ...current, loading: false, error: getApiError(error, 'Team details could not be loaded.') }));
     }
-  }, [activateTeam]);
+  }, [activateTeam, applyWorkspaceName, getNameRevision, token, workspaceId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { const counter = sequence; setRenaming(false); load(); return () => { counter.current++; }; }, [load]);
 
   const changeRole = async (member, nextRole) => {
     if (member.role === nextRole) return;
@@ -55,13 +67,22 @@ export default function TeamPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Team workspace" title={state.team.name} description={`${state.team.members.length} member${state.team.members.length === 1 ? '' : 's'} · Your role: ${workspaceRoleLabel(role)}`} />
+      <PageHeader eyebrow="Team workspace" title={<span className="flex items-start gap-3"><span className="min-w-0">{state.team.name}</span>{role === WORKSPACE_ROLES.OWNER && <button className="icon-action mt-1 shrink-0" aria-label="Rename workspace" onClick={() => setRenaming(true)}><Pencil size={16} /></button>}</span>} description={`${state.team.members.length} member${state.team.members.length === 1 ? '' : 's'} · Your role: ${workspaceRoleLabel(role)}`} />
+      {notice && <p role="status" className="mb-5 text-sm text-emerald-300">{notice}</p>}
       {state.error && <div className="mb-5 rounded border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200" role="alert">{state.error}</div>}
       {can('manageTeam') && <section className="panel mb-5 p-5 sm:p-6"><h2 className="section-title"><ShieldCheck size={16} className="text-aether-primary" /> Invite members</h2><p className="mt-2 text-sm text-zinc-400">Share this code privately. New members join with read-only Collaborator access.</p><div className="mt-5 flex flex-col gap-2 sm:flex-row"><code className="input flex min-h-10 flex-1 items-center font-mono tracking-[0.16em] text-zinc-200">{state.team.inviteCode}</code><button className="secondary-button" onClick={copyInvite}>{state.copied ? <Check size={15} /> : <Copy size={15} />}{state.copied ? 'Copied' : 'Copy code'}</button><button className="secondary-button" onClick={regenerate} disabled={state.savingId === 'invite'}>{state.savingId === 'invite' ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} Rotate code</button></div></section>}
       <section className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-white/[0.08] p-5"><UsersRound size={17} className="text-aether-primary" /><div><h2 className="font-display text-sm font-semibold text-zinc-100">Workspace members</h2><p className="mt-1 text-xs text-zinc-400">Roles apply to this team only.</p></div></div>
         <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="border-b border-white/[0.08] font-mono text-xs uppercase tracking-wider text-zinc-400"><th className="px-5 py-3 font-medium">Member</th><th className="px-5 py-3 font-medium">Team role</th><th className="px-5 py-3 font-medium">Joined</th><th className="px-5 py-3 text-right font-medium">Actions</th></tr></thead><tbody className="divide-y divide-white/[0.06]">{state.team.members.map((member) => <tr key={member.id} className="hover:bg-white/[0.02]"><td className="px-5 py-4"><p className="text-sm font-medium text-zinc-200">{member.username}{member.id === user?.id && <span className="ml-2 status-chip">You</span>}</p><p className="mt-1 text-xs text-zinc-400">{member.email}</p></td><td className="px-5 py-4">{can('manageTeam') ? <select className="input h-9 w-44" aria-label={`Role for ${member.username}`} value={member.role} disabled={state.savingId === member.id} onChange={(event) => changeRole(member, event.target.value)}>{roles.map((item) => <option key={item} value={item}>{workspaceRoleLabel(item)}</option>)}</select> : <RoleBadge role={member.role} />}</td><td className="px-5 py-4 font-mono text-xs uppercase text-zinc-400">{formatDate(member.joinedAt)}</td><td className="px-5 py-4 text-right">{can('manageTeam') && member.id !== user?.id && <button className="icon-action hover:text-red-300" disabled={state.savingId === member.id} onClick={() => remove(member)} aria-label={`Remove ${member.username}`}>{state.savingId === member.id ? <LoaderCircle size={14} className="animate-spin" /> : <Trash2 size={14} />}</button>}</td></tr>)}</tbody></table></div>
       </section>
+      {renaming && <RenameDialog title="Rename workspace" initialName={state.team.name} minLength={2} maxLength={100} onClose={() => setRenaming(false)} onSave={async name => {
+        const expected = identity.current;
+        const { team } = await teamService.rename(name);
+        updateWorkspaceName(team, expected.token);
+        if (identity.current.token !== expected.token || identity.current.workspaceId !== expected.workspaceId) return;
+        setState(current => ({ ...current, team: { ...current.team, name: team.name } }));
+        setNotice('Workspace name saved.');
+      }} />}
       {confirmation}
     </>
   );

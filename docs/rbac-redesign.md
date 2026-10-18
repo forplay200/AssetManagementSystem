@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented on 2026-07-14. Canonical role values were updated on 2026-10-07.
+Implemented on 2026-07-14. Canonical role values were updated on 2026-10-07. Asset uploader restrictions were implemented and deployed on 2026-10-13, with live API/browser acceptance recorded in the ownership permissions plan.
 
 ## Account and Membership Model
 
@@ -20,16 +20,26 @@ Implemented on 2026-07-14. Canonical role values were updated on 2026-10-07.
 | --- | --- | --- | --- | --- |
 | View, preview, search, download | Yes | Yes | Yes | No |
 | Comment and reply | Yes | Yes | Yes | No |
-| Upload and edit metadata | Yes | Yes | No | No |
-| Manage versions and approvals | Yes | Yes | No | No |
-| Delete assets | Yes | No | No | No |
+| Upload new assets | Yes | Yes | No | No |
+| Edit metadata, repository/AI tags, regenerate AI | Any asset in current workspace | Own uploads only | No | No |
+| Manage versions, files, materials and textures | Any asset in current workspace | Own uploads only | No | No |
+| Delete assets | Any asset in current workspace | Own uploads only | No | No |
+| Manage shared workspace visual vocabulary | Yes | Yes, including from another uploader's asset | No | No |
 | Invite/remove members and assign roles | Yes | No | No | No |
 
 `systemAdministrator` is the only platform administrator role. It is restricted to System Administration and receives no workspace, team-invitation, or asset permission from the account role.
 
+Asset ownership means the original database `Asset.userId`, compared to the authenticated user ID after positive-integer validation. Replacement versions and Owner updates never transfer this value. `Version.createdBy`, request-body identity and metadata authorship do not grant management rights. Missing uploader IDs are denied to Managers; an Owner may still manage an asset explicitly assigned to the current workspace.
+
+Both role permission and resource permission must pass. Manager `deleteAsset` permission enables the operation category; it does not authorize deletion of another uploader's asset. The reusable backend helper is `backend/src/utils/assetPermissions.js`; frontend equivalents are in `frontend/src/auth/assetPermissions.js`. Replacement uploads check ownership before multipart parsing and again inside the transaction.
+
+Reading remains shared within the workspace. Comments retain their separate author rule: Owner can moderate any comment in the workspace; Manager and Collaborator can edit/delete only their own comments, regardless of who uploaded the asset. Shared vocabulary remains a workspace operation and never automatically changes another asset's tags or queues regeneration for it.
+
 ## Authentication Context
 
 JWT continues to identify the authenticated account. The frontend adds canonical `X-Workspace-Id` (and a temporary `X-Team-Id` compatibility alias) when a workspace is active. The authentication middleware verifies membership and sets the request's effective `workspaceId` and `teamRole`. This database validation means membership removal or a role change takes effect on the next request rather than waiting for JWT expiry.
+
+Old membership claims are cleared before lookup, including when a client sends an invalid workspace header. A forbidden asset request refreshes the frontend membership context without replaying the write. Permission changes preserve drafts and disable saving; a delayed refresh cannot reactivate a workspace that the user has already left or switched away from.
 
 ## Team APIs
 
@@ -56,7 +66,7 @@ The `/admin/users` interface is the System Administration module and remains dis
 ## Risks and Deferred Work
 
 - Legacy null-workspace assets remain unavailable until ownership migration is completed.
-- Project-level and asset-level Workspace Manager assignments are not separate records yet; Workspace Manager is currently team-scoped.
+- Project-level and asset-level Workspace Manager assignments are not separate records; Manager membership remains workspace-scoped, while asset writes are restricted by original uploader.
 - The AI result callback remains on its existing internal-service contract and was not changed by this RBAC increment.
 
 ## Validation

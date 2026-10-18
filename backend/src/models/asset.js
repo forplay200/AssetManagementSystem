@@ -6,6 +6,7 @@ const Asset = sequelize.define('Asset', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  displayName: { type: DataTypes.STRING(200), allowNull: true, defaultValue: null },
   metadata: {
     type: DataTypes.JSON,
     allowNull: true
