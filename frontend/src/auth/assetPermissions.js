@@ -26,6 +26,10 @@ export function canDeleteAsset(user, asset) {
   return canManageAsset(user, asset) && hasPermission(user?.teamRole, 'deleteAsset');
 }
 
+export function canDownloadAsset(user, asset) {
+  return matchingWorkspace(user, asset) && hasPermission(user?.teamRole, 'downloadAsset');
+}
+
 export function canManageWorkspaceVocabulary(user, asset) {
   return matchingWorkspace(user, asset)
     && [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.MANAGER].includes(user.teamRole);

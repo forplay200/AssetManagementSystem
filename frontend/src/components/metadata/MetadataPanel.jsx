@@ -24,7 +24,7 @@ const restoreType = (row) => {
   return row.value.trim();
 };
 
-export default function MetadataPanel({ assetId, assetFilename, metadata, repositoryTags, canEdit, canManageVocabulary = false, active = true, onMetadataChange, onTagsChange }) {
+export default function MetadataPanel({ assetId, assetFilename, metadata, repositoryTags, canEdit, canManageVocabulary = false, canDownload = false, active = true, onMetadataChange, onTagsChange }) {
   const [editing, setEditing] = useState(false);
   const [rows, setRows] = useState(() => makeRows(metadata));
   const [saving, setSaving] = useState(false);
@@ -87,7 +87,7 @@ export default function MetadataPanel({ assetId, assetFilename, metadata, reposi
         {editing ? <fieldset disabled={saving || !canEdit} className="mt-4 space-y-3">{rows.map((row) => <div key={row.id} className="grid grid-cols-[minmax(0,.7fr)_minmax(0,1fr)_44px] gap-2"><input className="input h-9 min-w-0 font-mono text-xs" value={row.key} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, key: event.target.value } : item))} placeholder="field_name" aria-label="Metadata field name" /><input className="input h-9 min-w-0" value={row.value} onChange={(event) => setRows((current) => current.map((item) => item.id === row.id ? { ...item, value: event.target.value } : item))} placeholder="Value" aria-label="Metadata value" /><button className="icon-action hover:text-red-300" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))} aria-label="Remove metadata field"><Trash2 size={14} /></button></div>)}<button className="secondary-button mt-1" onClick={() => setRows((current) => [...current, { id: `${Date.now()}-${current.length}`, key: '', value: '', originalType: 'string' }])}><Plus size={14} /> Add field</button><div className="editor-actions"><button type="button" className="secondary-button" onClick={cancel}>Cancel</button><button type="button" className="primary-button" onClick={save} disabled={saving}><Save size={15} />{saving ? "Saving…" : "Save changes"}</button></div></fieldset> : <MetadataReadout rows={rows} />}
         {!canEdit && <p className="mt-4 border-t border-white/[0.06] pt-3 text-xs text-zinc-400">Only the uploader or a workspace owner can modify this asset.</p>}
       </section>
-      <AiEnrichment assetId={assetId} assetFilename={assetFilename} metadata={metadata} repositoryTags={repositoryTags} canEdit={canEdit && !editing} canManageVocabulary={canManageVocabulary && !editing && !saving} locked={editing || saving} onEditingChange={setTagsLocked} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />
+      <AiEnrichment assetId={assetId} assetFilename={assetFilename} metadata={metadata} repositoryTags={repositoryTags} canDownload={canDownload} canEdit={canEdit && !editing} canManageVocabulary={canManageVocabulary && !editing && !saving} locked={editing || saving} onEditingChange={setTagsLocked} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />
     </div>{confirmation}</aside>
   );
 }
@@ -96,7 +96,7 @@ function MetadataReadout({ rows }) {
   return rows.length ? <div className="mt-4"><ExpandableList items={rows} label="fields" className="divide-y divide-white/[0.06]" renderItem={row => <dl key={row.id} className="grid grid-cols-[minmax(0,.7fr)_minmax(0,1fr)] gap-4 py-3 text-sm"><dt className="break-words text-sm font-medium text-zinc-400">{row.key}</dt><dd className="min-w-0"><ExpandableText value={row.value} label={row.key} lines={4} /></dd></dl>} /></div> : <p className="mt-4 text-sm text-zinc-400">No custom metadata has been added.</p>;
 }
 
-function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdit, canManageVocabulary, locked, onEditingChange, onMetadataChange, onTagsChange }) {
+function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdit, canDownload, canManageVocabulary, locked, onEditingChange, onMetadataChange, onTagsChange }) {
   const ai = useMemo(() => metadata?.ai || {}, [metadata]);
   const visualAssetType = getVisualType(assetFilename, ai.type);
   const collections = useMemo(() => [
@@ -201,7 +201,7 @@ function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdi
           return <div key={`${value}-${index}`} className="flex min-h-9 items-center gap-2 rounded border border-white/[0.06] bg-black/15 px-2.5 py-1.5">{isEditing ? <input className="input h-7 min-w-0 flex-1 text-xs" disabled={Boolean(busy)} value={editValue} onChange={(event) => setEditValue(event.target.value)} autoFocus aria-label={`Edit ${value}`} /> : <span className="min-w-0 flex-1 break-words text-sm text-zinc-300 [overflow-wrap:anywhere]">{value}</span>}{canEdit && (isEditing ? <><button className="tag-action text-emerald-300" disabled={!editValue.trim() || busy} onClick={() => updateCollection(key, ai[key].map((item, itemIndex) => itemIndex === index ? editValue.trim() : item), operation)} aria-label="Save tag"><Check size={13} /></button><button className="tag-action" disabled={Boolean(busy)} onClick={cancelTagEdit} aria-label="Cancel tag edit"><X size={13} /></button></> : <><button className={`tag-action ${accepted ? 'text-emerald-300' : ''}`} disabled={accepted || Boolean(busy) || Boolean(editingTag)} onClick={() => accept(value)} aria-label={`Accept ${value} as repository tag`} title="Accept tag">{busy === `accept-${value}` ? <LoaderCircle size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}</button><button className="tag-action" disabled={Boolean(busy) || Boolean(editingTag)} onClick={() => { setEditingTag(operation); setEditValue(value); }} aria-label={`Edit ${value}`}><Edit3 size={13} /></button><button className="tag-action hover:text-red-300" disabled={Boolean(busy) || Boolean(editingTag)} onClick={async () => { if (await confirm({ title: "Remove AI tag?", details: value, description: "This suggestion will be removed from this asset’s AI metadata.", confirmLabel: "Remove tag" })) updateCollection(key, ai[key].filter((_, itemIndex) => itemIndex !== index), operation); }} aria-label={`Remove ${value}`}><X size={13} /></button></>)}</div>;
         }} /></div>)}
         {ai.summary && <AiText label="Summary" value={ai.summary} />}
-        {ai.transcript && <AiText label="Audio transcript" value={ai.transcript} reader />}
+        {ai.transcript && <AiText label="Audio transcript" value={ai.transcript} canDownload={canDownload} reader />}
         {visualAssetType && ai.clip?.status === 'completed' && !ai.imageTags?.length && !ai.semanticTags?.length && <p className="text-sm text-zinc-400">AI found no suitable visual tags. You can add repository tags manually.</p>}
         {visualAssetType && ai.clip?.status === 'failed' && <p className="text-sm text-zinc-400">AI visual tagging is unavailable for this asset. You can add repository tags manually.</p>}
         {!collections.length && !ai.summary && !ai.transcript && ai.type !== '3d' && !ai.clip?.status && <p className="rounded border border-dashed border-white/10 p-4 text-sm leading-6 text-zinc-400">No AI results are available yet. Refresh to check for results.</p>}
@@ -212,8 +212,8 @@ function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdi
   );
 }
 
-function AiText({ label, value, reader = false }) {
-  return <div><h3 className="mb-2 text-sm font-medium text-zinc-300">{label}</h3><ExpandableText value={value} label={label} reader={reader} className="rounded border border-white/[0.06] bg-black/20 p-4" /></div>;
+function AiText({ label, value, reader = false, canDownload = false }) {
+  return <div><h3 className="mb-2 text-sm font-medium text-zinc-300">{label}</h3><ExpandableText value={value} label={label} reader={reader} canDownload={canDownload} className="rounded border border-white/[0.06] bg-black/20 p-4" /></div>;
 }
 
 function ModelStat({ label, value }) {

@@ -43,7 +43,7 @@ export async function loadModelPackage({ assetId, localPackage, info, versionId 
     } else {
       const stored = await assetService.getPackage(assetId, versionId);
       if (!stored) {
-        source = versionId ? (await assetService.downloadVersion(assetId, versionId, { main: true })).blob : await assetService.getPreview(assetId);
+        source = versionId ? await assetService.getVersionPreview(assetId, versionId) : await assetService.getPreview(assetId);
         resources = [{ id: 'main', path: info.originalname, kind: 'source', file: source }];
         manifest = { mode: 'materials', bindings: {} };
       } else {

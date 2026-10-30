@@ -82,6 +82,10 @@ export const assetService = {
     const { data } = await api.get(`/assets/preview/${assetId}`, { responseType: 'blob' });
     return data;
   },
+  async getVersionPreview(assetId, versionId) {
+    const { data } = await api.get(`/assets/${assetId}/versions/${versionId}/preview`, { responseType: 'blob', timeout: 120000 });
+    return data;
+  },
   async getPackage(assetId, versionId) {
     const prefix = versionId ? `/assets/${assetId}/versions/${versionId}` : `/assets/${assetId}`;
     const { data } = await api.get(`${prefix}/package`);

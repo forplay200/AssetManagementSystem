@@ -82,3 +82,10 @@ test('displays extracted 3D geometry and model tags', () => {
   expect(screen.getByText('car')).toBeInTheDocument();
   expect(screen.getByText('vehicle')).toBeInTheDocument();
 });
+
+test.each([false, true])('transcript export receives independent download capability (%s)', async canDownload => {
+  render(<MetadataPanel assetId="8" metadata={{ ai: { type: 'audio', transcript: 'An accessible transcript.' } }} repositoryTags={[]} canEdit={false} canDownload={canDownload} />);
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Read full text' }));
+  expect(Boolean(screen.queryByRole('button', { name: 'Download TXT' }))).toBe(canDownload);
+  expect(screen.getByRole('button', { name: 'Copy full text' })).toBeEnabled();
+});

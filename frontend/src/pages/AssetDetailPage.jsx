@@ -10,7 +10,7 @@ import MetadataPanel from '../components/metadata/MetadataPanel';
 import VersionHistory from '../components/versions/VersionHistory';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '../context/AuthContext';
-import { canManageAsset as mayManageAsset, canDeleteAsset as mayDeleteAsset, canManageWorkspaceVocabulary } from '../auth/assetPermissions';
+import { canManageAsset as mayManageAsset, canDeleteAsset as mayDeleteAsset, canManageWorkspaceVocabulary, canDownloadAsset as mayDownloadAsset } from '../auth/assetPermissions';
 import { getApiError } from '../services/api';
 import { assetService, saveDownload } from '../services/assetService';
 import { assetType, formatBytes } from '../utils/formatters';
@@ -58,7 +58,7 @@ export default function AssetDetailPage() {
   useEffect(() => { const counter = sequence; setRenaming(false); setNotice(''); setVisited({ details: true }); setActivePanel('details'); setVersionFormMode(null); setVersionRequest(0); load(); return () => { counter.current++; }; }, [load]);
 
   const download = async (main = false) => {
-    if (downloading) return;
+    if (downloading || !mayDownloadAsset(user, state.info)) return;
     setDownloading(true);
     setActionError('');
     try {
@@ -80,12 +80,15 @@ export default function AssetDetailPage() {
   const { info } = state;
   const canManageAsset = mayManageAsset(user, info);
   const canDeleteAsset = mayDeleteAsset(user, info);
+  const canDownload = mayDownloadAsset(user, info);
+  const canUpdateMaterials = /\.(obj|fbx)$/i.test(info.originalname) && can('createVersion') && canManageAsset;
+  const showDelete = can('deleteAsset') && canDeleteAsset;
   const canManageVocabulary = canManageWorkspaceVocabulary(user, info);
   return (
     <>
       {location.state?.uploaded && <div className="mb-5 rounded border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">Asset files saved successfully. {location.state.processing?.status === 'queue-failed' ? 'AI processing can be retried from the Metadata panel.' : 'AI processing has been queued.'}</div>}
       {location.state?.metadataWarning && <div className="mb-5 rounded border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-sm text-amber-200/80">{location.state.metadataWarning} You can add it again from the Metadata panel.</div>}
-      <PageHeader eyebrow={assetType(info.mimetype)} title={<span className="flex items-start gap-3"><span className="min-w-0">{getAssetDisplayName(info)}</span>{canManageAsset && <button className="icon-action mt-1 shrink-0" aria-label="Rename asset" onClick={() => setRenaming(true)}><Pencil size={16} /></button>}</span>} description={`${formatBytes(info.package?.totalSize || info.size)} · ${info.package ? `${info.package.fileCount} package files` : info.mimetype}`} actions={<><Link to={backTo} state={{ restoreScroll: location.state?.scrollY }} className="secondary-button"><ArrowLeft size={16} />{backTo.startsWith("/search") ? "Search results" : "Library"}</Link><button className="primary-button" disabled={downloading} onClick={() => download()}><Download size={16} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button></>} />
+      <PageHeader eyebrow={assetType(info.mimetype)} title={<span className="flex items-start gap-3"><span className="min-w-0">{getAssetDisplayName(info)}</span>{canManageAsset && <button className="icon-action mt-1 shrink-0" aria-label="Rename asset" onClick={() => setRenaming(true)}><Pencil size={16} /></button>}</span>} description={`${formatBytes(info.package?.totalSize || info.size)} · ${info.package ? `${info.package.fileCount} package files` : info.mimetype}`} actions={<><Link to={backTo} state={{ restoreScroll: location.state?.scrollY }} className="secondary-button"><ArrowLeft size={16} />{backTo.startsWith("/search") ? "Search results" : "Library"}</Link>{canDownload && <button className="primary-button" disabled={downloading} onClick={() => download()}><Download size={16} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button>}</>} />
       {notice && <p role="status" className="mb-5 text-sm text-emerald-300">{notice}</p>}
       {actionError && <div className="mb-5 rounded border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{actionError}</div>}
       <div className="mb-5 flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded border border-white/[0.08] bg-aether-surface p-1" role="tablist" aria-label="Asset sections">
@@ -94,14 +97,14 @@ export default function AssetDetailPage() {
       <div id="asset-panel-details" role="tabpanel" aria-labelledby="asset-tab-details" hidden={activePanel !== "details"} className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,.75fr)]">
         <div className="space-y-5">
           <section className="panel overflow-hidden">
-            {activePanel === "details" && <AssetPreview assetId={assetId} info={info} />}
+            {activePanel === "details" && <AssetPreview assetId={assetId} info={info} canDownload={canDownload} />}
             <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.08] p-4"><span className="font-mono text-xs uppercase tracking-wider text-zinc-400">Repository tags</span>{state.tags.length ? state.tags.slice(0, 6).map((tag) => <span key={tag.id || tag.name} className="tag-chip">{tag.name}</span>) : <span className="text-xs text-zinc-400">No manual tags</span>}{state.tags.length > 6 && <span className="text-xs text-zinc-400">+{state.tags.length - 6} more in AI enrichment</span>}</div>
           </section>
-          <section className="panel flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="font-display text-sm font-semibold text-zinc-100">Asset actions</h2><p className="mt-1 text-xs text-zinc-400">{info.package ? 'Download the complete model package or its original main file.' : 'Download the current file.'}</p></div><div className="flex flex-wrap gap-2"><button className="secondary-button" disabled={downloading} onClick={() => download()}><Download size={15} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button>{info.package && <button className="secondary-button" disabled={downloading} onClick={() => download(true)}>Original main file</button>}{/\.(obj|fbx)$/i.test(info.originalname) && can('createVersion') && canManageAsset && <button className="secondary-button" onClick={() => { setVersionFormMode('companions'); setVersionRequest(value => value + 1); selectPanel('versions'); }}>Update materials / textures</button>}{can('deleteAsset') && canDeleteAsset && <button className="danger-button" disabled={pendingChanges} onClick={remove}><Trash2 size={15} /> Delete</button>}</div></section>
+          {(canDownload || canUpdateMaterials || showDelete) && <section className="panel flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="font-display text-sm font-semibold text-zinc-100">Asset actions</h2><p className="mt-1 text-xs text-zinc-400">{canDownload ? (info.package ? 'Download the complete model package or its original main file.' : 'Download the current file.') : 'Manage this asset.'}</p></div><div className="flex flex-wrap gap-2">{canDownload && <button className="secondary-button" disabled={downloading} onClick={() => download()}><Download size={15} /> {downloading ? 'Preparing…' : info.package ? 'Download ZIP' : 'Download'}</button>}{canDownload && info.package && <button className="secondary-button" disabled={downloading} onClick={() => download(true)}>Original main file</button>}{canUpdateMaterials && <button className="secondary-button" onClick={() => { setVersionFormMode('companions'); setVersionRequest(value => value + 1); selectPanel('versions'); }}>Update materials / textures</button>}{showDelete && <button className="danger-button" disabled={pendingChanges} onClick={remove}><Trash2 size={15} /> Delete</button>}</div></section>}
         </div>
-        <MetadataPanel key={assetId} active={activePanel === "details"} assetId={assetId} assetFilename={info.filename || info.originalname} metadata={state.metadata} repositoryTags={state.tags} canEdit={can('manageMetadata') && canManageAsset} canManageVocabulary={canManageVocabulary} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
+        <MetadataPanel key={assetId} active={activePanel === "details"} assetId={assetId} assetFilename={info.filename || info.originalname} metadata={state.metadata} repositoryTags={state.tags} canDownload={canDownload} canEdit={can('manageMetadata') && canManageAsset} canManageVocabulary={canManageVocabulary} onMetadataChange={(metadata) => setState((current) => ({ ...current, metadata }))} onTagsChange={(tags) => setState((current) => ({ ...current, tags }))} />
       </div>
-      <div id="asset-panel-versions" role="tabpanel" aria-labelledby="asset-tab-versions" hidden={activePanel !== "versions"}>{visited.versions && <VersionHistory key={assetId} assetId={assetId} assetName={info.originalname} assetInfo={info} active={activePanel === "versions"} initialMode={versionFormMode} modeRequest={versionRequest} canCreate={can('createVersion') && canManageAsset} onCurrentVersionChanged={() => load(false)} />}</div>
+      <div id="asset-panel-versions" role="tabpanel" aria-labelledby="asset-tab-versions" hidden={activePanel !== "versions"}>{visited.versions && <VersionHistory key={assetId} assetId={assetId} assetName={info.originalname} assetInfo={info} active={activePanel === "versions"} initialMode={versionFormMode} modeRequest={versionRequest} canDownload={canDownload} canCreate={can('createVersion') && canManageAsset} onCurrentVersionChanged={() => load(false)} />}</div>
       <div id="asset-panel-comments" role="tabpanel" aria-labelledby="asset-tab-comments" hidden={activePanel !== "comments"}>{visited.comments && <CommentThread key={assetId} assetId={assetId} />}</div>
       {renaming && <RenameDialog title="Rename asset" initialName={getAssetDisplayName(info)} sourceName={info.originalname} maxLength={200} onClose={() => setRenaming(false)} onSave={async name => {
         const expected = identity.current;

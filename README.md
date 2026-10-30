@@ -41,10 +41,13 @@ The system follows a microservices-inspired architecture:
 
 ## Prerequisites
 
-- Node.js (v18+)
+- Node.js 24.22.1 LTS or a newer patched Node.js 24 release (see `.nvmrc`)
 - Python (v3.11+)
 - Docker and Docker Compose (optional for containerized setup)
 - Git
+
+Node.js versions for local development, Docker builds, and CI are aligned. See
+[the Node.js runtime update notes](docs/node-runtime.md) for security updates and rebuilding existing services.
 
 ## Setup
 

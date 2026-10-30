@@ -9,7 +9,7 @@ const roleDetails = {
   [WORKSPACE_ROLES.OWNER]: { title: 'Workspace Owner', permissions: ['Manage team members and roles', 'Manage workspace assets', 'Manage asset versions', 'Participate in discussions'] },
   [WORKSPACE_ROLES.MANAGER]: { title: 'Workspace Manager', permissions: ['Upload and manage assets', 'Review AI metadata', 'Manage versions', 'Participate in discussions'] },
   [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: { title: 'System Administrator', permissions: ['View all registered users', 'Search user accounts', 'View account and role details', 'Activate or deactivate accounts'] },
-  [WORKSPACE_ROLES.COLLABORATOR]: { title: 'Collaborator', permissions: ['View repository assets', 'Download permitted files', 'Provide feedback', 'Reply to discussions'] },
+  [WORKSPACE_ROLES.COLLABORATOR]: { title: 'Collaborator', permissions: ['View repository assets', 'Preview permitted files', 'Provide feedback', 'Reply to discussions'] },
 };
 
 function getTokenExpiry(token) {

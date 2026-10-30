@@ -1,4 +1,4 @@
-import { canManageAsset, canDeleteAsset, canManageWorkspaceVocabulary } from './assetPermissions';
+import { canManageAsset, canDeleteAsset, canManageWorkspaceVocabulary, canDownloadAsset } from './assetPermissions';
 
 const user = { id: 2, accountRole: 'user', role: 'workspaceManager', teamRole: 'workspaceManager', team: { id: 8 } };
 const asset = { workspaceId: 8, userId: 2 };
@@ -13,7 +13,7 @@ test('manager ownership restricts asset writes but preserves workspace vocabular
   expect(canManageAsset({ ...user, teamRole: 'workspaceOwner' }, otherAsset)).toBe(true);
 });
 test('permissions fail closed for unknown, invalid, inactive, downgraded, or mismatched contexts', () => {
-  for (const check of [canManageAsset, canDeleteAsset, canManageWorkspaceVocabulary]) {
+  for (const check of [canManageAsset, canDeleteAsset, canManageWorkspaceVocabulary, canDownloadAsset]) {
     expect(check(user, { ...asset, workspaceId: 9 })).toBe(false);
     expect(check(user, { userId: 2, teamId: 8 })).toBe(false);
     expect(check({ ...user, team: null }, asset)).toBe(false);
@@ -26,4 +26,11 @@ test('permissions fail closed for unknown, invalid, inactive, downgraded, or mis
     expect(canManageAsset({ ...user, id }, { ...asset, userId: id })).toBe(false);
     expect(canManageAsset(user, { ...asset, userId: id })).toBe(false);
   }
+});
+
+test('downloads are independent of upload ownership and require active matching workspace membership', () => {
+  expect(canDownloadAsset(user, { ...asset, userId: 99 })).toBe(true);
+  expect(canDownloadAsset({ ...user, teamRole: 'workspaceOwner' }, { ...asset, userId: null })).toBe(true);
+  expect(canDownloadAsset(user, null)).toBe(false);
+  expect(canDownloadAsset({ ...user, teamRole: null }, asset)).toBe(false);
 });

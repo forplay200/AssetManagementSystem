@@ -72,7 +72,7 @@ test('owner can edit another uploader asset; mismatched workspace never falls ba
   const view = showPage(); await screen.findByText('Asset actions');
   expect(screen.getByRole('button', { name: 'Delete', exact: true })).toBeInTheDocument();
   view.unmount(); mockUser = { ...mockUser, id: 7, team: { id: 9 } };
-  showPage(); await screen.findByText('Asset actions');
+  showPage(); await screen.findByRole('heading', { level: 1 });
   expect(screen.queryByRole('button', { name: 'Delete', exact: true })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Edit metadata' })).not.toBeInTheDocument();
 });
@@ -125,4 +125,24 @@ test('asset rename immediately updates the title while preserving a comment draf
   expect(assetService.getInfo).toHaveBeenCalledTimes(1);
   await user.click(screen.getByRole('button', { name: 'Rename asset' }));
   expect(screen.getByText('Source file: environment.fbx')).toBeInTheDocument();
+});
+
+test('collaborator keeps preview, metadata, comments and history without download UI or empty actions', async () => {
+  assetService.getInfo.mockResolvedValue({ id: 42, workspaceId: 8, originalname: 'model.obj', mimetype: 'model/obj', size: 100, userId: 9, package: { fileCount: 3 } });
+  const user = userEvent.setup(); showPage(); await screen.findByRole('heading', { level: 1 });
+  expect(screen.getByText('3D asset preview')).toBeInTheDocument();
+  expect(screen.queryByText('Asset actions')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Download|Original main file/ })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Download the complete model package/)).not.toBeInTheDocument();
+  await user.click(screen.getByRole('tab', { name: 'Versions' }));
+  expect(await screen.findByText('No preserved versions')).toBeInTheDocument();
+  await user.click(screen.getByRole('tab', { name: 'Comments' }));
+  expect(await screen.findByRole('textbox', { name: 'Comment' })).toBeEnabled();
+});
+test.each(['workspaceOwner', 'workspaceManager'])('%s can download another uploader package without write access being required', async role => {
+  mockUser = { ...mockUser, teamRole: role, role };
+  assetService.getInfo.mockResolvedValue({ id: 42, workspaceId: 8, originalname: 'model.obj', userId: 99, package: { fileCount: 3 } });
+  showPage(); await screen.findByRole('heading', { level: 1 });
+  expect(screen.getAllByRole('button', { name: 'Download ZIP' })).toHaveLength(2);
+  expect(screen.getByRole('button', { name: 'Original main file' })).toBeInTheDocument();
 });

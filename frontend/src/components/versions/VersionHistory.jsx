@@ -12,7 +12,7 @@ import { formatBytes, formatDate } from '../../utils/formatters';
 const acceptedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'fbx', 'obj', 'cs', 'js', 'txt', 'json', 'xml'];
 const ThreeModelPreview = lazy(() => import('../assets/ThreeModelPreview'));
 
-export default function VersionHistory({ assetId, assetName, canCreate = false, onCurrentVersionChanged, assetInfo, initialMode, modeRequest = 0, active = true }) {
+export default function VersionHistory({ assetId, assetName, canCreate = false, canDownload = false, onCurrentVersionChanged, assetInfo, initialMode, modeRequest = 0, active = true }) {
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -129,7 +129,7 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
   };
 
   const download = async (version) => {
-    if (downloading) return;
+    if (!canDownload || downloading) return;
     setDownloading(version.id); setError('');
     try {
       saveDownload(await assetService.downloadVersion(assetId, version.id, { filename: version.originalName || assetName }));
@@ -173,7 +173,7 @@ export default function VersionHistory({ assetId, assetName, canCreate = false, 
                 <ExpandableText value={version.changeLog || "No change note provided."} label="Version note" lines={4} className="mt-2" />
                 <div className="mt-2 flex flex-wrap gap-3 font-mono text-xs uppercase tracking-wide text-zinc-400"><span className="flex items-center gap-1"><Clock3 size={11} /> {formatDate(version.createdAt)}</span><span>{formatBytes(version.package?.totalSize || version.size)}</span>{version.package && <span>{version.package.fileCount} package files</span>}<span>Author #{version.createdBy}</span></div>
               </div>
-              <div className="flex flex-wrap gap-2">{/\.(obj|fbx)$/i.test(version.originalName || '') && <button className="secondary-button" onClick={() => setPreviewVersion(previewVersion === version.id ? null : version.id)}>Preview</button>}<button className="secondary-button w-fit" disabled={Boolean(downloading)} onClick={() => download(version)}><Download size={15} /> {downloading === version.id ? 'Preparing…' : version.package ? 'Download ZIP' : 'Download'}</button></div>
+              {(canDownload || /\.(obj|fbx)$/i.test(version.originalName || '')) && <div className="flex flex-wrap gap-2">{/\.(obj|fbx)$/i.test(version.originalName || '') && <button className="secondary-button" onClick={() => setPreviewVersion(previewVersion === version.id ? null : version.id)}>Preview</button>}{canDownload && <button className="secondary-button w-fit" disabled={Boolean(downloading)} onClick={() => download(version)}><Download size={15} /> {downloading === version.id ? 'Preparing…' : version.package ? 'Download ZIP' : 'Download'}</button>}</div>}
               {active && previewVersion === version.id && <div className="overflow-hidden rounded border border-white/[0.08] sm:col-span-3"><Suspense fallback={<div className="grid min-h-40 place-items-center"><LoaderCircle className="animate-spin" size={18} /></div>}><ThreeModelPreview assetId={assetId} versionId={version.id} info={{ originalname: version.originalName, filename: version.fileName, package: version.package }} /></Suspense></div>}
             </article>
           )} />

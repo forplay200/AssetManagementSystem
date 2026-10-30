@@ -48,7 +48,10 @@ test('enforces workspaceOwner, workspaceManager, collaborator, and unassigned us
   assert.equal(checkPermission('user', 'manageTeam', 'workspaceOwner').nextCalled, true);
   assert.equal(checkPermission('user', 'manageMetadata', 'workspaceManager').nextCalled, true);
   assert.equal(checkPermission('user', 'deleteAsset', 'workspaceManager').nextCalled, true);
-  assert.equal(checkPermission('user', 'downloadAsset', 'collaborator').nextCalled, true);
+  assert.equal(checkPermission('user', 'downloadAsset', 'collaborator').status, 403);
+  assert.equal(checkPermission('user', 'viewAsset', 'collaborator').nextCalled, true);
+  assert.equal(checkPermission('user', 'comment', 'collaborator').nextCalled, true);
+  for (const role of ['workspaceOwner', 'workspaceManager']) assert.equal(checkPermission('user', 'downloadAsset', role).nextCalled, true);
   assert.equal(checkPermission('user', 'viewAsset').status, 403);
   assert.equal(checkPermission('user', 'manageUsers', 'workspaceOwner').status, 403);
   assert.equal(checkAccountPermission('systemAdministrator', 'manageUsers', 'collaborator').nextCalled, true);

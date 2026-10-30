@@ -20,7 +20,8 @@
 
 | 操作 | Owner | Manager：本人上传 | Manager：他人上传 | Collaborator |
 | --- | --- | --- | --- | --- |
-| 查看、搜索、预览、下载 | 允许 | 允许 | 允许 | 允许 |
+| 查看、搜索、预览 | 允许 | 允许 | 允许 | 允许 |
+| 下载当前/原始/ZIP/历史版本、导出 transcript TXT | 允许 | 允许 | 允许 | 禁止 |
 | 查看 metadata、标签、版本、AI 结果 | 允许 | 允许 | 允许 | 允许 |
 | Refresh results（重新读取结果） | 允许 | 允许 | 允许 | 允许 |
 | 上传新 Asset | 允许 | 允许 | 不按已有 Asset 判断 | 禁止 |
@@ -183,7 +184,7 @@ AssetDetailPage
 - Manager 看自己的 Asset：显示 metadata 编辑、标签写入、Regenerate、版本/材质更新及 Delete。
 - Manager 看他人的 Asset：显示内容、下载、历史版本、Refresh results、评论和共享词库；隐藏资产写入操作。
 - Owner：当前 Workspace 内全部 Asset 的原有管理操作可用。
-- Collaborator：原有读取、下载、评论能力不变。
+- Collaborator：保留查看、预览、版本历史和评论；按 2026-10-26 下载限制方案，禁止下载和 transcript TXT 导出。
 - 适当显示只读原因，例如 `Only the uploader or a workspace owner can modify this asset.`，不使用“你的角色只有只读权限”的笼统文案。
 - 共享词库继续显示现有 Workspace 影响说明与删除确认；不要把“接受标签到本资产”误当成共享词库管理而放开。
 - 角色变化或过期页面发出请求时，后端仍应拒绝；前端展示 403 并刷新权限上下文，不自动重试写入或静默丢弃草稿。
@@ -195,7 +196,7 @@ AssetDetailPage
 
 评论现状需要维持：Owner、Manager、Collaborator 可以在同 Workspace 可访问的 Asset 下评论/回复；Owner 可编辑或软删除同 Workspace 任意评论；Manager 和 Collaborator 只能编辑或软删除自己发表的评论，与资产上传者无关。已删除评论占位、回复记录、长度校验、父评论属于同一 Asset 的检查和分页维持原行为。
 
-搜索、列表、Dashboard、预览、下载、版本历史、AI 结果刷新继续按 Workspace 共享；不要为实现“只改自己”把读取查询改成 `where: { userId: currentUserId }`。
+搜索、列表、Dashboard、预览、版本历史、AI 结果刷新继续按 Workspace 共享；下载仅 Owner/Manager 允许（2026-10-26 新规则）；不要为实现“只改自己”把读取查询改成 `where: { userId: currentUserId }`。
 
 ## 8. 文件与测试入口
 
@@ -328,3 +329,8 @@ docker compose up -d --build backend frontend ai-service ai-worker redis
 - 最初用于验收的小 PNG 数据无法完整解码，已通过正常版本接口换成有效测试图片；未因此修改模型预览业务。后续 3D 本人及共享读取均显示 `Materials ready`。
 - 页面截图：[Manager 查看他人资产并管理共享词库](../exports/rbac-manager-other-asset-20261013.png)、[角色降级后草稿保留](../exports/rbac-role-downgrade-draft-20261013.png)。截图为清理前的专门测试数据。
 - 最后检查：全部七个服务运行；AI worker 空闲观察约两分钟，重启次数为 0，队列长度为 0。测试凭证、临时脚本及测试浏览器标签已清理。此观察验证了本次空闲超时修复，不代表长期性能评估。
+
+
+## 2026-10-26 下载权限规则更新
+
+本文历史验收记录反映当时规则；Collaborator 的旧下载许可现由 [下载限制方案](collaborator-download-restriction-plan.md) 取代。Collaborator 仍可查看、搜索、预览、阅读历史与评论，但不能调用专门下载 API，也不显示下载/导出按钮。Manager 下载同 Workspace 他人资产的权限保留，与本人上传写入限制独立。无需数据库迁移。

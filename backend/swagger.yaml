@@ -8,10 +8,100 @@ info:
     manage any asset in that workspace; workspaceManager can manage only assets
     whose original Asset.userId matches the authenticated user. Shared visual
     vocabulary remains editable by both roles regardless of the asset uploader.
+    Collaborators may view, preview and comment, but cannot use download APIs.
 servers:
   - url: http://localhost:3000/api
     description: Local server
 paths:
+  /assets/download/{id}:
+    get:
+      summary: Download current asset
+      description: >-
+        Workspace Owner and Manager only, including another uploader's assets in the same workspace. Collaborator receives 403 before storage access. Model packages return ZIP unless main=true requests only the original main file.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: main
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Original file or package ZIP attachment
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Missing authentication }
+        '403': { description: Download permission or workspace access denied }
+        '404': { description: Asset or matching version not found }
+  /assets/{id}/versions/{versionId}/download:
+    get:
+      summary: Download historical asset
+      description: >-
+        Workspace Owner and Manager only, including another uploader's assets in the same workspace. Collaborator receives 403 before storage access. Model packages return ZIP unless main=true requests only the original main file.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: main
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Original file or package ZIP attachment
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Missing authentication }
+        '403': { description: Download permission or workspace access denied }
+        '404': { description: Asset or matching version not found }
+  /assets/{id}/versions/{versionId}/preview:
+    get:
+      summary: Preview historical main file
+      description: >-
+        Available to active workspace viewing roles, including Collaborator. Returns only the version main file inline; query parameters cannot request an attachment or ZIP. Versions are looked up by both asset ID and version ID.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Main file for inline preview with private no-store caching
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Missing authentication }
+        '403': { description: Workspace access denied }
+        '404': { description: Asset or matching version not found }
   /assets/{id}/name:
     patch:
       summary: Rename asset display name

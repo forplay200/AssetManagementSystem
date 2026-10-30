@@ -4,6 +4,8 @@
 
 Implemented on 2026-07-14. Canonical role values were updated on 2026-10-07. Asset uploader restrictions were implemented and deployed on 2026-10-13, with live API/browser acceptance recorded in the ownership permissions plan.
 
+Collaborator download restrictions were implemented on 2026-10-26; current validation/deployment status is recorded in [the download restriction plan](collaborator-download-restriction-plan.md).
+
 ## Account and Membership Model
 
 - A newly registered account has the account role `user` and no asset-repository access.
@@ -18,7 +20,8 @@ Implemented on 2026-07-14. Canonical role values were updated on 2026-10-07. Ass
 
 | Capability | Workspace Owner | Workspace Manager | Collaborator | User |
 | --- | --- | --- | --- | --- |
-| View, preview, search, download | Yes | Yes | Yes | No |
+| View, preview, search | Yes | Yes | Yes | No |
+| Download current/original/ZIP/history and export transcript TXT | Yes | Yes, independently of uploader | No | No |
 | Comment and reply | Yes | Yes | Yes | No |
 | Upload new assets | Yes | Yes | No | No |
 | Edit metadata, repository/AI tags, regenerate AI | Any asset in current workspace | Own uploads only | No | No |
@@ -33,7 +36,7 @@ Asset ownership means the original database `Asset.userId`, compared to the auth
 
 Both role permission and resource permission must pass. Manager `deleteAsset` permission enables the operation category; it does not authorize deletion of another uploader's asset. The reusable backend helper is `backend/src/utils/assetPermissions.js`; frontend equivalents are in `frontend/src/auth/assetPermissions.js`. Replacement uploads check ownership before multipart parsing and again inside the transaction.
 
-Reading remains shared within the workspace. Comments retain their separate author rule: Owner can moderate any comment in the workspace; Manager and Collaborator can edit/delete only their own comments, regardless of who uploaded the asset. Shared vocabulary remains a workspace operation and never automatically changes another asset's tags or queues regeneration for it.
+Viewing, previews and history remain shared within the workspace. Dedicated downloads and transcript TXT exports are restricted to Owner/Manager. `GET /api/assets/:id/versions/:versionId/preview` supplies the inline version main file with viewing permission; legacy model previews no longer depend on the download API. Preview data still reaches the browser, so this is product download/export control rather than copy prevention. Comments retain their separate author rule: Owner can moderate any comment in the workspace; Manager and Collaborator can edit/delete only their own comments, regardless of who uploaded the asset. Shared vocabulary remains a workspace operation and never automatically changes another asset's tags or queues regeneration for it.
 
 ## Authentication Context
 

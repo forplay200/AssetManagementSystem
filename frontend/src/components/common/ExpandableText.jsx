@@ -3,7 +3,7 @@ import { Copy, Download, Maximize2 } from 'lucide-react';
 import Dialog from './Dialog';
 import { saveDownload } from '../../services/assetService';
 
-export default function ExpandableText({ value, label = 'Text', lines = 6, reader = false, className = '' }) {
+export default function ExpandableText({ value, label = 'Text', lines = 6, reader = false, canDownload = false, className = '' }) {
   const text = String(value ?? '');
   const id = useId();
   const paragraph = useRef(null);
@@ -35,7 +35,7 @@ export default function ExpandableText({ value, label = 'Text', lines = 6, reade
       {reader && <button type="button" className="secondary-button h-9 text-xs" onClick={() => setReading(true)}><Maximize2 size={14} />Read full text</button>}
       {reader && <span className="text-xs text-zinc-400">{text.length.toLocaleString()} characters</span>}
     </div>}
-    <Dialog open={reading} title={label} wide onClose={() => setReading(false)} footer={<><button type="button" className="secondary-button" onClick={copy}><Copy size={15} />Copy full text</button><button type="button" className="secondary-button" onClick={() => saveDownload({ blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), filename: `${label.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}.txt` })}><Download size={15} />Download TXT</button><button type="button" className="primary-button" onClick={() => setReading(false)}>Done</button></>}>
+    <Dialog open={reading} title={label} wide onClose={() => setReading(false)} footer={<><button type="button" className="secondary-button" onClick={copy}><Copy size={15} />Copy full text</button>{canDownload && <button type="button" className="secondary-button" onClick={() => { if (!canDownload) return; saveDownload({ blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), filename: `${label.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}.txt` }); }}><Download size={15} />Download TXT</button>}<button type="button" className="primary-button" onClick={() => setReading(false)}>Done</button></>}>
       <p className="readable-text mx-auto max-w-[75ch] text-base">{text}</p>
       {message && <p className="mt-4 text-sm text-zinc-300" role="status">{message}</p>}
     </Dialog>

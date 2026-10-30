@@ -11,7 +11,7 @@ const roleInheritance = {
 const rolePermissions = {
   [WORKSPACE_ROLES.OWNER]: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset', 'manageTeam', 'manageProjects'],
   [WORKSPACE_ROLES.MANAGER]: ['viewAsset', 'downloadAsset', 'uploadAsset', 'manageMetadata', 'manageVersions', 'deleteAsset', 'comment', 'approveAsset'],
-  [WORKSPACE_ROLES.COLLABORATOR]: ['viewAsset', 'downloadAsset', 'comment'],
+  [WORKSPACE_ROLES.COLLABORATOR]: ['viewAsset', 'comment'],
   [ACCOUNT_ROLES.USER]: [],
   [ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR]: ['manageUsers']
 };

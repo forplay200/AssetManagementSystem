@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { renameAsset, uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
+const { renameAsset, uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, previewVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
 const { createComment, getCommentHistory } = require('../controllers/commentsController');
 const { getAssetVocabulary, approveVocabularyEntry, removeVocabularyEntry } = require('../controllers/vocabularyController');
 const auth = require('../middleware/auth');
@@ -61,6 +61,7 @@ router.get('/:id/versions/:versionId/resources/:resourceId', workspaceAuth, auth
 router.get('/:id/versions', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getVersionHistory);
 // GET /api/assets/:id/versions/:versionId
 router.get('/:id/versions/:versionId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getVersion);
+router.get('/:id/versions/:versionId/preview', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, previewVersion);
 // GET /api/assets/:id/versions/:versionId/download
 router.get('/:id/versions/:versionId/download', workspaceAuth, authorizePermission('downloadAsset'), workspaceAssetAccess, downloadVersion);
 

@@ -127,6 +127,15 @@ exports.getVersion = async (req, res) => {
   }
 };
 
+// Preview only the version's main file. Query parameters cannot turn this into a download or ZIP.
+exports.previewVersion = async (req, res) => {
+  try {
+    const version = await Version.findOne({ where: { id: req.params.versionId, assetId: req.params.id } });
+    if (!version) return res.status(404).json({ message: 'Version not found' });
+    await streamFile(res, version.fileName, version.mimeType, version.originalName);
+  } catch (error) { reportUploadError(res, error); }
+};
+
 // Download a specific version
 exports.downloadVersion = async (req, res) => {
   try {

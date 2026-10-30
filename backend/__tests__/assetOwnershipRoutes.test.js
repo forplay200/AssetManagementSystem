@@ -5,10 +5,10 @@ const jwt = require('jsonwebtoken');
 const fs = require('node:fs');
 const { Readable } = require('node:stream');
 
-let assets, versions, accounts, memberships, tags, comments, concepts, effects, nextId, teams;
+let assets, versions, accounts, memberships, tags, comments, concepts, effects, nextId, teams, storageReads;
 function reset() {
   teams = new Map([[8, { id: 8, name: 'Studio', inviteCode: 'SECRET', async save(options) { effects.push({ teamFields: options.fields }); } }]]);
-  effects = []; nextId = 50; versions = [];
+  effects = []; storageReads = []; nextId = 50; versions = [];
   accounts = new Map([1, 2, 3, 4, 5, 6].map(id => [id, { id, role: id === 6 ? 'systemAdministrator' : 'user', isActive: true }]));
   memberships = new Map([[1, 'workspaceOwner'], [2, 'workspaceManager'], [3, 'workspaceManager'], [4, 'collaborator'], [6, 'workspaceOwner']]);
   tags = [{ id: 1, name: 'shared' }]; comments = new Map(); concepts = [{ id: 10, workspaceId: 8 }, { id: 11, workspaceId: 9 }];
@@ -69,7 +69,7 @@ mockModule('../src/utils/clipVocabulary', {
 mockModule('../src/utils/minioClient', { BUCKET_NAME: 'assets', minioClient: {
   async fPutObject(_bucket, _key, file) { assert.ok(fs.existsSync(file)); effects.push('minio.put'); },
   async copyObject() { effects.push('minio.copy'); }, async removeObject(_bucket, key) { effects.push('minio.remove:' + key); },
-  async getObject() { return Readable.from([Buffer.from('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n')]); }
+  async getObject(_bucket, key) { storageReads.push(key); return Readable.from([Buffer.from('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n')]); }
 } });
 
 let server, base;
@@ -243,4 +243,57 @@ test('rename missing targets return 404; authentication convention is preserved'
   assert.equal((await fetch(base + '/api/assets/2/name', { method: 'PATCH' })).status, 401);
   assert.equal((await request(1, 'PATCH', '/assets/2/name', {}, { Authorization: 'Bearer invalid' })).status, 400);
   assert.deepEqual(effects, []);
+});
+
+function downloadFixture(packaged) {
+  if (!packaged) assets.get(3).packageManifest = null;
+  versions.push({ id: 40, assetId: 3, fileName: 'legacy.obj', originalName: 'legacy.obj', mimeType: 'model/obj', packageManifest: packaged ? assets.get(3).packageManifest : null });
+}
+for (const packaged of [false, true]) for (const main of ['', '?main=true']) {
+  for (const path of ['/assets/download/3', '/assets/3/versions/40/download']) {
+    test('collaborator denied before storage read: ' + path + main + ' package=' + packaged, async () => {
+      downloadFixture(packaged);
+      const result = await request(4, 'GET', path + main, undefined, { 'X-Team-Role': 'workspaceOwner', 'X-Role': 'workspaceOwner' });
+      assert.equal(result.status, 403); assert.deepEqual(storageReads, []); assert.deepEqual(effects, []);
+    });
+    for (const actor of [1, 2]) test('owner/manager can download another uploader asset: ' + actor + path + main + ' package=' + packaged, async () => {
+      downloadFixture(packaged); assert.equal((await request(actor, 'GET', path + main)).status, 200);
+      assert.ok(storageReads.length); assert.deepEqual(effects, []);
+    });
+  }
+}
+test('database role downgrade invalidates downloads with the same previously issued token', async () => {
+  const token = jwt.sign({ id: 2, role: 'workspaceManager', workspaceId: 8 }, process.env.JWT_SECRET || 'your_secret_key');
+  const headers = { Authorization: 'Bearer ' + token };
+  assert.equal((await request(2, 'GET', '/assets/download/3?main=true', undefined, headers)).status, 200);
+  storageReads = []; memberships.set(2, 'collaborator');
+  assert.equal((await request(2, 'GET', '/assets/download/3?main=true', undefined, headers)).status, 403);
+  assert.deepEqual(storageReads, []); assert.equal((await request(2, 'GET', '/assets/preview/3', undefined, headers)).status, 200);
+});
+test('download remains denied for removed, inactive, administrative and wrong-workspace users', async () => {
+  memberships.delete(2); assert.equal((await request(2, 'GET', '/assets/download/3')).status, 403);
+  memberships.set(2, 'workspaceManager'); accounts.get(2).isActive = false;
+  assert.equal((await request(2, 'GET', '/assets/download/3')).status, 403);
+  assert.equal((await request(6, 'GET', '/assets/download/3')).status, 403);
+  assert.equal((await request(1, 'GET', '/assets/download/3', undefined, { 'X-Workspace-Id': '9' })).status, 403);
+  assert.deepEqual(storageReads, []);
+});
+test('version preview stays inline for all viewing roles and ignores download-like query parameters', async () => {
+  downloadFixture(true);
+  for (const actor of [1, 2, 4]) {
+    storageReads = [];
+    const token = jwt.sign({ id: actor }, process.env.JWT_SECRET || 'your_secret_key');
+    const response = await fetch(base + '/api/assets/3/versions/40/preview?main=false&download=true&disposition=attachment', { headers: { Authorization: 'Bearer ' + token, 'X-Workspace-Id': '8' } });
+    assert.equal(response.status, 200); assert.match(response.headers.get('content-disposition'), /^inline;/);
+    assert.equal(response.headers.get('content-type'), 'model/obj'); await response.text();
+    assert.deepEqual(storageReads, ['legacy.obj']);
+  }
+});
+test('version previews validate both asset and version ownership before reading storage', async () => {
+  downloadFixture(false);
+  assert.equal((await request(4, 'GET', '/assets/2/versions/40/preview')).status, 404);
+  assert.equal((await request(4, 'GET', '/assets/3/versions/999/preview')).status, 404);
+  assets.get(3).workspaceId = 9;
+  assert.equal((await request(4, 'GET', '/assets/3/versions/40/preview')).status, 403);
+  assert.deepEqual(storageReads, []);
 });
