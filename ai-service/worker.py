@@ -87,6 +87,10 @@ print("Worker started...")
 
 def process_asset(payload):
     asset_id = payload["assetId"]
+    if payload.get("jobId"):
+        from video_processing import process_video
+        process_video(payload, visual_tagger, minio_client, BACKEND_URL, BACKEND_HEADERS)
+        return
 
     
     
@@ -104,6 +108,9 @@ def process_asset(payload):
     
     asset_response.raise_for_status()
     asset = asset_response.json()
+    if asset.get("mimetype") == "video/mp4":
+        # Legacy /jobs messages cannot create or complete an ID-less video task.
+        return
 
     object_key = asset["filename"]
 

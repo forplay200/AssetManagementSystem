@@ -2,6 +2,8 @@ FROM node:24.22.1-alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache ffmpeg util-linux-misc
+
 COPY package*.json ./
 
 RUN npm ci

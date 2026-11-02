@@ -11,6 +11,7 @@ const TYPE_MIME_TYPES = {
 };
 
 const AI_FIELDS = [
+  ['videoTags', 10],
   ['imageTags', 10],
   ['semanticTags', 10],
   ['modelTags', 9],

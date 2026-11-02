@@ -11,7 +11,8 @@ export default function AssetThumbnail({ asset, name }) {
   const containerRef = useRef(null);
   const [visible, setVisible] = useState(false);
   const [state, setState] = useState({ loading: false, url: '', failed: false });
-  const supported = supportsImageThumbnail(asset.mimetype);
+  const video = asset.mimetype === 'video/mp4';
+  const supported = supportsImageThumbnail(asset.mimetype) || video;
 
   useEffect(() => {
     if (!supported) return undefined;
@@ -28,15 +29,21 @@ export default function AssetThumbnail({ asset, name }) {
     let active = true;
     let objectUrl = '';
     setState({ loading: true, url: '', failed: false });
-    assetService.getPreview(asset.id).then((blob) => {
+    const load = video ? assetService.getVideoJob(asset.id).then(({ job }) => {
+      const frame = job?.frames?.[0];
+      if (!frame) return null;
+      return assetService.getVideoFrame(asset.id, job.id, frame.id);
+    }) : assetService.getPreview(asset.id);
+    load.then((blob) => {
       if (!active) return;
+      if (!blob) { setState({ loading: false, url: '', failed: false }); return; }
       objectUrl = URL.createObjectURL(blob);
       setState({ loading: false, url: objectUrl, failed: false });
     }).catch(() => {
       if (active) setState({ loading: false, url: '', failed: true });
     });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [asset.id, supported, visible]);
+  }, [asset.id, asset.currentAiJobId, asset.processingStatus, supported, visible, video]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 flex items-center justify-center bg-zinc-950">

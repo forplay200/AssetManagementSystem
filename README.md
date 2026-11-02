@@ -125,6 +125,12 @@ Once the backend is running, visit http://localhost:3000/api-docs to view the in
 
 ## Usage
 
+Video assets now support bounded H.264/AAC MP4 uploads (50 MiB, 60 seconds,
+1080p in either orientation), protected current/history playback and sampled-frame
+CLIP suggestions. Suggestions require Owner/original-uploader Manager review
+before becoming searchable tags. See [video setup and validation](docs/video-assets.md)
+for codec limits, migration, deployment, permissions and remaining evaluation work.
+
 1. Register a new account or log in with existing credentials.
 2. Upload assets through the interface.
 3. View AI-generated tags and edit them as needed.

@@ -4,6 +4,7 @@ import redis
 import json
 import hmac
 import os
+import requests
 
 app = FastAPI()
 
@@ -33,6 +34,14 @@ def health():
 
 @app.post("/jobs", dependencies=[Depends(require_service_token)])
 def create_job(job: JobRequest):
+    try:
+        info = requests.get(f'{os.environ.get("BACKEND_URL", "http://backend:3000")}/api/assets/{job.assetId}/info',
+                            headers={"X-AI-Service-Token": os.environ["AI_SERVICE_TOKEN"]}, timeout=15)
+        info.raise_for_status()
+    except requests.RequestException:
+        raise HTTPException(status_code=503, detail="Asset identity could not be verified")
+    if info.json().get("mimetype") == "video/mp4":
+        raise HTTPException(status_code=409, detail="Video tasks must be created through the backend durable job API")
 
     payload = {
         "assetId": job.assetId,

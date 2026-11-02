@@ -1,6 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
 
 const Version = sequelize.define('Version', {
+  metadata: { type: DataTypes.JSONB, allowNull: true },
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,

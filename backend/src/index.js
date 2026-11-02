@@ -11,6 +11,7 @@ const { up: migrateCanonicalRoles } = require('../migrations/20261007000000-cano
 const { up: migrateModelPackages } = require('../migrations/20261008000000-add-model-packages');
 
 const { up: migrateAssetNames } = require('../migrations/20261013000000-add-asset-display-name');
+const { up: migrateVideo } = require('../migrations/20261101000000-add-video-assets');
 
 const authRoutes = require('./routes/auth');
 const assetsRoutes = require('./routes/assets');
@@ -24,7 +25,7 @@ const port = process.env.PORT || 3000;
 
 app.use(cors({ exposedHeaders: ['Content-Disposition'] }));
 app.use(helmet());
-app.use(express.json());
+app.use(express.json({ limit: '4mb' }));
 const rateLimit = require('express-rate-limit');
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10000 });
 
@@ -51,10 +52,12 @@ app.get('/', (req, res) => {
 migrateCanonicalRoles(db.sequelize.getQueryInterface())
   .then(() => migrateModelPackages(db.sequelize.getQueryInterface(), db.Sequelize))
   .then(() => migrateAssetNames(db.sequelize.getQueryInterface(), db.Sequelize))
+  .then(() => migrateVideo(db.sequelize.getQueryInterface(), db.Sequelize))
   .then(() => db.sequelize.sync({ alter: true }))
   .then(async () => {
     const backfilledAssets = await backfillKnownWorkspaceOwnership(db.sequelize);
     logger.info('Database synced');
+    require('./services/assetAiJobs').startRecovery();
     if (backfilledAssets) logger.info(`Assigned ${backfilledAssets} assets to known workspaces`);
 
     app.listen(port, () => {

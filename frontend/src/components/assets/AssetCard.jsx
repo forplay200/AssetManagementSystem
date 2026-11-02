@@ -19,6 +19,7 @@ export default function AssetCard({ asset }) {
         <span className="absolute left-3 top-3 rounded border border-white/[0.08] bg-black/50 px-2 py-1 font-mono text-xs uppercase tracking-wider text-zinc-300 backdrop-blur">
           {assetType(asset.mimetype)}
         </span>
+        {asset.mimetype === 'video/mp4' && <span className="absolute bottom-3 left-3 rounded bg-black/70 px-2 py-1 text-xs text-zinc-300">{asset.metadata?.media?.durationSeconds?.toFixed(1)} s · {asset.processingStatus || 'Video'}</span>}
       </div>
       <div className="p-4">
         <div className="flex items-start gap-2">

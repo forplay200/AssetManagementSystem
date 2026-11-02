@@ -22,5 +22,35 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version-file: .nvmrc
+    - run: sudo apt-get update && sudo apt-get install -y ffmpeg util-linux
     - run: npm ci
     - run: npm test
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version-file: .nvmrc
+    - run: npm ci
+    - run: npm test -- --watchAll=false --runInBand
+      env:
+        CI: 'true'
+    - run: npm run lint
+    - run: npm run build
+  ai-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+    - run: pip install -r requirements-test.txt
+    - run: python -m pytest

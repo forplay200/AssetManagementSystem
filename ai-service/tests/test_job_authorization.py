@@ -14,12 +14,16 @@ class JobAuthorizationTests(unittest.TestCase):
         self.environment.start()
         self.queue_patch = patch.object(main, "r")
         self.queue = self.queue_patch.start()
+        self.info_patch = patch.object(main.requests, 'get')
+        self.info = self.info_patch.start()
+        self.info.return_value.json.return_value = {"mimetype": "image/png"}
         self.client = TestClient(main.app)
         self.payload = {"assetId": 2, "jobType": "auto_tag"}
 
     def tearDown(self):
         self.client.close()
         self.queue_patch.stop()
+        self.info_patch.stop()
         self.environment.stop()
 
     def test_missing_and_wrong_credentials_do_not_enqueue(self):
@@ -42,6 +46,12 @@ class JobAuthorizationTests(unittest.TestCase):
     def test_invalid_asset_id_does_not_enqueue(self):
         result = self.client.post("/jobs", json={"assetId": 0, "jobType": "auto_tag"}, headers={"X-AI-Service-Token": "worker-test-secret"})
         self.assertEqual(result.status_code, 422)
+        self.queue.lpush.assert_not_called()
+
+    def test_video_cannot_bypass_durable_backend_job_creation(self):
+        self.info.return_value.json.return_value = {"mimetype": "video/mp4"}
+        result = self.client.post('/jobs', json=self.payload, headers={"X-AI-Service-Token": "worker-test-secret"})
+        self.assertEqual(result.status_code, 409)
         self.queue.lpush.assert_not_called()
 
     def test_health_remains_available_without_service_credentials(self):

@@ -14,6 +14,9 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - REDIS_URL=redis://redis:6379
       - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-local-ai-service-token}
+      - VIDEO_UPLOAD_ENABLED=${VIDEO_UPLOAD_ENABLED:-true}
+      - CLIP_IMAGE_MIN_SIMILARITY=${CLIP_IMAGE_MIN_SIMILARITY:-0.25}
+      - CLIP_MAX_SCORE_GAP=${CLIP_MAX_SCORE_GAP:-0.04}
     depends_on:
       - postgres
       - minio

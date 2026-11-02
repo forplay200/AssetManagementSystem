@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { AlertCircle, FileText, LoaderCircle } from 'lucide-react';
 import { assetService } from '../../services/assetService';
 import AssetTypeIcon from './AssetTypeIcon';
+import VideoPreview from './VideoPreview';
 
 const ThreeModelPreview = lazy(() => import('./ThreeModelPreview'));
 
@@ -14,6 +15,7 @@ export function previewKind(info = {}) {
   const extension = (info.originalname || '').split('.').pop()?.toLowerCase();
   if (mime.startsWith('image/')) return 'image';
   if (mime.startsWith('audio/')) return 'audio';
+  if (mime === 'video/mp4') return 'video';
   if (['obj', 'fbx'].includes(extension)) return 'model';
   if (mime.startsWith('text/') || ['json', 'xml'].some((type) => mime.includes(type)) || ['cs', 'js', 'txt', 'json', 'xml'].includes(extension)) return 'text';
   return 'unsupported';
@@ -34,7 +36,7 @@ export default function AssetPreview({ assetId, info, canDownload = false }) {
     let objectUrl = '';
     setState({ loading: !['unsupported', 'model'].includes(kind), url: '', text: '', error: '', truncated: false });
 
-    if (['unsupported', 'model'].includes(kind)) return () => { active = false; };
+    if (['unsupported', 'model', 'video'].includes(kind)) return () => { active = false; };
     if (kind === 'text' && Number(info.size) > MAX_TEXT_BYTES) {
       setState({ loading: false, url: '', text: '', error: 'This text asset is larger than the 2 MB preview limit.', truncated: false });
       return () => { active = false; };
@@ -56,6 +58,7 @@ export default function AssetPreview({ assetId, info, canDownload = false }) {
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [assetId, info, kind]);
 
+  if (kind === 'video') return <VideoPreview assetId={assetId} sourceFilename={info.filename} canDownload={canDownload} />;
   if (state.loading) return <div className="flex min-h-[360px] items-center justify-center bg-zinc-950 sm:min-h-[460px]"><div className="text-center"><LoaderCircle className="mx-auto animate-spin text-aether-primary" size={22} /><p className="mt-3 text-xs text-zinc-400">Loading protected preview…</p></div></div>;
   if (kind === 'image' && state.url) return <div className="flex min-h-[360px] items-center justify-center bg-zinc-950 p-6 sm:min-h-[460px]"><img src={state.url} alt={`Preview of ${getAssetDisplayName(info)}`} className="max-h-[560px] max-w-full rounded object-contain" /></div>;
   if (kind === 'audio' && state.url) return <div className="flex min-h-[220px] items-center justify-center bg-zinc-950 p-6"><div className="w-full max-w-lg text-center"><div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-xl border border-violet-400/20 bg-violet-400/10 text-aether-primary"><AssetTypeIcon mime={info.mimetype} size={42} /></div><audio aria-label="Audio preview" controls controlsList={canDownload ? undefined : 'nodownload'} className="w-full" src={state.url}>Your browser does not support audio preview.</audio></div></div>;

@@ -3,12 +3,15 @@ import { Check, CheckCircle2, Edit3, FileText, Hash, LoaderCircle, Plus, Refresh
 import { getApiError } from '../../services/api';
 import { assetService } from '../../services/assetService';
 import VisualVocabulary from './VisualVocabulary';
+import VideoSuggestions from './VideoSuggestions';
+import VideoTechnicalInfo from './VideoTechnicalInfo';
 import ExpandableText from '../common/ExpandableText';
 import ExpandableList from '../common/ExpandableList';
 import useConfirmation from '../../hooks/useConfirmation';
 import { useUnsavedChanges } from '../../context/UnsavedChangesContext';
 
 const getVisualType = (filename, aiType) => {
+  if (/\.mp4$/i.test(filename || '')) return 'image';
   if (/\.(png|jpe?g|gif|webp)$/i.test(filename || '')) return 'image';
   if (/\.(obj|fbx)$/i.test(filename || '')) return '3d';
   return ['image', '3d'].includes(aiType) ? aiType : null;
@@ -53,7 +56,7 @@ export default function MetadataPanel({ assetId, assetFilename, metadata, reposi
     if (saving || !canEdit) return;
     const populated = rows.filter((row) => row.key.trim());
     const keys = populated.map((row) => row.key.trim());
-    if (new Set(keys).size !== keys.length || keys.includes('ai')) {
+    if (new Set(keys).size !== keys.length || keys.some(key => ['ai', 'media', 'videoJobId'].includes(key))) {
       setMessage({ type: 'error', text: 'Metadata field names must be unique. The name “ai” is reserved.' });
       return;
     }
@@ -80,6 +83,8 @@ export default function MetadataPanel({ assetId, assetFilename, metadata, reposi
 
   return (
     <aside ref={inspector} className="metadata-inspector" aria-label="Asset information"><div className="inspector-scroll space-y-5" tabIndex={0} role="region" aria-label="Metadata and AI results">
+      {metadata?.media?.type === 'video' && <VideoTechnicalInfo media={metadata.media} />}
+      {/\.mp4$/i.test(assetFilename || '') && <VideoSuggestions key={assetFilename} assetId={assetId} sourceFilename={assetFilename} metadata={metadata} active={active} canEdit={canEdit && !editing && !tagsLocked} onMetadataChange={onMetadataChange} onTagsChange={onTagsChange} />}
       <section className="panel p-5">
         <div className="section-title"><FileText size={16} /> Metadata<div className="ml-auto flex gap-2">{canEdit && !editing && <button className="icon-action" onClick={() => setEditing(true)} disabled={tagsLocked} aria-label="Edit metadata" title="Edit metadata"><Edit3 size={14} /></button>}{editing && <><button className="icon-action" onClick={cancel} disabled={saving} aria-label="Cancel metadata changes"><X size={14} /></button><button className="icon-action icon-action-primary" onClick={save} disabled={saving || !canEdit} aria-label="Save metadata">{saving ? <LoaderCircle size={14} className="animate-spin" /> : <Save size={14} />}</button></>}</div></div>
         {tagsLocked && !editing && <p className="mt-3 text-xs text-zinc-400">Finish your tag changes before editing metadata fields.</p>}
@@ -162,6 +167,7 @@ function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdi
     setBusy(`repo-${tag.name}`);
     try {
       await assetService.removeTag(assetId, tag.name);
+      if (ai.type === 'video') { const response = await assetService.getMetadata(assetId); onMetadataChange(response.metadata); }
       onTagsChange(repositoryTags.filter((item) => item.id !== tag.id));
       setMessage({ type: 'success', text: `Removed repository tag “${tag.name}”.` });
     } catch (error) { setMessage({ type: 'error', text: getApiError(error, 'The repository tag could not be removed.') }); }
@@ -190,7 +196,7 @@ function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdi
 
   return (
     <section className="panel p-5">
-      <div className="section-title flex-wrap"><Sparkles size={16} className="text-aether-primary" /> AI enrichment<div className="flex w-full flex-wrap gap-2"><button className="secondary-button h-9 text-xs" onClick={refreshResults} disabled={locked || Boolean(busy) || Boolean(editingTag)}><RefreshCw size={13} />Refresh results</button>{canEdit && visualAssetType && <button className="secondary-button h-9 text-xs" onClick={generateTags} disabled={Boolean(busy) || Boolean(editingTag)}>{busy === 'generate' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}Regenerate tags</button>}</div></div>
+      <div className="section-title flex-wrap"><Sparkles size={16} className="text-aether-primary" /> AI enrichment<div className="flex w-full flex-wrap gap-2"><button className="secondary-button h-9 text-xs" onClick={refreshResults} disabled={locked || Boolean(busy) || Boolean(editingTag)}><RefreshCw size={13} />Refresh results</button>{canEdit && visualAssetType && ai.type !== 'video' && !/\.mp4$/i.test(assetFilename || '') && <button className="secondary-button h-9 text-xs" onClick={generateTags} disabled={Boolean(busy) || Boolean(editingTag)}>{busy === 'generate' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}Regenerate tags</button>}</div></div>
       {message.text && <div role={message.type === "error" ? "alert" : "status"} className={`mt-4 rounded border px-3 py-2 text-xs ${message.type === 'error' ? 'border-red-400/20 bg-red-400/10 text-red-200' : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'}`}>{message.text}</div>}
       <div className="mt-5 space-y-5">
         {ai.type === '3d' && <div><h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-zinc-400">3D Metadata</h3><dl className="grid grid-cols-2 gap-3"><ModelStat label="Vertex Count" value={ai.vertexCount} /><ModelStat label="Face Count" value={ai.faceCount} /></dl></div>}
@@ -204,7 +210,7 @@ function AiEnrichment({ assetId, assetFilename, metadata, repositoryTags, canEdi
         {ai.transcript && <AiText label="Audio transcript" value={ai.transcript} canDownload={canDownload} reader />}
         {visualAssetType && ai.clip?.status === 'completed' && !ai.imageTags?.length && !ai.semanticTags?.length && <p className="text-sm text-zinc-400">AI found no suitable visual tags. You can add repository tags manually.</p>}
         {visualAssetType && ai.clip?.status === 'failed' && <p className="text-sm text-zinc-400">AI visual tagging is unavailable for this asset. You can add repository tags manually.</p>}
-        {!collections.length && !ai.summary && !ai.transcript && ai.type !== '3d' && !ai.clip?.status && <p className="rounded border border-dashed border-white/10 p-4 text-sm leading-6 text-zinc-400">No AI results are available yet. Refresh to check for results.</p>}
+        {!collections.length && !ai.summary && !ai.transcript && ai.type !== '3d' && !ai.clip?.status && ai.type !== 'video' && !/\.mp4$/i.test(assetFilename || '') && <p className="rounded border border-dashed border-white/10 p-4 text-sm leading-6 text-zinc-400">No AI results are available yet. Refresh to check for results.</p>}
         <div className="border-t border-white/[0.06] pt-4"><p className="mb-2 font-mono text-xs uppercase tracking-wider text-zinc-400">Repository tags</p><ExpandableList items={repositoryTags} label="tags" className="flex flex-wrap gap-2" renderItem={(tag) => <span key={tag.id || tag.name} className="tag-chip inline-flex items-center gap-1.5">{tag.name}{canEdit && <button className="tag-action hover:text-red-300" disabled={Boolean(busy) || Boolean(editingTag)} onClick={() => removeRepositoryTag(tag)} aria-label={`Remove repository tag ${tag.name}`}><X size={11} /></button>}</span>} />{canEdit && <form className="mt-3 flex gap-2" onSubmit={addRepositoryTag}><input className="input h-9 min-w-0 flex-1" disabled={Boolean(busy) || Boolean(editingTag)} value={newTag} onChange={(event) => setNewTag(event.target.value)} maxLength={80} placeholder="Add repository tag" aria-label="New repository tag" /><button className="secondary-button h-9" disabled={!newTag.trim() || Boolean(busy) || Boolean(editingTag)}><Plus size={14} /> Add</button></form>}</div>
         {visualAssetType && <VisualVocabulary assetId={assetId} assetType={visualAssetType} repositoryTags={repositoryTags} canEdit={canManageVocabulary && !busy && !editingTag && !newTag.trim()} />}
       </div>{confirmation}

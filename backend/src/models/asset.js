@@ -2,6 +2,7 @@ module.exports = (sequelize, DataTypes) => {
 
 
 const Asset = sequelize.define('Asset', {
+  currentAiJobId: { type: DataTypes.UUID, allowNull: true },
   filename: {
     type: DataTypes.STRING,
     allowNull: false

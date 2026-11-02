@@ -26,6 +26,8 @@ function vocabularyError(message) {
 }
 
 function getVisualAssetType(asset) {
+  // Video frames share image concepts; this is a vocabulary domain, not the asset's MIME type.
+  if (asset.mimetype === 'video/mp4' || /\.mp4$/i.test(asset.filename || asset.originalname || '')) return 'image';
   const extension = path.extname(asset.filename || asset.originalname || '').toLowerCase();
   if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(extension)) return 'image';
   if (['.obj', '.fbx'].includes(extension)) return '3d';

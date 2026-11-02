@@ -30,6 +30,15 @@ export function saveDownload({ blob, filename }) {
 }
 
 export const assetService = {
+  async getVideoJob(assetId, signal) {
+    const { data } = await api.get(`/assets/${assetId}/ai-jobs/current`, { signal }); return data;
+  },
+  async reviewVideo(assetId, jobId, decisions) {
+    const { data } = await api.post(`/assets/${assetId}/ai-jobs/${jobId}/review`, { decisions }); return data;
+  },
+  async getVideoFrame(assetId, jobId, frameId, signal) {
+    const { data } = await api.get(`/assets/${assetId}/ai-jobs/${jobId}/frames/${frameId}`, { responseType: 'blob', signal }); return data;
+  },
   async rename(assetId, displayName) {
     const { data } = await api.patch(`/assets/${assetId}/name`, { displayName });
     return data;
@@ -66,8 +75,8 @@ export const assetService = {
     const { data } = await api.delete(`/assets/${assetId}/vocabulary/${entryId}`);
     return data;
   },
-  async generateAiTags(assetId) {
-    const { data } = await api.post('/assets/ai/job', { assetId: Number(assetId), jobType: 'auto_tag' });
+  async generateAiTags(assetId, regenerate = false) {
+    const { data } = await api.post('/assets/ai/job', { assetId: Number(assetId), jobType: 'auto_tag', regenerate });
     return data;
   },
   async addTag(assetId, tag) {
@@ -78,12 +87,12 @@ export const assetService = {
     const { data } = await api.delete(`/assets/${assetId}/tags`, { data: { tag } });
     return data;
   },
-  async getPreview(assetId) {
-    const { data } = await api.get(`/assets/preview/${assetId}`, { responseType: 'blob' });
+  async getPreview(assetId, signal) {
+    const { data } = await api.get(`/assets/preview/${assetId}`, { responseType: 'blob', timeout: 120000, signal });
     return data;
   },
-  async getVersionPreview(assetId, versionId) {
-    const { data } = await api.get(`/assets/${assetId}/versions/${versionId}/preview`, { responseType: 'blob', timeout: 120000 });
+  async getVersionPreview(assetId, versionId, signal) {
+    const { data } = await api.get(`/assets/${assetId}/versions/${versionId}/preview`, { responseType: 'blob', timeout: 120000, signal });
     return data;
   },
   async getPackage(assetId, versionId) {

@@ -14,6 +14,13 @@ const { getAssetPackage, getPackageResource } = require('../controllers/assetsCo
 
 const validateName = require('../middleware/validateName');
 const workspaceAuth = [auth, denySystemAdministrator, requireWorkspace];
+const videoJobs = require('../controllers/videoJobsController');
+router.get('/:id/ai-jobs/current', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, videoJobs.current);
+router.get('/:id/ai-jobs/:jobId/frames/:frameId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, videoJobs.frame);
+router.post('/:id/ai-jobs/:jobId/review', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, assetWriteAccess, videoJobs.review);
+router.post('/:id/ai-jobs/:jobId/claim', internalAiAuth, videoJobs.claim);
+router.post('/:id/ai-jobs/:jobId/heartbeat', internalAiAuth, videoJobs.heartbeat);
+router.post('/:id/ai-jobs/:jobId/result', internalAiAuth, videoJobs.result);
 router.patch('/:id/name', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, validateName('displayName', 1, 200), renameAsset);
 
 // POST /api/assets/upload

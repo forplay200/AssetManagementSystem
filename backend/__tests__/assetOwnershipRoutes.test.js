@@ -5,8 +5,9 @@ const jwt = require('jsonwebtoken');
 const fs = require('node:fs');
 const { Readable } = require('node:stream');
 
-let assets, versions, accounts, memberships, tags, comments, concepts, effects, nextId, teams, storageReads;
+let assets, versions, accounts, memberships, tags, comments, concepts, effects, nextId, teams, storageReads, aiJobs;
 function reset() {
+  aiJobs = new Map();
   teams = new Map([[8, { id: 8, name: 'Studio', inviteCode: 'SECRET', async save(options) { effects.push({ teamFields: options.fields }); } }]]);
   effects = []; storageReads = []; nextId = 50; versions = [];
   accounts = new Map([1, 2, 3, 4, 5, 6].map(id => [id, { id, role: id === 6 ? 'systemAdministrator' : 'user', isActive: true }]));
@@ -25,6 +26,11 @@ function reset() {
   }]));
 }
 const models = {
+  AssetAiJob: {
+    async create(values) { const job = { ...values, async update(next) { Object.assign(this, next); } }; aiJobs.set(job.id, job); return job; },
+    async findByPk(id) { return aiJobs.get(id); },
+    async findAll({ where = {} } = {}) { return [...aiJobs.values()].filter(j => where.assetId === undefined || String(j.assetId) === String(where.assetId)); }
+  },
   sequelize: { transaction: callback => callback({ LOCK: { UPDATE: 'UPDATE' } }), async query() {} },
   User: { async findByPk(id) { return accounts.get(Number(id)); } },
   Team: { async findByPk(id) { return teams.get(Number(id)); } },
@@ -42,8 +48,8 @@ const models = {
     async destroy({ where }) { effects.push('version.destroy'); versions = versions.filter(version => version.assetId !== where.assetId); }
   },
   Tag: {
-    async findOne() { return tags[0]; },
-    async findOrCreate() { effects.push('tag.create'); return [tags[0]]; }
+    async findOne({ where }) { const name = typeof where.name === 'string' ? where.name : Object.values(where.name).concat(Object.getOwnPropertySymbols(where.name).map(k => where.name[k]))[0]; return tags.find(t => t.name === name); },
+    async findOrCreate({ where }) { effects.push('tag.create'); let tag = tags.find(t => t.name === where.name); if (!tag) { tag = { id: nextId++, name: where.name }; tags.push(tag); } return [tag]; }
   },
   ClipVocabularyEntry: {
     async create(values) { effects.push('vocabulary.create'); const entry = { id: nextId++, ...values, get() { return { ...this }; } }; concepts.push(entry); return entry; },
@@ -60,7 +66,7 @@ mockModule('../src/models', models);
 mockModule('../src/redisClient', { async lPush() { effects.push('redis.lPush'); } });
 mockModule('../src/utils/logger', { error() {} });
 mockModule('../src/utils/clipVocabulary', {
-  normalizeTagName: name => name.trim().toLowerCase(), canonicalizeTagName: async (_workspace, name) => name.trim().toLowerCase(),
+  normalizeTagName: name => name.trim().toLowerCase(), canonicalizeTagName: async (_workspace, name) => name.trim().toLowerCase() === 'automobile' ? 'car' : name.trim().toLowerCase(),
   getVisualAssetType: () => '3d', getVocabularySnapshot: async () => ({ entries: [] }),
   getWorkspaceEntries: async () => [], loadCoreVocabulary: () => ({ entries: [] }), findVocabularyEntry: () => null,
   prepareWorkspaceEntry: input => ({ name: input.name, aliases: [], assetTypes: input.assetTypes }),
@@ -69,7 +75,9 @@ mockModule('../src/utils/clipVocabulary', {
 mockModule('../src/utils/minioClient', { BUCKET_NAME: 'assets', minioClient: {
   async fPutObject(_bucket, _key, file) { assert.ok(fs.existsSync(file)); effects.push('minio.put'); },
   async copyObject() { effects.push('minio.copy'); }, async removeObject(_bucket, key) { effects.push('minio.remove:' + key); },
-  async getObject(_bucket, key) { storageReads.push(key); return Readable.from([Buffer.from('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n')]); }
+  async getObject(_bucket, key) { storageReads.push(key); return Readable.from([Buffer.from('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n')]); },
+  async putObject(_bucket, key) { effects.push('minio.put:' + key); },
+  async *listObjectsV2() {}
 } });
 
 let server, base;
@@ -296,4 +304,117 @@ test('version previews validate both asset and version ownership before reading 
   assets.get(3).workspaceId = 9;
   assert.equal((await request(4, 'GET', '/assets/3/versions/40/preview')).status, 403);
   assert.deepEqual(storageReads, []);
+});
+
+const videoService = require('../src/services/assetAiJobs');
+function videoFixture() {
+  const asset = assets.get(2);
+  asset.filename = 'immutable.mp4'; asset.mimetype = 'video/mp4'; asset.originalname = 'clip.mp4'; asset.packageManifest = null;
+  asset.metadata = { description: 'manual', media: { type: 'video', durationSeconds: 4 }, ai: { type: 'video', videoTags: [] } };
+  return asset;
+}
+async function videoTask() {
+  const asset = videoFixture();
+  return models.sequelize.transaction(transaction => videoService.create(asset, 2, transaction));
+}
+test('video tasks fix input, duplicate enqueue reuses active job and newer task invalidates old lease', async () => {
+  const job = await videoTask(), asset = assets.get(2);
+  const same = await models.sequelize.transaction(t => videoService.create(asset, 2, t)); assert.equal(same.id, job.id);
+  const claimed = await videoService.claim(2, job.id, asset.filename);
+  await assert.rejects(videoService.claim(2, job.id, asset.filename), e => e.status === 409);
+  await assert.rejects(videoService.heartbeat(2, job.id, 'forged', 'tagging'), e => e.status === 409);
+  assert.equal((await videoService.heartbeat(2, job.id, claimed.leaseToken, 'tagging')).status, 'processing');
+  const next = await models.sequelize.transaction(t => videoService.create(asset, 2, t, true));
+  assert.notEqual(next.id, job.id); assert.equal(job.status, 'superseded');
+  await assert.rejects(videoService.complete(2, job.id, claimed.leaseToken, { error: true }), e => e.status === 409);
+});
+test('video status/evidence/review enforce current workspace, viewing roles and original uploader rules', async () => {
+  const job = await videoTask();
+  job.status = 'succeeded'; job.output = { candidates: [{ id: 'c0', name: 'penguin', facet: 'content', decision: 'pending', finalText: null, frameIds: ['f0'], maxScore: 0.3, hitFrameCount: 1, sampleCount: 1 }], frames: [{ id: 'f0', timeSeconds: 1, key: 'private-evidence' }] };
+  for (const actor of [1, 2, 3, 4]) {
+    assert.equal((await request(actor, 'GET', '/assets/2/ai-jobs/current')).status, 200);
+    assert.equal((await request(actor, 'GET', `/assets/2/ai-jobs/${job.id}/frames/f0`)).status, 200);
+  }
+  const review = `/assets/2/ai-jobs/${job.id}/review`, body = { decisions: [{ candidateId: 'c0', decision: 'accepted' }] };
+  assert.equal((await request(3, 'POST', review, body)).status, 403);
+  assert.equal((await request(4, 'POST', review, body)).status, 403);
+  assert.equal((await request(6, 'GET', '/assets/2/ai-jobs/current')).status, 403);
+  assert.equal((await request(2, 'GET', '/assets/2/ai-jobs/current', undefined, { 'X-Workspace-Id': '9' })).status, 403);
+  assert.equal((await request(2, 'GET', `/assets/3/ai-jobs/${job.id}/frames/f0`)).status, 404);
+  const accepted = await request(2, 'POST', review, body);
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.data)); assert.deepEqual(accepted.data.metadata.ai.videoTags, ['penguin']);
+  assert.equal((await request(2, 'POST', review, body)).status, 200); assert.equal(tags.filter(t => t.name === 'penguin').length, 1);
+  assert.equal((await request(1, 'DELETE', '/assets/2/tags', { tag: 'penguin' })).status, 200);
+  assert.deepEqual(assets.get(2).metadata.ai.videoTags, []);
+  await request(2, 'POST', review, body); assert.deepEqual(assets.get(2).metadata.ai.videoTags, []);
+});
+test('pending/rejected suggestions stay out of metadata and edited acceptance keeps manual tags', async () => {
+  const job = await videoTask(); job.status = 'succeeded';
+  job.output = { candidates: [{ id: 'c0', name: 'secret-pending', decision: 'pending' }, { id: 'c1', name: 'other', decision: 'pending' }] };
+  assert.ok(!JSON.stringify(assets.get(2).metadata).includes('secret-pending'));
+  await videoService.review(2, job.id, { id: 2, teamRole: 'workspaceManager', workspaceId: 8 }, [{ candidateId: 'c0', decision: 'rejected' }]);
+  assert.ok(!JSON.stringify(assets.get(2).metadata).includes('secret-pending'));
+  await videoService.review(2, job.id, { id: 1, teamRole: 'workspaceOwner', workspaceId: 8 }, [{ candidateId: 'c1', decision: 'edited', text: '  Winter Bird  ' }]);
+  assert.deepEqual(assets.get(2).metadata.ai.videoTags, ['winter bird']); assert.ok(assets.get(2).tagIds.includes(1));
+  await videoService.review(2, job.id, { id: 1, teamRole: 'workspaceOwner', workspaceId: 8 }, [{ candidateId: 'c0', decision: 'pending' }]);
+  await videoService.review(2, job.id, { id: 1, teamRole: 'workspaceOwner', workspaceId: 8 }, [{ candidateId: 'c0', decision: 'edited', text: ' AUTOMOBILE ' }]);
+  assert.ok(assets.get(2).metadata.ai.videoTags.includes('car')); assert.ok(!tags.some(t => t.name === 'automobile'));
+});
+test('video protected fields survive stale metadata PUT; ID-less callback cannot overwrite video or inject video results', async () => {
+  await videoTask(); const media = structuredClone(assets.get(2).metadata.media);
+  const result = await request(2, 'PUT', '/assets/2/metadata', { metadata: { description: 'changed', media: { durationSeconds: 900 }, ai: { type: 'video', videoTags: ['forged'] }, currentAiJobId: 'forged' } });
+  assert.equal(result.status, 200); assert.deepEqual(result.data.metadata.media, media); assert.deepEqual(result.data.metadata.ai.videoTags, []);
+  const previous = process.env.AI_SERVICE_TOKEN; process.env.AI_SERVICE_TOKEN = 'worker';
+  try {
+    const headers = { 'X-AI-Service-Token': 'worker' };
+    assert.equal((await request(2, 'POST', '/assets/2/ai-result', { metadata: { ai: { imageTags: ['wrong'] } } }, headers)).status, 409);
+    assets.get(2).mimetype = 'image/png';
+    assert.equal((await request(2, 'POST', '/assets/2/ai-result', { metadata: { ai: { type: 'video', videoTags: ['wrong'] } } }, headers)).status, 409);
+  } finally { if (previous === undefined) delete process.env.AI_SERVICE_TOKEN; else process.env.AI_SERVICE_TOKEN = previous; }
+});
+test('expired lease is rejected and recovery requeues a BRPOP-lost video job with bounded attempts', async () => {
+  const job = await videoTask(); const claim = await videoService.claim(2, job.id, job.sourceFilename);
+  job.leaseExpiresAt = new Date(Date.now() - 1);
+  await assert.rejects(videoService.complete(2, job.id, claim.leaseToken, { error: true }), e => e.status === 409);
+  await videoService.recover(); assert.equal(job.status, 'queued'); assert.ok(effects.includes('redis.lPush'));
+  job.status = 'processing'; job.attempt = 3; job.leaseExpiresAt = new Date(Date.now() - 1);
+  await videoService.recover(); assert.equal(job.status, 'failed');
+});
+test('video version replacement snapshots media and invalidates the old job even across media types', async () => {
+  const job = await videoTask(); const claim = await videoService.claim(2, job.id, job.sourceFilename);
+  const result = await request(2, 'POST', '/assets/2/versions/upload', replacement());
+  assert.equal(result.status, 201, JSON.stringify(result.data)); assert.equal(versions[0].metadata.media.type, 'video');
+  assert.equal(versions[0].metadata.videoJobId, null); assert.equal(assets.get(2).metadata.media, undefined); assert.equal(assets.get(2).currentAiJobId, null);
+  await assert.rejects(videoService.complete(2, job.id, claim.leaseToken, { error: true }), e => e.status === 409);
+});
+test('internal video endpoints reject browser tokens and valid worker credentials cannot substitute asset or source', async () => {
+  const job = await videoTask();
+  const previous = process.env.AI_SERVICE_TOKEN; process.env.AI_SERVICE_TOKEN = 'worker';
+  try {
+    assert.equal((await request(2, 'POST', `/assets/2/ai-jobs/${job.id}/claim`, { sourceFilename: job.sourceFilename })).status, 401);
+    const headers = { 'X-AI-Service-Token': 'worker' };
+    assert.equal((await request(2, 'POST', `/assets/3/ai-jobs/${job.id}/claim`, { sourceFilename: job.sourceFilename }, headers)).status, 404);
+    assert.equal((await request(2, 'POST', `/assets/2/ai-jobs/${job.id}/claim`, { sourceFilename: 'other.mp4' }, headers)).status, 409);
+    assert.equal((await request(2, 'POST', `/assets/2/ai-jobs/${job.id}/claim`, { sourceFilename: job.sourceFilename }, headers)).status, 200);
+  } finally { if (previous === undefined) delete process.env.AI_SERVICE_TOKEN; else process.env.AI_SERVICE_TOKEN = previous; }
+});
+
+test('video completion re-encodes bounded evidence and duplicate acknowledgement performs no extra storage writes', async () => {
+  const job = await videoTask(); const claim = await videoService.claim(2, job.id, job.sourceFilename);
+  const jpeg = await require('sharp')({ create: { width: 8, height: 8, channels: 3, background: 'blue' } }).jpeg().toBuffer();
+  const payload = { output: { candidates: [], frames: [{ id: 'f0', timeSeconds: 1, jpegBase64: jpeg.toString('base64') }], sampling: { requestedCount: 2, decodedCount: 2, times: [1, 3] }, elapsedSeconds: 0.5 } };
+  const result = await videoService.complete(2, job.id, claim.leaseToken, payload);
+  assert.equal(result.status, 'succeeded'); assert.equal(result.frames[0].key, undefined); assert.equal(result.frames[0].mime, 'image/jpeg');
+  assert.deepEqual(assets.get(2).metadata.ai.videoTags, []);
+  const count = effects.length;
+  assert.equal((await videoService.complete(2, job.id, claim.leaseToken, payload)).status, 'succeeded'); assert.equal(effects.length, count);
+  await assert.rejects(videoService.review(2, job.id, { id: 2, workspaceId: 8, teamRole: 'workspaceManager' }, [null]), e => e.status === 400);
+});
+test('video rejects malformed result sizes, frame times and failed sampling without publishing output', async () => {
+  for (const output of [null, { candidates: [], frames: [] }, { candidates: [], frames: [{ id: '../bad', timeSeconds: 1, jpegBase64: 'x' }] }]) {
+    assert.throws(() => videoService.validateOutput(output, 4), e => e.status === 400);
+  }
+  const job = await videoTask(); const claim = await videoService.claim(2, job.id, job.sourceFilename);
+  assert.equal((await videoService.complete(2, job.id, claim.leaseToken, { error: true, retryable: true })).status, 'queued');
+  assert.equal(job.output, undefined);
 });

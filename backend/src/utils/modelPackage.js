@@ -7,7 +7,7 @@ const { minioClient, BUCKET_NAME } = require('./minioClient');
 const refs = require('./modelReferences');
 
 const MB = 1024 * 1024;
-const SUPPORTED = new Set(['png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'fbx', 'obj', 'cs', 'js', 'txt', 'json', 'xml']);
+const SUPPORTED = new Set(['png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'mp4', 'fbx', 'obj', 'cs', 'js', 'txt', 'json', 'xml']);
 function badRequest(message, diagnostics) { return Object.assign(new Error(message), { status: 400, diagnostics }); }
 function safePath(value) {
   const name = String(value || '').replace(/\\/g, '/');
@@ -42,6 +42,9 @@ async function prepareUpload(req, currentAsset) {
   const main = req.file || { originalname: currentAsset.originalname, mimetype: currentAsset.mimetype, size: currentAsset.size, objectKey: currentAsset.filename };
   if (req.file && req.body.sourceName) main.originalname = path.basename(safePath(req.body.sourceName));
   const format = refs.extension(main.originalname);
+  if (format !== 'mp4' && String(main.mimetype).startsWith('video/')) throw badRequest('Video uploads must use an MP4 file with H.264 video.');
+  const media = format === 'mp4' ? await require('./videoMetadata').probeVideo(main) : null;
+  if (media) { main.mimetype = 'video/mp4'; req.videoMedia = media; }
   if (!SUPPORTED.has(format)) throw badRequest('Unsupported asset type: .' + format);
   if (main.size > 50 * MB) throw badRequest('The main file exceeds 50 MB.');
   const model = ['obj', 'fbx'].includes(format);

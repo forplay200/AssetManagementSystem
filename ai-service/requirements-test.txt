@@ -1,0 +1,8 @@
+# Unit tests deliberately avoid downloading model checkpoints.
+pytest>=8,<10
+fastapi
+httpx
+redis
+requests
+numpy
+pillow

@@ -16,6 +16,7 @@ export function formatDateTime(value) {
 }
 
 export function assetType(mime = '') {
+  if (mime.startsWith('video/')) return 'Video';
   if (mime.startsWith('image/')) return 'Image';
   if (mime.startsWith('audio/')) return 'Audio';
   if (mime.includes('json') || mime.includes('xml')) return 'Data';

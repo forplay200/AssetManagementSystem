@@ -1,6 +1,6 @@
 const path = require('path');
 const { Op } = require('sequelize');
-const { sequelize, Tag, User, Asset, Version, Comment, TeamMember } = require("../models");
+const { sequelize, Tag, User, Asset, Version, Comment, TeamMember, AssetAiJob } = require("../models");
 const { canManageAsset, canDeleteAsset, ASSET_WRITE_DENIED } = require('../utils/assetPermissions');
 
 const redisClient = require("../redisClient");
@@ -13,11 +13,13 @@ const { canonicalizeTagName, getVisualAssetType, getVocabularySnapshot, normaliz
 const crypto = require('crypto');
 const sharp = require('sharp');
 const packages = require('../utils/modelPackage');
+const videoJobs = require('../services/assetAiJobs');
 
 function assetResponse(asset) {
   return { id: asset.id, filename: asset.filename, originalname: asset.originalname, displayName: asset.displayName ?? null,
     mimetype: asset.mimetype, size: asset.size, userId: asset.userId,
     workspaceId: asset.workspaceId, uploadedAt: asset.uploadedAt,
+    media: asset.metadata?.media || null, currentAiJobId: asset.currentAiJobId || null,
     package: packages.packageSummary(asset.packageManifest) };
 }
 function versionResponse(version) {
@@ -44,14 +46,18 @@ async function queueAsset(asset) {
 }
 async function preserveCurrent(asset, req, transaction, writtenKeys) {
   let fileName = asset.filename;
-  if (!asset.packageManifest) {
+  // Video object keys are immutable. Snapshots own the same original, avoiding
+  // abandoned copies when the current file is replaced while a job still refers to it.
+  if (!asset.packageManifest && !videoJobs.isVideo(asset)) {
     fileName = 'versions/' + asset.id + '/' + crypto.randomUUID() + '/' + path.basename(asset.filename);
     writtenKeys.push(fileName);
     await minioClient.copyObject(BUCKET_NAME, fileName, '/' + BUCKET_NAME + '/' + asset.filename);
   }
   const versionNumber = (await Version.max('versionNumber', { where: { assetId: asset.id }, transaction }) || 0) + 1;
+  const analysis = videoJobs.isVideo(asset) && asset.currentAiJobId ? await AssetAiJob.findByPk(asset.currentAiJobId, { transaction, lock: transaction.LOCK.UPDATE }) : null;
   return Version.create({ assetId: asset.id, versionNumber, fileName,
     originalName: asset.originalname, mimeType: asset.mimetype, size: asset.size,
+    metadata: { ...(asset.metadata || {}), ...(videoJobs.isVideo(asset) ? { videoJobId: analysis?.status === 'succeeded' ? analysis.id : null } : {}) },
     packageManifest: asset.packageManifest || null, createdBy: req.user.id,
     changeLog: req.body.changeLog || 'Preserved before updating the current file' }, { transaction });
 }
@@ -100,7 +106,7 @@ exports.getVersionHistory = async (req, res) => {
     const versions = await Version.findAll({
       where: { assetId: asset.id },
       order: [['versionNumber', 'ASC']],
-      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog', 'packageManifest']
+      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog', 'packageManifest', 'metadata']
     });
     res.json(versions.map(versionResponse));
   } catch (error) {
@@ -115,7 +121,7 @@ exports.getVersion = async (req, res) => {
     const { id, versionId } = req.params;
     const version = await Version.findOne({
       where: { id: versionId, assetId: id },
-      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog', 'packageManifest']
+      attributes: ['id', 'versionNumber', 'fileName', 'originalName', 'mimeType', 'size', 'createdAt', 'createdBy', 'changeLog', 'packageManifest', 'metadata']
     });
     if (!version) {
       return res.status(404).json({ message: 'Version not found' });
@@ -229,7 +235,11 @@ exports.searchAssets = async (req, res) => {
       order: [['uploadedAt', 'DESC']]
     });
     
-    let rows = result.rows.map(asset => { const value = asset.toJSON(); const { packageManifest, ...rest } = value; return { ...rest, package: packages.packageSummary(packageManifest) }; });
+    let rows = await Promise.all(result.rows.map(async asset => {
+      const { packageManifest, ...value } = asset.toJSON();
+      const job = videoJobs.isVideo(asset) && asset.currentAiJobId ? await AssetAiJob.findByPk(asset.currentAiJobId, { attributes: ['status'] }) : null;
+      return { ...value, ...(job ? { processingStatus: job.status } : {}), package: packages.packageSummary(packageManifest) };
+    }));
     const count = result.count;
 
     if (q) {
@@ -266,6 +276,7 @@ exports.createAiJob = async (req, res) => {
       return res.status(404).json({ message: "Asset not found" });
     }
     if (!canManageAsset(req.user, asset)) return res.status(403).json({ message: ASSET_WRITE_DENIED });
+    if (videoJobs.isVideo(asset)) return await require('./videoJobsController').enqueue(req, res, assetId);
     // Prepare job data
     const job = {
       assetId,
@@ -293,14 +304,17 @@ exports.storeAiResult = async (req, res) => {
       return res.status(400).json({ message: "Metadata is required" });
     }
 
-    const asset = await Asset.findByPk(assetId);
+    const asset = await sequelize.transaction(async transaction => {
+    const asset = await Asset.findByPk(assetId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!asset) {
-      return res.status(404).json({ message: "Asset not found" });
+      throw Object.assign(new Error('Asset not found'), { status: 404 });
     }
+
+    if (videoJobs.isVideo(asset) || metadata.ai?.type === 'video' || metadata.ai?.videoTags) throw Object.assign(new Error('Video results require a current job ID and processing lease.'), { status: 409 });
 
 
     if (metadata.ai?.clip?.sourceFilename && metadata.ai.clip.sourceFilename !== asset.filename) {
-      return res.status(409).json({ message: 'The asset file changed while visual tagging was in progress. Queue tagging for the current file.' });
+      throw Object.assign(new Error('The asset file changed while visual tagging was in progress. Queue tagging for the current file.'), { status: 409 });
     }
 
     // Update the asset's metadata
@@ -310,13 +324,12 @@ exports.storeAiResult = async (req, res) => {
       ...metadata
     };
 
-    await asset.save();
+    await asset.save({ transaction });
+    return asset;
+    });
 
     res.json({ message: "AI result stored successfully", asset });
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
+  } catch (error) { reportUploadError(res, error); }
 };
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
@@ -368,11 +381,13 @@ exports.uploadAsset = async (req, res) => {
         size: prepared.main.size, userId: req.user.id, workspaceId: req.user.workspaceId, teamId: req.user.workspaceId }, { transaction });
       const stored = await packages.persistUpload(prepared, req.user.workspaceId, record.id, writtenKeys);
       record.filename = stored.filename; record.path = stored.filename; record.packageManifest = stored.manifest;
+      if (req.videoMedia) record.metadata = { media: req.videoMedia };
       await record.save({ transaction });
+      if (req.videoMedia) record.videoJob = await videoJobs.create(record, req.user.id, transaction);
       return record;
     });
     committed = true;
-    const processing = await queueAsset(asset);
+    const processing = asset.videoJob ? (await videoJobs.dispatch(asset.videoJob), { jobId: asset.videoJob.id, status: asset.videoJob.status }) : await queueAsset(asset);
     res.status(201).json({ message: 'Asset uploaded successfully', asset: assetResponse(asset), processing });
   } catch (error) {
     if (!committed) try { await packages.removeObjects(writtenKeys); } catch (cleanupError) { logger.error(cleanupError); }
@@ -393,15 +408,19 @@ exports.downloadAsset = async (req, res) => {
 
 exports.deleteAsset = async (req, res) => {
   try {
-    const asset = await Asset.findByPk(req.params.id);
-    if (!asset) return res.status(404).json({ message: 'Asset not found' });
-    if (!canDeleteAsset(req.user, asset)) return res.status(403).json({ message: ASSET_WRITE_DENIED });
-    const versions = await Version.findAll({ where: { assetId: asset.id } });
-    await packages.removeObjects([...packages.objectKeys(asset), ...versions.flatMap(packages.objectKeys)]);
+    let relatedJobs = [];
     await sequelize.transaction(async transaction => {
+      const asset = await Asset.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!asset) throw Object.assign(new Error('Asset not found'), { status: 404 });
+      if (!canDeleteAsset(req.user, asset)) throw Object.assign(new Error(ASSET_WRITE_DENIED), { status: 403 });
+      const versions = await Version.findAll({ where: { assetId: asset.id }, transaction });
+      relatedJobs = await AssetAiJob.findAll({ where: { assetId: asset.id }, transaction, lock: transaction.LOCK.UPDATE });
+      for (const job of relatedJobs) await job.update({ status: 'cancelled', finishedAt: new Date(), leaseExpiresAt: null }, { transaction });
+      await packages.removeObjects([...packages.objectKeys(asset), ...versions.flatMap(packages.objectKeys), ...relatedJobs.map(job => job.sourceFilename)]);
       await Version.destroy({ where: { assetId: asset.id }, transaction });
       await asset.destroy({ transaction });
     });
+    for (const job of relatedJobs) try { await videoJobs.cleanup(job); } catch (error) { logger.error(error); }
     res.json({ message: 'Asset deleted successfully' });
   } catch (error) { reportUploadError(res, error); }
 };
@@ -446,23 +465,21 @@ exports.updateAssetMetadata = async (req, res) => {
     const { id } = req.params;
     const { metadata } = req.body;
 
-    const asset = await Asset.findByPk(id);
-
-    if (!asset) {
-      return res.status(404).json({
-        message: "Asset not found"
-      });
-    }
-
-    if (!canManageAsset(req.user, asset)) {
-      return res.status(403).json({
-        message: ASSET_WRITE_DENIED
-      });
-    }
-
-    asset.metadata = metadata;
-
-    await asset.save();
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return res.status(400).json({ message: 'Metadata must be an object.' });
+    const asset = await sequelize.transaction(async transaction => {
+      const record = await Asset.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!record) throw Object.assign(new Error('Asset not found'), { status: 404 });
+      if (!canManageAsset(req.user, record)) throw Object.assign(new Error(ASSET_WRITE_DENIED), { status: 403 });
+      const { media: _media, videoJobId: _jobId, currentAiJobId: _currentJob, ...editable } = metadata;
+      const { videoTags: _tags, ...editableAi } = editable.ai || {};
+      if (editableAi.type === 'video') delete editableAi.type;
+      record.metadata = { ...editable,
+        ...(record.metadata?.media ? { media: record.metadata.media } : {}),
+        ...(videoJobs.isVideo(record) ? { ai: record.metadata?.ai || { type: 'video', videoTags: [] } }
+          : editable.ai ? { ai: editableAi } : {}) };
+      await record.save({ transaction });
+      return record;
+    });
 
     res.json({
       message: "Metadata updated successfully",
@@ -472,9 +489,7 @@ exports.updateAssetMetadata = async (req, res) => {
   } catch (error) {
     logger.error(error);
 
-    res.status(500).json({
-      message: "Server error"
-    });
+    res.status(error.status || 500).json({ message: error.status ? error.message : 'Server error' });
   }
 };
 
@@ -527,54 +542,23 @@ exports.addTagToAsset = async (req, res) => {
 
 exports.removeTagFromAsset = async (req, res) => {
   try {
-    const { assetId } = req.params;
     const { tag } = req.body;
-
-    if (!tag) {
-      return res.status(400).json({
-        message: "Tag is required"
-      });
-    }
-
-    const asset = await Asset.findByPk(assetId);
-
-    if (!asset) {
-      return res.status(404).json({
-        message: "Asset not found"
-      });
-    }
-
-    if (!canManageAsset(req.user, asset)) {
-      return res.status(403).json({ message: ASSET_WRITE_DENIED });
-    }
-
-    const tagRecord = await Tag.findOne({
-      where: {
-        name: tag.trim()
+    if (typeof tag !== 'string' || !tag.trim()) return res.status(400).json({ message: 'Tag is required' });
+    await sequelize.transaction(async transaction => {
+      const asset = await Asset.findByPk(req.params.assetId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!asset) throw Object.assign(new Error('Asset not found'), { status: 404 });
+      if (!canManageAsset(req.user, asset)) throw Object.assign(new Error(ASSET_WRITE_DENIED), { status: 403 });
+      const tagRecord = await Tag.findOne({ where: { name: tag.trim() }, transaction });
+      if (!tagRecord) throw Object.assign(new Error('Tag not found'), { status: 404 });
+      await asset.removeTag(tagRecord, { transaction });
+      if (videoJobs.isVideo(asset)) {
+        asset.metadata = { ...asset.metadata, ai: { ...asset.metadata?.ai, videoTags: (asset.metadata?.ai?.videoTags || []).filter(t => t !== tagRecord.name) } };
+        await asset.save({ transaction });
       }
     });
-
-    if (!tagRecord) {
-      return res.status(404).json({
-        message: "Tag not found"
-      });
-    }
-
-    await asset.removeTag(tagRecord);
-
-    res.json({
-      message: "Tag removed successfully"
-    });
-
-  } catch (error) {
-    logger.error(error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-  }
+    res.json({ message: 'Tag removed successfully' });
+  } catch (error) { reportUploadError(res, error); }
 };
-
 
 exports.getAssetTags = async (req, res) => {
   try {
@@ -651,17 +635,19 @@ exports.uploadNewVersion = async (req, res) => {
       const prepared = await packages.prepareUpload(req, asset);
       const version = await preserveCurrent(asset, req, transaction, writtenKeys);
       const stored = await packages.persistUpload(prepared, req.user.workspaceId, asset.id, writtenKeys);
-      const { ai: _staleAi, ...preservedMetadata } = asset.metadata || {};
+      const { ai: _staleAi, media: _staleMedia, videoJobId: _staleJob, ...preservedMetadata } = asset.metadata || {};
+      await videoJobs.supersede(asset, transaction);
       asset.filename = stored.filename; asset.path = stored.filename;
       asset.originalname = prepared.main.originalname; asset.mimetype = prepared.main.mimetype;
       asset.size = prepared.main.size; asset.packageManifest = stored.manifest;
-      asset.uploadedAt = new Date(); asset.metadata = preservedMetadata;
+      asset.uploadedAt = new Date(); asset.metadata = { ...preservedMetadata, ...(req.videoMedia ? { media: req.videoMedia } : {}) };
       await asset.save({ transaction });
-      return { asset, version };
+      const job = req.videoMedia ? await videoJobs.create(asset, req.user.id, transaction) : null;
+      return { asset, version, job };
     });
     committed = true;
     // Old objects remain owned by the preserved version, including the full package.
-    const processing = await queueAsset(result.asset);
+    const processing = result.job ? (await videoJobs.dispatch(result.job), { jobId: result.job.id, status: result.job.status }) : await queueAsset(result.asset);
     res.status(201).json({ message: 'New asset version uploaded successfully',
       asset: assetResponse(result.asset), version: versionResponse(result.version), processing });
   } catch (error) {

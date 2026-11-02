@@ -10,7 +10,7 @@ import { assetService } from '../services/assetService';
 import { formatBytes } from '../utils/formatters';
 import { compactMetadata } from '../utils/metadata';
 
-const acceptedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'fbx', 'obj', 'cs', 'js', 'txt', 'json', 'xml'];
+const acceptedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'mp4', 'fbx', 'obj', 'cs', 'js', 'txt', 'json', 'xml'];
 
 export default function UploadPage() {
   const [file, setFile] = useState(null);
@@ -86,7 +86,7 @@ export default function UploadPage() {
             <span className="grid h-14 w-14 place-items-center rounded-lg border border-violet-400/20 bg-violet-400/10 text-aether-primary"><UploadCloud size={26} /></span>
             <span className="mt-5 font-display text-lg font-semibold text-zinc-100">{file ? "Choose a different asset" : "Drop an asset here"}</span>
             <span className="mt-2 text-sm text-zinc-400">or click to browse your files</span>
-            <span className="mt-5 font-mono text-xs uppercase tracking-wider text-zinc-400">Images · Audio · 3D · Scripts · Data · Main file up to 50 MB</span>
+            <span className="mt-5 font-mono text-xs uppercase tracking-wider text-zinc-400">Images · Audio · Video · 3D · Scripts · Data · Main file up to 50 MB</span>
           </button>
 
           {file && (
@@ -112,7 +112,7 @@ export default function UploadPage() {
           <div className="editor-actions mt-6"><Link to="/assets" className="secondary-button">Cancel</Link><button className="primary-button" disabled={!file || status.loading || (isModel && !modelBundle?.canUpload)} onClick={upload}>{status.loading ? progress === 100 ? 'Saving files…' : 'Uploading…' : isModel ? modelBundle?.geometryOnly ? 'Upload geometry package' : 'Upload model package' : 'Upload asset'}<FileUp size={16} /></button></div>
         </section>
         <aside className="panel h-fit p-5">
-          <h2 className="font-display text-sm font-semibold text-zinc-100">Upload pipeline</h2>
+          <h2 className="font-display text-sm font-semibold text-zinc-100">Upload pipeline</h2><p className="mt-3 text-xs leading-5 text-zinc-400">Video: MP4 with 8-bit H.264 (Baseline/Main/High, level ≤ 4.2), AAC-LC stereo or no audio. Up to 50 MiB, 60 seconds, 1920 × 1080 in either orientation, 60 fps and square pixels. Other codecs need exporting to this format. AI video suggestions require review.</p>
           <ol className="mt-5 space-y-5">
             {['Secure file storage', 'AI metadata extraction', 'Search indexing'].map((item, index) => <li key={item} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded border border-white/10 bg-zinc-900 font-mono text-xs text-zinc-400">0{index + 1}</span><div><p className="text-sm text-zinc-300">{item}</p><p className="mt-1 text-xs leading-5 text-zinc-400">{index === 0 ? 'Stored in the protected object repository.' : index === 1 ? 'Tags and keywords are generated asynchronously.' : 'The asset becomes available to your team.'}</p></div></li>)}
           </ol>

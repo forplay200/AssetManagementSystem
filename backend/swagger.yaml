@@ -13,6 +13,171 @@ servers:
   - url: http://localhost:3000/api
     description: Local server
 paths:
+  /assets/upload:
+    post:
+      summary: Upload a supported asset, including a bounded MP4 video
+      description: >-
+        Owner or Manager. Video is probed and opening-decoded before persistence.
+        MP4, H.264 Baseline/Main/High up to level 4.2, 8-bit yuv420p, square pixels,
+        one video track, zero or one AAC-LC mono/stereo track, no extra media tracks.
+        Maximum 50 MiB, 60 seconds, 1920 by 1080 in either orientation, 60 fps.
+        Upload returns processing.jobId for video; AI failure does not remove the file.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [asset]
+              properties:
+                asset: { type: string, format: binary }
+      responses:
+        '201': { description: Asset saved and processing requested }
+        '400': { description: Unsupported or invalid media; no asset or objects retained }
+        '403': { description: Upload permission denied }
+        '503': { description: Video uploads disabled or media tools unavailable }
+  /assets/{id}/ai-jobs/current:
+    get:
+      summary: Read current video analysis, candidates and review state
+      description: All workspace viewing roles. Pending candidates and raw scores are stored outside searchable Asset metadata. Private object keys and vocabulary snapshots are not returned.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Current analysis or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job: { $ref: '#/components/schemas/VideoJob' }
+        '403': { description: Workspace access denied }
+        '404': { description: Asset not found }
+  /assets/{id}/ai-jobs/{jobId}/review:
+    post:
+      summary: Atomically review video visual suggestions
+      description: Owner or original uploader Manager. Requires current file and current succeeded job. Accepted/edited decisions add repository tags idempotently. Rejection never deletes manual tags. Undo permits rejected to pending only. Conflicting old decisions return 409.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decisions]
+              properties:
+                decisions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [candidateId, decision]
+                    properties:
+                      candidateId: { type: string }
+                      decision: { type: string, enum: [accepted, edited, rejected, pending] }
+                      text: { type: string, maxLength: 80 }
+      responses:
+        '200': { description: Current job, metadata and repository tags }
+        '400': { description: Invalid decision or tag text }
+        '403': { description: Asset write permission denied }
+        '404': { description: Asset or job not found }
+        '409': { description: Replaced job or conflicting decision }
+        '410': { description: Deleted asset }
+  /assets/{id}/ai-jobs/{jobId}/frames/{frameId}:
+    get:
+      summary: Preview a private video evidence frame
+      description: All workspace viewing roles. The server resolves the frame ID through a current job or preserved Version reference; never accepts object keys from the client.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+        - in: path
+          name: frameId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Inline JPEG, private/no-store
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '403': { description: Workspace access denied }
+        '404': { description: Frame not found }
+        '409': { description: Job no longer referenced }
+  /assets/{id}/ai-jobs/{jobId}/claim:
+    post:
+      summary: Internal worker claim of fixed video input
+      security: [{ aiServiceToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceFilename]
+              properties:
+                sourceFilename: { type: string }
+      responses:
+        '200': { description: Fixed source, vocabulary, sampling parameters and new leaseToken }
+        '401': { description: Service credential required }
+        '403': { description: Invalid service credential }
+        '409': { description: Job already claimed or replaced }
+        '410': { description: Asset deleted }
+  /assets/{id}/ai-jobs/{jobId}/heartbeat:
+    post:
+      summary: Internal worker renewal of a valid lease
+      security: [{ aiServiceToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leaseToken]
+              properties:
+                leaseToken: { type: string, format: uuid }
+                stage: { type: string, enum: [downloading, extracting, tagging] }
+      responses:
+        '200': { description: Lease extended by 60 seconds within the 300 second task deadline }
+        '409': { description: Expired or superseded lease }
+  /assets/{id}/ai-jobs/{jobId}/result:
+    post:
+      summary: Internal idempotent result commit for a valid video lease
+      description: Up to 10 suggestions and 10 JPEG evidence frames, bounded base64 payload under the 4 MiB JSON limit. Server re-encodes private evidence. Retryable errors may requeue within three attempts. Results are never automatic repository tags.
+      security: [{ aiServiceToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leaseToken]
+              properties:
+                leaseToken: { type: string, format: uuid }
+                error: { type: boolean }
+                retryable: { type: boolean }
+                output: { type: object, description: 'candidates, frames (id/timeSeconds/jpegBase64), sampling (requestedCount/decodedCount/times), provenance and elapsedSeconds' }
+      responses:
+        '200': { description: Committed result or identical already-completed task }
+        '400': { description: Invalid or oversized output }
+        '409': { description: Expired job, file or lease }
+        '410': { description: Asset deleted }
   /assets/download/{id}:
     get:
       summary: Download current asset
@@ -642,8 +807,8 @@ paths:
         '404': { description: Asset not found }
   /assets/{id}/metadata:
     put:
-      summary: Update asset metadata including edited AI suggestions
-      description: Requires Workspace Owner or the original uploader with Workspace Manager membership in the active workspace.
+      summary: Update editable metadata while retaining server-owned video information
+      description: Owner or original uploader Manager. A locked transaction retains the latest server-owned media and video AI projection, ignoring stale client copies. Video candidates use the dedicated review endpoint; other asset AI editing remains compatible.
       security:
         - bearerAuth: []
       parameters:
@@ -684,7 +849,7 @@ paths:
   /assets/ai/job:
     post:
       summary: Queue AI tagging through the authorized browser endpoint
-      description: Owner may regenerate any asset in the active workspace; Manager only their original uploads. Rejected requests do not enqueue. Direct FastAPI /jobs is internal and requires a service credential.
+      description: Owner may regenerate any asset in the active workspace; Manager only their original uploads. Video returns a durable job ID and reuses an active task unless regenerate=true. New analysis clears the current videoTags projection but preserves repository tags. Direct FastAPI /jobs cannot enqueue videos.
       security:
         - bearerAuth: []
       parameters:
@@ -699,6 +864,7 @@ paths:
               properties:
                 assetId: { type: integer }
                 jobType: { type: string }
+                regenerate: { type: boolean, default: false }
       responses:
         '201': { description: AI job queued }
         '400': { description: Required fields missing }
@@ -746,11 +912,25 @@ paths:
           description: Comment not found in the active workspace
 components:
   securitySchemes:
+    aiServiceToken:
+      type: apiKey
+      in: header
+      name: X-AI-Service-Token
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    AssetId:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer }
+    VideoJobId:
+      in: path
+      name: jobId
+      required: true
+      schema: { type: string, format: uuid }
     WorkspaceId:
       in: header
       name: X-Workspace-Id
@@ -759,6 +939,21 @@ components:
       schema:
         type: integer
   schemas:
+    VideoJob:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [queued, processing, succeeded, failed, superseded, cancelled] }
+        stage: { type: string }
+        attempt: { type: integer, maximum: 3 }
+        candidates: { type: array, maxItems: 10, items: { type: object } }
+        frames: { type: array, maxItems: 10, items: { type: object } }
+        sampling: { type: object }
+        provenance: { type: object }
+        elapsedSeconds: { type: number, nullable: true }
+        errorCode: { type: string, nullable: true }
+        errorMessage: { type: string, nullable: true }
     Asset:
       type: object
       description: Asset responses include displayName independently of source and storage filenames; existing rows default to null.
@@ -773,6 +968,8 @@ components:
         workspaceId: { type: integer, nullable: true }
         uploadedAt: { type: string, format: date-time }
         package: { type: object, nullable: true }
+        media: { type: object, nullable: true, readOnly: true, description: Server-probed video technical metadata }
+        currentAiJobId: { type: string, format: uuid, nullable: true, readOnly: true }
     VisualConceptApproval:
       type: object
       required: [name, confirmed]
