@@ -22,6 +22,7 @@ const validate = (schema = {}) => (req, res, next) => {
       if (rules.minLength && value.length < rules.minLength) {
         errors.push({ field, location, message: `${field} must be at least ${rules.minLength} characters` });
       }
+      if (rules.maxLength && value.length > rules.maxLength) errors.push({ field, location, message: `${field} must be at most ${rules.maxLength} characters` });
       if (rules.email && !EMAIL_PATTERN.test(value)) {
         errors.push({ field, location, message: `${field} must be a valid email address` });
       }

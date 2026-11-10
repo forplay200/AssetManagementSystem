@@ -2,12 +2,26 @@ module.exports = (sequelize, DataTypes) => {
 
 
 const Asset = sequelize.define('Asset', {
+  lifecycleState: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'active' },
+  revision: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  contentVersionId: { type: DataTypes.UUID, allowNull: true },
+  fileSubmittedBy: { type: DataTypes.INTEGER, allowNull: true },
+  fileSubmittedAt: { type: DataTypes.DATE, allowNull: true },
+  baseContentVersionId: { type: DataTypes.UUID, allowNull: true },
+  aiRequestContext: { type: DataTypes.JSONB, allowNull: true },
+  pendingAiResult: { type: DataTypes.JSONB, allowNull: true },
+  currentAiJobId: { type: DataTypes.UUID, allowNull: true },
   filename: {
     type: DataTypes.STRING,
     allowNull: false
   },
+  displayName: { type: DataTypes.STRING(200), allowNull: true, defaultValue: null },
   metadata: {
     type: DataTypes.JSON,
+    allowNull: true
+  },
+  packageManifest: {
+    type: DataTypes.JSONB,
     allowNull: true
   },
   originalname: {

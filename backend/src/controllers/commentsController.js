@@ -1,4 +1,5 @@
 const { Asset, Comment, User } = require('../models');
+const { WORKSPACE_ROLES } = require('../utils/roles');
 const logger = require('../utils/logger');
 const { belongsToWorkspace } = require('../utils/workspaceScope');
 
@@ -27,7 +28,7 @@ function publicComment(record) {
 }
 
 function canManageComment(req, comment) {
-  return req.user.teamRole === 'owner' || Number(comment.userId) === Number(req.user.id);
+  return req.user.teamRole === WORKSPACE_ROLES.OWNER || Number(comment.userId) === Number(req.user.id);
 }
 
 async function findCommentInWorkspace(id, user) {
@@ -168,3 +169,44 @@ exports.deleteComment = async (req, res) => {
 
 exports.DELETED_COMMENT_CONTENT = DELETED_COMMENT_CONTENT;
 exports.publicComment = publicComment;
+
+// Serialize comment writes with trash/restore, while leaving editing leases free for comments.
+for (const [name, action] of [['createComment', 'created'], ['updateComment', 'updated'], ['deleteComment', 'deleted']]) {
+  const legacy = exports[name];
+  exports[name] = async (req, res) => {
+    if (!require('../services/assetEditSessions').enabled()) return legacy(req, res);
+    const db = require('../models');
+    const { fail, createEditService } = require('../services/assetEditSessions');
+    try {
+      const content = normalizedContent(req.body.content);
+      if (action !== 'deleted' && (!content || content.length > MAX_COMMENT_LENGTH)) throw fail('INVALID_COMMENT', 'Use a comment of 1 to 2000 characters.', 400);
+      const result = await db.sequelize.transaction(async transaction => {
+        const initial = action === 'created' ? null : await Comment.findByPk(req.params.id, { attributes: ['id', 'assetId'], transaction });
+        const assetId = action === 'created' ? req.params.assetId : initial?.assetId;
+        const asset = assetId && await Asset.findByPk(assetId, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!asset) throw fail('NOT_FOUND', 'Asset or comment not found.', 404);
+        const actor = await createEditService(db).actorFor(req.user, asset, transaction, false);
+        if (asset.lifecycleState !== 'active') throw fail('ASSET_TRASHED', 'Comments cannot be changed in the recycle bin.', 410);
+        let comment;
+        if (action === 'created') {
+          if (req.body.parentId && !await Comment.findOne({ where: { id: req.body.parentId, assetId: asset.id }, transaction })) throw fail('INVALID_PARENT', 'Parent comment does not belong to this asset.', 400);
+          comment = await Comment.create({ content, assetId: asset.id, userId: actor.id, parentId: req.body.parentId || null, isDeleted: false }, { transaction });
+        } else {
+          comment = await Comment.findByPk(req.params.id, { transaction, lock: transaction.LOCK.UPDATE });
+          if (!comment || comment.assetId !== asset.id) throw fail('NOT_FOUND', 'Comment not found.', 404);
+          if (!canManageComment({ user: actor }, comment)) throw fail('PERMISSION_CHANGED', 'You may edit only your own comments.', 403);
+          if (action === 'updated' && comment.isDeleted) throw fail('COMMENT_DELETED', 'Deleted comments cannot be edited.');
+          if (action === 'updated') comment.content = content;
+          else comment.isDeleted = true;
+          await comment.save({ transaction });
+        }
+        await require('../services/auditService').createAuditService(db).append({ workspaceId: asset.workspaceId, asset, actor, action: `comment.${action}`, details: { commentId: comment.id } }, transaction);
+        return Comment.findByPk(comment.id, { transaction, include: [{ model: User, as: 'author', attributes: ['id', 'username'] }, { model: Comment, as: 'parent', attributes: ['id', 'content', 'isDeleted'] }] });
+      });
+      res.status(action === 'created' ? 201 : 200).json({ message: `Comment ${action} successfully`, comment: publicComment(result) });
+    } catch (error) {
+      if (!error.status) logger.error(error);
+      res.status(error.status || 500).json({ code: error.code, message: error.status ? error.message : 'Server error' });
+    }
+  };
+}

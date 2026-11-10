@@ -3,7 +3,7 @@ function workspaceAssetWhere(user) {
   if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
     throw new Error('A validated workspaceId is required');
   }
-  return { workspaceId };
+  return { workspaceId, ...(process.env.ASSET_GOVERNANCE_ENABLED === 'true' ? { lifecycleState: 'active' } : {}) };
 }
 
 function belongsToWorkspace(asset, user) {

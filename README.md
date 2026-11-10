@@ -5,7 +5,7 @@ A web-based platform for managing digital assets with AI-assisted tagging, versi
 ## Features
 
 - User authentication (JWT-based)
-- Role-based access control (Admin, Developer, Designer, Collaborator)
+- Role-based access control (System Administrator, Workspace Owner, Workspace Manager, Collaborator, User)
 - Asset upload/download with validation for images, audio, 3D models, scripts, and data files
 - AI-powered auto-tagging:
   - Image tagging using CLIP
@@ -18,6 +18,14 @@ A web-based platform for managing digital assets with AI-assisted tagging, versi
 - Dashboard with analytics and recent activity
 - RESTful API with Swagger/OpenAPI documentation
 - Dockerized deployment with PostgreSQL, MinIO, and Redis
+
+## Extensible CLIP vocabulary
+
+Visual tagging uses the existing `openai/clip-vit-base-patch32` checkpoint with a versioned core vocabulary and explicitly approved workspace concepts. The initial vocabulary contains 93 image concepts, including 67 concepts usable with geometry-based 3D previews. The worker no longer reads `ai-service/tags.py`.
+
+In an asset's **AI enrichment** panel, open **Visual vocabulary** to approve a visible concept such as `katana`. Workspace Owners and Managers can select its applicable asset types and remove unused custom concepts. Use **Regenerate tags**, then **Refresh results**, to apply the current vocabulary to an existing asset.
+
+See [the vocabulary implementation and deployment notes](docs/clip-vocabulary.md) and [the Chapter 2 manual editing guide](docs/chapter2-clip-vocabulary-notes.md).
 
 ## Architecture
 
@@ -33,10 +41,13 @@ The system follows a microservices-inspired architecture:
 
 ## Prerequisites
 
-- Node.js (v18+)
+- Node.js 24.22.1 LTS or a newer patched Node.js 24 release (see `.nvmrc`)
 - Python (v3.11+)
 - Docker and Docker Compose (optional for containerized setup)
 - Git
+
+Node.js versions for local development, Docker builds, and CI are aligned. See
+[the Node.js runtime update notes](docs/node-runtime.md) for security updates and rebuilding existing services.
 
 ## Setup
 
@@ -113,6 +124,12 @@ docker-compose up --build
 Once the backend is running, visit http://localhost:3000/api-docs to view the interactive Swagger UI with all available endpoints.
 
 ## Usage
+
+Video assets support H.264/AAC-LC MP4 and VP8/VP9 WebM uploads (optional
+Opus/Vorbis audio for WebM; 100 MiB, 180 seconds, 1080p in either orientation), protected current/history playback and sampled-frame
+CLIP suggestions. Suggestions require Owner/original-uploader Manager review
+before becoming searchable tags. See [video setup and validation](docs/video-assets.md)
+for codec limits, migration, deployment, permissions and remaining evaluation work.
 
 1. Register a new account or log in with existing credentials.
 2. Upload assets through the interface.

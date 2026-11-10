@@ -3,9 +3,9 @@ import { TextDecoder } from 'util';
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import ThreeModelPreview, { modelFormat, parseModelBuffer } from './ThreeModelPreview';
-import { assetService } from '../../services/assetService';
+import { loadModelPackage } from '../../utils/loadModelPackage';
 
-jest.mock('../../services/assetService', () => ({ assetService: { getPreview: jest.fn() } }));
+jest.mock('../../utils/loadModelPackage', () => ({ loadModelPackage: jest.fn() }));
 
 global.TextDecoder = global.TextDecoder || TextDecoder;
 
@@ -34,15 +34,15 @@ test('routes FBX bytes through the Three.js FBX loader', () => {
 });
 
 test('shows a loading indicator while protected model bytes are requested', () => {
-  assetService.getPreview.mockReturnValue(new Promise(() => {}));
+  loadModelPackage.mockReturnValue(new Promise(() => {}));
   render(<ThreeModelPreview assetId="12" info={{ originalname: 'model.fbx' }} />);
   expect(screen.getByText('Loading 3D model…')).toBeInTheDocument();
-  expect(assetService.getPreview).toHaveBeenCalledWith('12');
+  expect(loadModelPackage).toHaveBeenCalledWith(expect.objectContaining({ assetId: '12' }));
 });
 
 test('shows a safe fallback when protected model loading fails', async () => {
-  assetService.getPreview.mockRejectedValue(new Error('Network error'));
+  loadModelPackage.mockRejectedValue(new Error('Network error'));
   render(<ThreeModelPreview assetId="13" info={{ originalname: 'broken.obj' }} />);
   expect(await screen.findByText('3D preview unavailable')).toBeInTheDocument();
-  expect(screen.getByText(/still download the original asset/i)).toBeInTheDocument();
+  expect(screen.getByText('Network error')).toBeInTheDocument();
 });

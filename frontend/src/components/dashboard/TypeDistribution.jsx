@@ -21,12 +21,12 @@ export default function TypeDistribution({ assets }) {
 
   return (
     <section className="panel p-5 sm:p-6">
-      <div className="section-title"><Layers3 size={16} className="text-aether-primary" /> Asset types <span className="ml-auto font-mono text-[10px] uppercase text-zinc-600">Latest {assets.length}</span></div>
+      <div className="section-title"><Layers3 size={16} className="text-aether-primary" /> Asset types <span className="ml-auto font-mono text-xs uppercase text-zinc-400">Latest {assets.length}</span></div>
       {entries.length ? <div className="mt-5 space-y-4">{entries.map(([type, count]) => {
         const meta = typeMeta[type] || typeMeta.Asset;
         const Icon = meta.icon;
-        return <div key={type}><div className="mb-2 flex items-center gap-2"><Icon size={14} className="text-zinc-500" /><span className="text-xs text-zinc-400">{type}</span><span className="ml-auto font-mono text-[10px] text-zinc-600">{count} · {Math.round((count / total) * 100)}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className={`h-full rounded-full ${meta.color}`} style={{ width: `${(count / total) * 100}%` }} /></div></div>;
-      })}</div> : <p className="mt-6 text-sm text-zinc-600">No asset data is available.</p>}
+        return <div key={type}><div className="mb-2 flex items-center gap-2"><Icon size={14} className="text-zinc-400" /><span className="text-xs text-zinc-400">{type}</span><span className="ml-auto font-mono text-xs text-zinc-400">{count} · {Math.round((count / total) * 100)}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className={`h-full rounded-full ${meta.color}`} style={{ width: `${(count / total) * 100}%` }} /></div></div>;
+      })}</div> : <p className="mt-6 text-sm text-zinc-400">No asset data is available.</p>}
     </section>
   );
 }

@@ -9,6 +9,8 @@ function pageName(pathname) {
   if (pathname === '/search') return 'Search Assets';
   if (pathname === '/workspace') return 'Workspace Setup';
   if (pathname === '/team') return 'Team Workspace';
+  if (pathname === '/recycle-bin') return 'Recycle Bin';
+  if (pathname === '/audit-log') return 'Workspace Audit Log';
   if (pathname === '/profile') return 'User Profile';
   if (pathname === '/admin/users') return 'System User Administration';
   if (pathname === '/login') return 'Sign In';

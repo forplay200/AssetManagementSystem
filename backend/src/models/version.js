@@ -1,6 +1,11 @@
 module.exports = (sequelize, DataTypes) => {
 
 const Version = sequelize.define('Version', {
+  contentVersionId: { type: DataTypes.UUID, allowNull: true },
+  baseContentVersionId: { type: DataTypes.UUID, allowNull: true },
+  submittedBy: { type: DataTypes.INTEGER, allowNull: true },
+  submittedAt: { type: DataTypes.DATE, allowNull: true },
+  metadata: { type: DataTypes.JSONB, allowNull: true },
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -28,6 +33,10 @@ const Version = sequelize.define('Version', {
   },
   changeLog: {
     type: DataTypes.TEXT,
+    allowNull: true
+  },
+  packageManifest: {
+    type: DataTypes.JSONB,
     allowNull: true
   },
   createdAt: {

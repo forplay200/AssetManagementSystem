@@ -1,12 +1,28 @@
-export const SYSTEM_ADMINISTRATOR_ROLES = ['systemAdministrator', 'admin'];
+export const ACCOUNT_ROLES = Object.freeze({
+  USER: 'user',
+  SYSTEM_ADMINISTRATOR: 'systemAdministrator',
+});
+
+export const WORKSPACE_ROLES = Object.freeze({
+  OWNER: 'workspaceOwner',
+  MANAGER: 'workspaceManager',
+  COLLABORATOR: 'collaborator',
+});
 
 export function isSystemAdministrator(value) {
   const role = typeof value === 'string' ? value : value?.accountRole || value?.role;
-  return SYSTEM_ADMINISTRATOR_ROLES.includes(role);
+  return role === ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR;
 }
 
 export function accountRoleLabel(role) {
-  if (SYSTEM_ADMINISTRATOR_ROLES.includes(role)) return 'System Administrator';
-  if (role === 'user') return 'User';
-  return role ? role[0].toUpperCase() + role.slice(1) : 'User';
+  if (role === ACCOUNT_ROLES.SYSTEM_ADMINISTRATOR) return 'System Administrator';
+  if (role === ACCOUNT_ROLES.USER) return 'User';
+  return role || 'Unknown role';
+}
+
+export function workspaceRoleLabel(role) {
+  if (role === WORKSPACE_ROLES.OWNER) return 'Workspace Owner';
+  if (role === WORKSPACE_ROLES.MANAGER) return 'Workspace Manager';
+  if (role === WORKSPACE_ROLES.COLLABORATOR) return 'Collaborator';
+  return role || 'Unknown role';
 }

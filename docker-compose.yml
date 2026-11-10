@@ -14,6 +14,24 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - REDIS_URL=redis://redis:6379
       - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-local-ai-service-token}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - PUBLIC_TRIAL_ENABLED=${PUBLIC_TRIAL_ENABLED:-false}
+      - REGISTRATION_MODE=${REGISTRATION_MODE:-open}
+      - TRIAL_INVITE_CODE=${TRIAL_INVITE_CODE:-}
+      - TRIAL_MAX_ACCOUNTS=${TRIAL_MAX_ACCOUNTS:-300}
+      - TRIAL_WORKSPACES_PER_ACCOUNT=${TRIAL_WORKSPACES_PER_ACCOUNT:-1}
+      - TRIAL_WORKSPACE_MIB=${TRIAL_WORKSPACE_MIB:-500}
+      - TRIAL_TOTAL_MIB=${TRIAL_TOTAL_MIB:-20480}
+      - TRIAL_AI_PER_DAY=${TRIAL_AI_PER_DAY:-20}
+      - TRIAL_AI_QUEUE_LIMIT=${TRIAL_AI_QUEUE_LIMIT:-100}
+      - TRIAL_UPLOADS_PER_15_MIN=${TRIAL_UPLOADS_PER_15_MIN:-15}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
+      - TRUST_PROXY_HOPS=${TRUST_PROXY_HOPS:-0}
+      - VIDEO_UPLOAD_ENABLED=${VIDEO_UPLOAD_ENABLED:-true}
+      - ASSET_GOVERNANCE_ENABLED=${ASSET_GOVERNANCE_ENABLED:-false}
+      - ASSET_PURGE_ENABLED=${ASSET_PURGE_ENABLED:-false}
+      - CLIP_IMAGE_MIN_SIMILARITY=${CLIP_IMAGE_MIN_SIMILARITY:-0.25}
+      - CLIP_MAX_SCORE_GAP=${CLIP_MAX_SCORE_GAP:-0.04}
     depends_on:
       - postgres
       - minio
@@ -34,8 +52,8 @@ services:
       dockerfile: ../Dockerfile.ai
     init: true
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DATABASE_URL=postgres://user:password@postgres:5432/db
       - MINIO_ENDPOINT=minio:9000
@@ -55,6 +73,10 @@ services:
     restart: unless-stopped
     command: ["python", "-u", "worker.py"]
     environment:
+      - CLIP_DEVICE=${CLIP_DEVICE:-cpu}
+      - CLIP_IMAGE_MIN_SIMILARITY=${CLIP_IMAGE_MIN_SIMILARITY:-0.25}
+      - CLIP_MODEL_MIN_SIMILARITY=${CLIP_MODEL_MIN_SIMILARITY:-0.25}
+      - CLIP_MAX_SCORE_GAP=${CLIP_MAX_SCORE_GAP:-0.04}
       - DATABASE_URL=postgres://user:password@postgres:5432/db
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=minioadmin
@@ -88,8 +110,8 @@ services:
       - minio_data:/data
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
 volumes:
   postgres_data:
   minio_data:

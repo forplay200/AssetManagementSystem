@@ -1,6 +1,9 @@
 {
     "name": "backend",
     "version": "1.0.0",
+    "engines": {
+        "node": ">=24.22.1 <25"
+    },
     "dependencies": {
         "axios": "^1.18.1",
         "bcryptjs": "^2.4.3",
@@ -18,10 +21,11 @@
         "sequelize": "^6.37.8",
         "sharp": "^0.35.3",
         "swagger-ui-express": "^5.0.1",
-        "yamljs": "^0.3.0"
+        "yamljs": "^0.3.0",
+        "yazl": "^3.3.1"
     },
     "scripts": {
         "start": "node src/index.js",
-        "test": "node --test __tests__/validate.test.js __tests__/rbac.test.js __tests__/routes.test.js __tests__/resetToken.test.js __tests__/assetsController.test.js __tests__/searchQuery.test.js __tests__/workspaceIsolation.test.js __tests__/commentsController.test.js __tests__/userController.test.js __tests__/accountStatusAuth.test.js"
+        "test": "node --test __tests__/validate.test.js __tests__/rbac.test.js __tests__/routes.test.js __tests__/resetToken.test.js __tests__/publicTrial.test.js __tests__/assetsController.test.js __tests__/searchQuery.test.js __tests__/workspaceIsolation.test.js __tests__/commentsController.test.js __tests__/userController.test.js __tests__/accountStatusAuth.test.js __tests__/canonicalRolesMigration.test.js __tests__/assetPermissions.test.js __tests__/assetOwnershipRoutes.test.js __tests__/assetNameMigration.test.js __tests__/videoMetadata.test.js __tests__/videoUpload.test.js __tests__/videoMigration.test.js __tests__/assetGovernance.test.js __tests__/assetEditSessions.integration.test.js"
     }
 }

@@ -1,0 +1,5 @@
+export default function VideoTechnicalInfo({ media }) {
+  const videoCodec = media?.videoCodec === 'h264' ? 'H.264' : media?.videoCodec?.toUpperCase();
+  const audioCodec = media?.audioCodec === 'aac' ? 'AAC-LC' : media?.audioCodec?.toUpperCase();
+  return <details className="panel p-5"><summary className="cursor-pointer text-sm font-semibold text-zinc-200">Video information{media && <span className="mt-2 block text-xs font-normal text-zinc-400">{media.durationSeconds.toFixed(2)} s · {media.displayWidth} × {media.displayHeight}</span>}</summary>{media ? <dl className="mt-3 grid grid-cols-2 gap-3 text-xs text-zinc-400"><dt>Container</dt><dd>{media.container?.toUpperCase()}</dd><dt>Video</dt><dd>{videoCodec}{media.profile ? ` · ${media.profile}` : ''}</dd><dt>Average frame rate</dt><dd>{media.avgFrameRate?.toFixed(2)} fps</dd><dt>Audio</dt><dd>{media.hasAudio ? `${audioCodec} · ${media.audioChannels} channels` : 'No audio track'}</dd><dt>Rotation</dt><dd>{media.rotationDegrees}°</dd></dl> : <p className="mt-3 text-xs text-zinc-400">No technical information was preserved for this version.</p>}</details>;
+}

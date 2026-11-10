@@ -1,15 +1,9 @@
 const { Op } = require('sequelize');
 const { User, TeamMember, Team } = require('../models');
 const logger = require('../utils/logger');
+const { ACCOUNT_ROLES } = require('../utils/roles');
 
 const SAFE_ATTRIBUTES = { exclude: ['passwordHash', 'resetToken', 'resetTokenExpiry'] };
-const SYSTEM_ADMIN_ROLES = ['systemAdministrator', 'admin'];
-
-function systemRoleWhere(role) {
-  if (!role) return undefined;
-  return role === 'systemAdministrator' ? { [Op.in]: SYSTEM_ADMIN_ROLES } : role;
-}
-
 exports.getAllUsers = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -25,7 +19,10 @@ exports.getAllUsers = async (req, res) => {
     }
     if (status === 'active') where.isActive = true;
     if (status === 'inactive') where.isActive = false;
-    if (role) where.role = systemRoleWhere(role);
+    if (role && !Object.values(ACCOUNT_ROLES).includes(role)) {
+      return res.status(400).json({ message: 'Invalid account role' });
+    }
+    if (role) where.role = role;
 
     const users = await User.findAll({
       where,
@@ -71,6 +68,7 @@ exports.updateAccountStatus = async (req, res) => {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const previousActive = user.isActive;
     user.isActive = status === 'active';
     if (!user.isActive) {
       // Pending recovery tokens must not remain usable as an indirect account
@@ -78,7 +76,23 @@ exports.updateAccountStatus = async (req, res) => {
       user.resetToken = null;
       user.resetTokenExpiry = null;
     }
-    await user.save();
+    if (require('../services/assetEditSessions').enabled()) {
+      const db = require('../models');
+      await db.sequelize.transaction(async transaction => {
+        const administrator = await db.User.findByPk(req.user.id, { transaction });
+        if (!administrator?.isActive || administrator.role !== 'systemAdministrator') throw Object.assign(new Error('System administrator permission changed.'), { status: 403 });
+        await user.save({ transaction });
+        if (!user.isActive) await require('../services/assetLifecycle').holdForUploader(db, user.id, null, transaction);
+        if (previousActive !== user.isActive) {
+          const memberships = await db.TeamMember.findAll({ where: { userId: user.id }, transaction });
+          for (const membership of memberships) await require('../services/auditService').createAuditService(db).append({
+            workspaceId: membership.teamId, targetName: user.username,
+            actor: { id: administrator.id, username: administrator.username, role: administrator.role, workspaceId: membership.teamId },
+            action: 'member.access_changed', before: { userId: user.id, isActive: previousActive }, after: { userId: user.id, isActive: user.isActive }, details: { memberId: user.id, memberName: user.username }
+          }, transaction);
+        }
+      });
+    } else await user.save();
 
     const response = user.toJSON();
     delete response.passwordHash;
@@ -87,8 +101,6 @@ exports.updateAccountStatus = async (req, res) => {
     return res.json({ message: `User account ${status === 'active' ? 'activated' : 'deactivated'}`, user: response });
   } catch (error) {
     logger.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Server error' });
   }
 };
-
-exports.SYSTEM_ADMIN_ROLES = SYSTEM_ADMIN_ROLES;

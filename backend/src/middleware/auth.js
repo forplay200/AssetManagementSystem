@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../models');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+const JWT_SECRET = require('../services/trialPolicy').jwtSecret();
 
 module.exports = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -10,7 +10,8 @@ module.exports = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const account = await db.User.findByPk(decoded.id, { attributes: ['id', 'role', 'isActive'] });
+    const account = await db.User.findByPk(decoded.id, { attributes: ['id', 'role', 'isActive', 'tokenVersion'] });
+    if (account && (decoded.tokenVersion || 0) !== (account.tokenVersion || 0)) return res.status(401).json({ message: 'Session expired. Please sign in again.' });
     if (!account) return res.status(401).json({ message: 'Account not found.' });
     if (account.isActive === false) return res.status(403).json({ message: 'Account is inactive.' });
     req.user = decoded;
@@ -20,6 +21,11 @@ module.exports = async (req, res, next) => {
     const requestedWorkspaceId = Number(
       req.header('X-Workspace-Id') || req.header('X-Team-Id') || decoded.workspaceId || decoded.teamId
     );
+    // JWT membership claims can be stale. Only a current database membership
+    // may populate this context, including when the client sends an invalid ID.
+    delete req.user.teamId;
+    delete req.user.workspaceId;
+    delete req.user.teamRole;
     if (Number.isInteger(requestedWorkspaceId) && requestedWorkspaceId > 0 && db.TeamMember) {
       const membership = await db.TeamMember.findOne({
         where: { teamId: requestedWorkspaceId, userId: decoded.id },

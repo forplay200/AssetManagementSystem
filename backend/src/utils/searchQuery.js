@@ -5,12 +5,13 @@ const METADATA_SCALAR_PATH = '$.** ? (@.type() == "string" || @.type() == "numbe
 const TYPE_MIME_TYPES = {
   image: ['image/jpeg', 'image/png', 'image/gif'],
   audio: ['audio/mpeg', 'audio/wav', 'audio/x-wav'],
-  video: ['video/mp4', 'video/quicktime'],
+  video: ['video/mp4', 'video/webm', 'video/quicktime'],
   text: ['text/plain', 'text/javascript', 'application/javascript', 'application/json', 'application/xml', 'text/xml'],
   model: ['model/obj', 'model/fbx', 'model/gltf-binary']
 };
 
 const AI_FIELDS = [
+  ['videoTags', 10],
   ['imageTags', 10],
   ['semanticTags', 10],
   ['modelTags', 9],
@@ -35,9 +36,10 @@ function buildAssetSearchWhere({ filename, metadata, aiTag, q, type, date } = {}
   const conditions = [];
 
   if (filename?.trim()) {
-    const pattern = `%${filename.trim()}%`;
+    const pattern = `%${filename.trim().replace(/[\\%_]/g, '\\$&')}%`;
     conditions.push({
       [Op.or]: [
+        { displayName: { [Op.iLike]: pattern } },
         { originalname: { [Op.iLike]: pattern } },
         { filename: { [Op.iLike]: pattern } }
       ]
@@ -60,6 +62,20 @@ function buildAssetSearchWhere({ filename, metadata, aiTag, q, type, date } = {}
   return conditions.length ? { [Op.and]: conditions } : {};
 }
 
+function assetSearchOrder(sort) {
+  const byId = ['id', 'DESC'];
+  if (sort === 'newest') return [['uploadedAt', 'DESC'], byId];
+  if (sort === 'size') return [['size', 'DESC'], byId];
+  if (sort === 'name') {
+    const displayName = fn('coalesce',
+      fn('nullif', col('Asset.displayName'), ''),
+      fn('nullif', col('Asset.originalname'), ''),
+      col('Asset.filename'));
+    return [[fn('lower', displayName), 'ASC'], byId];
+  }
+  return null;
+}
+
 function findAiMatch(metadata, query) {
   const ai = metadata?.ai || {};
   const needle = String(query || '').trim().toLowerCase();
@@ -73,4 +89,4 @@ function findAiMatch(metadata, query) {
   return { matchSource: '', score: 0 };
 }
 
-module.exports = { buildAssetSearchWhere, findAiMatch, TYPE_MIME_TYPES, METADATA_SCALAR_PATH };
+module.exports = { assetSearchOrder, buildAssetSearchWhere, findAiMatch, TYPE_MIME_TYPES, METADATA_SCALAR_PATH };

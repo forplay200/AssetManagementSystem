@@ -1,26 +1,56 @@
 const express = require('express');
 const router = express.Router();
-const { uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
+router.use(require('../middleware/assetAuditFailures'));
+const { renameAsset, uploadAsset, downloadAsset, deleteAsset, previewAsset, getAssetMetadata, updateAssetMetadata, addTagToAsset, removeTagFromAsset, getAssetTags, createVersion, uploadNewVersion, getVersionHistory, getVersion, downloadVersion, previewVersion, searchAssets, createAiJob, storeAiResult, getDashboardStats, getAssetInfo, getAssetDetails } = require("../controllers/assetsController");
 const { createComment, getCommentHistory } = require('../controllers/commentsController');
+const { getAssetVocabulary, approveVocabularyEntry, removeVocabularyEntry } = require('../controllers/vocabularyController');
 const auth = require('../middleware/auth');
 const { authorizePermission, denySystemAdministrator } = require("../middleware/rbac");
 const requireWorkspace = require('../middleware/requireWorkspace');
 const workspaceAssetAccess = require('../middleware/workspaceAssetAccess');
 const internalAiAuth = require('../middleware/internalAiAuth');
-const multer = require('multer');
-const path = require('path');
+const modelUpload = require('../middleware/modelUpload');
+const trialUploadLimit = require('../middleware/trialUploadLimit');
+const assetWriteAccess = require('../middleware/assetWriteAccess');
+const { getAssetPackage, getPackageResource } = require('../controllers/assetsController');
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const validateName = require('../middleware/validateName');
 const workspaceAuth = [auth, denySystemAdministrator, requireWorkspace];
+const videoJobs = require('../controllers/videoJobsController');
+const edits = require('../controllers/assetEditController');
+const recycleBin = require('../controllers/recycleBinController');
+// These handlers validate membership and deletion-cycle permissions independently of active-only asset access.
+router.post('/:id/restore', workspaceAuth, authorizePermission('viewAsset'), recycleBin.restore);
+router.post('/:id/object-and-restore', workspaceAuth, authorizePermission('viewAsset'), recycleBin.objectAndRestore);
+const recyclePreviewAuth = [workspaceAuth, authorizePermission('viewAsset'), recycleBin.authorizePreview];
+router.get('/:id/recycle-bin/:cycleId/preview', recyclePreviewAuth, previewAsset);
+router.get('/:id/recycle-bin/:cycleId/package', recyclePreviewAuth, getAssetPackage);
+router.get('/:id/recycle-bin/:cycleId/resources/:resourceId', recyclePreviewAuth, getPackageResource);
+router.get('/:id/edit-session', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, edits.status);
+router.get('/:id/audit-events', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, require('../controllers/auditController').asset);
+router.post('/:id/edit-session', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, edits.acquire);
+router.post('/:id/edit-session/heartbeat', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, edits.heartbeat);
+router.delete('/:id/edit-session', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, edits.release);
+router.post('/:id/ai-suggestions/apply', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, require('../controllers/assetsController').applyAiSuggestions);
+router.patch('/:assetId/ai-suggestions', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, require('../controllers/assetsController').updateAiSuggestion);
+router.get('/:id/ai-jobs/current', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, videoJobs.current);
+router.get('/:id/ai-jobs/:jobId/frames/:frameId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, videoJobs.frame);
+router.post('/:id/ai-jobs/:jobId/review', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, assetWriteAccess, videoJobs.review);
+router.post('/:id/ai-jobs/:jobId/claim', internalAiAuth, videoJobs.claim);
+router.post('/:id/ai-jobs/:jobId/heartbeat', internalAiAuth, videoJobs.heartbeat);
+router.post('/:id/ai-jobs/:jobId/result', internalAiAuth, videoJobs.result);
+router.patch('/:id/name', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, validateName('displayName', 1, 200), renameAsset);
+
 // POST /api/assets/upload
-router.post('/upload', workspaceAuth, authorizePermission('uploadAsset'), upload.single('asset'), uploadAsset);
+router.post('/upload', workspaceAuth, authorizePermission('uploadAsset'), trialUploadLimit, modelUpload, uploadAsset);
 
 // GET /api/assets/download/:id
 router.get('/download/:id', workspaceAuth, authorizePermission('downloadAsset'), workspaceAssetAccess, downloadAsset);
 
 // GET /api/assets/preview/:id
 router.get('/preview/:id', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, previewAsset);
+router.get('/:id/package', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetPackage);
+router.get('/:id/resources/:resourceId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getPackageResource);
 
 // GET /api/assets/:id/metadata
 router.get('/:id/metadata', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetMetadata);
@@ -41,15 +71,22 @@ router.delete('/:assetId/tags/:tagId', workspaceAuth, authorizePermission('manag
 // GET /api/assets/:assetId/tags
 router.get('/:assetId/tags', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetTags);
 
+router.get('/:assetId/vocabulary', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetVocabulary);
+router.post('/:assetId/vocabulary', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, approveVocabularyEntry);
+router.delete('/:assetId/vocabulary/:entryId', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, removeVocabularyEntry);
+
 // Version control routes
 // POST /api/assets/:id/versions
 router.post('/:id/versions', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, createVersion);
 // POST /api/assets/:id/versions/upload
-router.post('/:id/versions/upload', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, upload.single('asset'), uploadNewVersion);
+router.post('/:id/versions/upload', workspaceAuth, authorizePermission('manageVersions'), workspaceAssetAccess, assetWriteAccess, trialUploadLimit, modelUpload, uploadNewVersion);
+router.get('/:id/versions/:versionId/package', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getAssetPackage);
+router.get('/:id/versions/:versionId/resources/:resourceId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getPackageResource);
 // GET /api/assets/:id/versions
 router.get('/:id/versions', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getVersionHistory);
 // GET /api/assets/:id/versions/:versionId
 router.get('/:id/versions/:versionId', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, getVersion);
+router.get('/:id/versions/:versionId/preview', workspaceAuth, authorizePermission('viewAsset'), workspaceAssetAccess, previewVersion);
 // GET /api/assets/:id/versions/:versionId/download
 router.get('/:id/versions/:versionId/download', workspaceAuth, authorizePermission('downloadAsset'), workspaceAssetAccess, downloadVersion);
 
@@ -63,7 +100,6 @@ router.get('/search', workspaceAuth, authorizePermission('viewAsset'), searchAss
 
 router.post('/ai/job', workspaceAuth, authorizePermission('manageMetadata'), workspaceAssetAccess, createAiJob);
 
-//router.post('/:id/ai-result', auth, authorize('admin', 'developer', 'designer', 'collaborator'), storeAiResult);
 router.post('/:id/ai-result', internalAiAuth, storeAiResult);
 
 // Internal AI worker compatibility endpoint. The worker uses this before it can

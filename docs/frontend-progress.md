@@ -1,5 +1,7 @@
 # Frontend Development Progress
 
+This page records the 2026-07-27 increment. The 2026-10-07 role migration replaced the legacy aliases with the canonical account and workspace role names documented in `rbac-redesign.md`.
+
 ## Session Summary
 
 - Date/Time: 2026-07-27 01:24 MYT (UTC+08:00)

@@ -1,6 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+
+function diskUpload(name, content) {
+  const diskPath = path.join(os.tmpdir(), 'aether-controller-test-' + crypto.randomUUID());
+  fs.writeFileSync(diskPath, content);
+  return { originalname: name, mimetype: 'image/png', size: Buffer.byteLength(content), path: diskPath };
+}
 
 let versionWhere;
 let puts = [];
@@ -14,14 +24,16 @@ let commentCountOptions;
 let memberCountOptions;
 let createdAssetValues;
 const models = {
+  sequelize: { transaction: callback => callback({ LOCK: { UPDATE: 'UPDATE' } }) },
   Version: {
     async findOne(options) { versionWhere = options.where; return { id: 9, versionNumber: 2 }; },
     async count() { return 1; },
+    async max() { return 1; },
     async create(values) { createdVersion = { id: 10, createdAt: new Date('2026-01-02'), ...values, async save() {}, async destroy() {} }; return createdVersion; }
   },
   Asset: {
     async findByPk() { return assetRecord; },
-    async create(values) { createdAssetValues = values; return { id: 21, ...values }; },
+    async create(values) { createdAssetValues = values; return { id: 21, ...values, async save() {} }; },
     async findAndCountAll(options) { searchOptions = options; return { count: 0, rows: [] }; },
     async count(options) { assetCountOptions = options; return 0; },
     async findAll(options) { recentAssetOptions = options; return []; }
@@ -41,11 +53,11 @@ mockModule('../src/models', models);
 mockModule('../src/redisClient', { async lPush(_queue, payload) { queuedJobs.push(JSON.parse(payload)); } });
 mockModule('axios', { async post() {} });
 mockModule('../src/utils/logger', { error() {} });
-mockModule('../src/utils/minioClient', { minioClient: { async getObject() { return Readable.from([Buffer.from('previous')]); }, async putObject(_bucket, key, buffer) { puts.push({ key, buffer }); }, async removeObject() {} }, BUCKET_NAME: 'assets' });
+mockModule('../src/utils/minioClient', { minioClient: { async getObject() { return Readable.from([Buffer.from('previous')]); }, async fPutObject(_bucket, key, file) { puts.push({ key, buffer: fs.readFileSync(file) }); }, async copyObject(_bucket, key) { puts.push({ key, buffer: Buffer.from('previous') }); }, async removeObject() {} }, BUCKET_NAME: 'assets' });
 const controller = require('../src/controllers/assetsController');
 
 function response() {
-  return { statusCode: 200, payload: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.payload = payload; return this; } };
+  return { statusCode: 200, payload: null, removeHeader() {}, status(code) { this.statusCode = code; return this; }, json(payload) { this.payload = payload; return this; } };
 }
 
 test('specific version lookup uses the :id route parameter as assetId', async () => {
@@ -76,15 +88,17 @@ test('new workspace dashboard queries only its empty repository', async () => {
   assert.deepEqual(res.payload.recentUploads, []);
 });
 
-test('upload assigns the active workspace and keeps the compatibility value', async () => {
+test('upload assigns the active workspace and ignores a forged uploader', async () => {
   const res = response();
-  await controller.uploadAsset({
-    user: { id: 3, workspaceId: 22, teamRole: 'manager' },
-    file: { originalname: 'car.fbx', mimetype: 'model/fbx', size: 8, buffer: Buffer.from('model') }
-  }, res);
+  const file = diskUpload('hero.png', 'image');
+  try { await controller.uploadAsset({
+    user: { id: 3, workspaceId: 22, teamRole: 'workspaceManager' },
+    body: { userId: 99 }, file
+  }, res); } finally { fs.unlinkSync(file.path); }
   assert.equal(res.statusCode, 201);
   assert.equal(createdAssetValues.workspaceId, 22);
   assert.equal(createdAssetValues.teamId, 22);
+  assert.equal(createdAssetValues.userId, 3);
 });
 
 test('authenticated asset details expose ownership context', async () => {
@@ -96,16 +110,43 @@ test('authenticated asset details expose ownership context', async () => {
   assert.equal(res.payload.originalname, 'hero.png');
 });
 
+test('asset details expose readable pending AI results only for the current file and revision', async t => {
+  const previous = process.env.ASSET_GOVERNANCE_ENABLED;
+  process.env.ASSET_GOVERNANCE_ENABLED = 'true';
+  t.after(() => {
+    if (previous === undefined) delete process.env.ASSET_GOVERNANCE_ENABLED;
+    else process.env.ASSET_GOVERNANCE_ENABLED = previous;
+  });
+  assetRecord = { id: 7, filename: 'stored.wav', revision: 2, pendingAiResult: {
+    filename: 'stored.wav', revision: 2, metadata: { ai: {
+      type: 'audio', transcript: 'A spoken update.', summary: 'Project status.', audioTags: ['speech'], privateField: 'omitted'
+    } }
+  } };
+  const details = async () => {
+    const res = response();
+    await controller.getAssetDetails({ params: { id: '7' } }, res);
+    assert.equal(res.statusCode, 200);
+    return JSON.parse(JSON.stringify(res.payload.pendingAiResult));
+  };
+  assert.deepEqual(await details(), { stale: false, tags: ['speech'], transcript: 'A spoken update.', summary: 'Project status.' });
+  assetRecord.pendingAiResult.metadata.ai = { type: '3d', vertexCount: 12, faceCount: 6, modelTags: ['shield'] };
+  assert.deepEqual(await details(), { stale: false, tags: ['shield'], modelStats: { vertexCount: 12, faceCount: 6 } });
+  assetRecord.revision++;
+  assert.deepEqual(await details(), { stale: true, tags: [] });
+});
+
 test('new version upload preserves the previous file and replaces the current asset', async () => {
   puts = [];
   queuedJobs = [];
   assetRecord = { id: 7, filename: 'stored.png', originalname: 'hero.png', mimetype: 'image/png', size: 100, path: 'stored.png', userId: 3, workspaceId: 4, metadata: { description: 'Hero', ai: { imageTags: ['old'] } }, uploadedAt: new Date('2026-01-01'), async save() {} };
   const res = response();
-  await controller.uploadNewVersion({ params: { id: '7' }, user: { id: 3, role: 'user', workspaceId: 4, teamRole: 'manager' }, body: { changeLog: 'Updated hero' }, file: { originalname: 'hero-v2.png', mimetype: 'image/png', size: 200, buffer: Buffer.from('replacement') } }, res);
+  const file = diskUpload('hero-v2.png', 'replacement');
+  try { await controller.uploadNewVersion({ params: { id: '7' }, user: { id: 3, role: 'user', workspaceId: 4, teamRole: 'workspaceManager' }, body: { changeLog: 'Updated hero', userId: 99 }, file }, res); } finally { fs.unlinkSync(file.path); }
 
   assert.equal(res.statusCode, 201);
   assert.equal(createdVersion.originalName, 'hero.png');
-  assert.match(createdVersion.fileName, /^versions\/7\/10\//);
+  assert.match(createdVersion.fileName, /^versions\/7\/[a-f0-9-]+\/stored\.png$/);
+  assert.equal(assetRecord.userId, 3);
   assert.equal(assetRecord.originalname, 'hero-v2.png');
   assert.deepEqual(assetRecord.metadata, { description: 'Hero' });
   assert.equal(puts.length, 2);

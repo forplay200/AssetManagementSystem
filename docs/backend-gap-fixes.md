@@ -147,7 +147,7 @@ Public registration accepted a caller-supplied role, allowing self-registration 
 The registration controller copied `req.body.role` directly into the new user. Role assignment is an administrator responsibility in the PRD, so this bypassed RBAC before the user-management API was involved.
 
 ## Solution
-Public registration now creates Collaborators by default. A compatibility switch, `ALLOW_PUBLIC_ROLE_REGISTRATION=true`, can restore the old behavior for controlled legacy environments; it defaults to false and is documented in `.env.example`.
+Public registration creates the account role `user`. Workspace membership is assigned only when the account creates or joins a workspace. The former public role override has been removed.
 
 ## Files Modified
 - `backend/src/controllers/authController.js`

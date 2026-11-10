@@ -12,9 +12,8 @@ const member = { id: 2, username: 'alex', email: 'alex@example.com', role: 'user
 beforeEach(() => {
   jest.clearAllMocks();
   userService.list.mockResolvedValue([admin, member]);
-  userService.get.mockResolvedValue({ ...member, teamMemberships: [{ id: 9, role: 'manager', createdAt: '2026-02-02T00:00:00Z', team: { id: 4, name: 'Studio One' } }] });
+  userService.get.mockResolvedValue({ ...member, teamMemberships: [{ id: 9, role: 'workspaceManager', createdAt: '2026-02-02T00:00:00Z', team: { id: 4, name: 'Studio One' } }] });
   userService.setStatus.mockResolvedValue({ user: { ...member, isActive: false } });
-  jest.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
 afterEach(() => { jest.restoreAllMocks(); });
@@ -47,7 +46,7 @@ test('user details show account and read-only workspace role assignments', async
   await user.click(detailButtons[1]);
   expect(await screen.findByRole('dialog', { name: 'alex' })).toBeInTheDocument();
   expect(screen.getByText('Studio One')).toBeInTheDocument();
-  expect(screen.getByText('Manager')).toBeInTheDocument();
+  expect(screen.getByText('Workspace Manager')).toBeInTheDocument();
   expect(userService.get).toHaveBeenCalledWith(2);
 });
 
@@ -58,7 +57,8 @@ test('deactivation uses account status instead of deleting the user', async () =
   const deactivateButtons = screen.getAllByRole('button', { name: 'Deactivate' });
   expect(deactivateButtons[0]).toBeDisabled();
   await user.click(deactivateButtons[1]);
-  expect(window.confirm).toHaveBeenCalled();
+  expect(userService.setStatus).not.toHaveBeenCalled();
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Deactivate account' }));
   await waitFor(() => expect(userService.setStatus).toHaveBeenCalledWith(2, 'inactive'));
   expect(await screen.findByText(/account is now inactive/i)).toBeInTheDocument();
 });
@@ -69,5 +69,17 @@ test('inactive accounts expose an Activate action', async () => {
   const user = userEvent.setup();
   render(<UserManagementPage />);
   await user.click(await screen.findByRole('button', { name: 'Activate' }));
+  expect(userService.setStatus).not.toHaveBeenCalled();
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Activate account' }));
   await waitFor(() => expect(userService.setStatus).toHaveBeenCalledWith(2, 'active'));
+});
+
+test('cancelling deactivation leaves the account active', async () => {
+  const user = userEvent.setup();
+  render(<UserManagementPage />);
+  await screen.findByText('alex');
+  await user.click(screen.getAllByRole('button', { name: 'Deactivate' })[1]);
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+  expect(userService.setStatus).not.toHaveBeenCalled();
+  expect(within(screen.getByRole('table')).getAllByText('Active')).toHaveLength(2);
 });

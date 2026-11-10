@@ -2,11 +2,581 @@ openapi: 3.0.0
 info:
   title: Asset Management System API
   version: '1.0'
-  description: API for the AI-Enhanced Collaborative Digital Asset Management Platform
+  description: >-
+    API for the AI-Enhanced Collaborative Digital Asset Management Platform.
+    Asset writes require an active workspace membership: workspaceOwner can
+    manage any asset in that workspace; workspaceManager can manage only assets
+    whose original Asset.userId matches the authenticated user. Shared visual
+    vocabulary remains editable by both roles regardless of the asset uploader.
+    Collaborators may view, preview and comment, but cannot use download APIs.
+    When ASSET_GOVERNANCE_ENABLED=true, asset mutations require a current edit
+    session and matching X-Asset-Edit-Token / X-Asset-Revision headers. Replacement
+    uploads also require X-Asset-Base-Version. Reads and comments do not take an
+    editing lease. Recycle-bin assets are excluded from normal reads and writes.
 servers:
   - url: http://localhost:3000/api
     description: Local server
 paths:
+  /auth/registration-policy:
+    get:
+      summary: Read public self-service registration mode
+      responses:
+        '200': { description: mode is open (default), invite (optional) or closed; recoveryAvailable is false }
+  /teams/current/usage:
+    get:
+      summary: Read current Workspace trial storage usage
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200': { description: enabled, workspaceBytes, workspaceLimitBytes, aiDailyLimit; no other Workspace usage is exposed }
+        '503': { description: Storage usage unavailable }
+  /teams/current/audit-events:
+    get:
+      summary: Read the Workspace management audit log
+      description: All current workspace roles see the same management feed. Personal tag, metadata, rename and AI actions are retained in Asset history but omitted here unless an Owner modifies another upload. Includes role changes, files, lifecycle and downloads. An assetId filter never bypasses this policy. Views, searches and shared vocabulary are excluded. The API has no audit editing or deletion operations.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AuditCursor'
+        - $ref: '#/components/parameters/AuditCategory'
+        - $ref: '#/components/parameters/AuditPerson'
+        - $ref: '#/components/parameters/AuditObject'
+        - $ref: '#/components/parameters/AuditResult'
+        - $ref: '#/components/parameters/AuditFrom'
+        - $ref: '#/components/parameters/AuditTo'
+        - { in: query, name: assetId, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+      responses:
+        '200': { description: Events with actor and role snapshots, before/after values, assetAvailable and nextCursor. Deleted objects retain summaries without granting file access. }
+        '400': { description: Invalid filter or cursor }
+        '403': { description: Current workspace membership required }
+        '404': { description: Governance disabled }
+  /assets/{id}/audit-events:
+    get:
+      summary: Read this Asset's complete Activity history
+      description: Follows asset view permissions. Includes personal edits, comments and editing leases. No view or search tracking; no shared-vocabulary history. Deleted or trashed assets are unavailable here; relevant management summaries remain in the Workspace feed.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/AuditCursor'
+        - $ref: '#/components/parameters/AuditCategory'
+        - $ref: '#/components/parameters/AuditPerson'
+        - $ref: '#/components/parameters/AuditObject'
+        - $ref: '#/components/parameters/AuditResult'
+        - $ref: '#/components/parameters/AuditFrom'
+        - $ref: '#/components/parameters/AuditTo'
+      responses:
+        '200': { description: Asset events and nextCursor }
+        '400': { description: Invalid filter or cursor }
+        '403': { description: Asset view permission denied }
+        '404': { description: Asset missing or governance disabled }
+        '410': { description: Asset in recycle bin or cleanup }
+  /assets/{id}/edit-session:
+    parameters:
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/AssetId'
+    get:
+      summary: Read the current editor and lease status without acquiring a lock
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Lock status, editor identity, start and expiry. No credential or credential hash is returned. }
+    post:
+      summary: Start an exclusive editing session
+      description: Owner or original-uploader Manager. Concurrent acquisition is serialized; even another tab belonging to the same user cannot take an active session.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Session token, revision, baseContentVersionId and expiry. Keep the token private to this tab. }
+        '403': { description: Current management permission denied }
+        '409': { description: Another session holds the asset }
+    delete:
+      summary: Cancel the matching editing session
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EditToken'
+      responses:
+        '200': { description: Released; committed edits are not reverted }
+        '409': { description: Credential belongs to another or replaced session }
+  /assets/{id}/edit-session/heartbeat:
+    post:
+      summary: Renew an active session for 30 minutes
+      description: Rechecks current membership, account status and revision. Expired credentials cannot be revived.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/EditToken'
+        - $ref: '#/components/parameters/EditRevision'
+      responses:
+        '200': { description: New expiresAt }
+        '403': { description: Permission changed }
+        '409': { description: Expired, replaced or stale editing session }
+  /assets/{id}/ai-suggestions/apply:
+    post:
+      summary: Apply current pending AI suggestions in an editing transaction
+      description: Validates the pending filename and revision. This changes AI metadata and releases the editing lease; background suggestion generation alone does not overwrite current metadata.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/EditToken'
+        - $ref: '#/components/parameters/EditRevision'
+      responses:
+        '200': { description: Applied metadata and updated asset }
+        '409': { description: Outdated or missing suggestions, session or revision }
+  /teams/current/recycle-bin:
+    get:
+      summary: List pending deleted assets in the current workspace
+      description: Owner sees all; other current members see their original uploads. Returned canRestore and canObject determine available actions. Enabled only during governance rollout. No early permanent-delete endpoint exists.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { in: query, name: cycleId, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Paginated deletion cycles with uploader, deleter, deadline, hold and cleanup status }
+        '403': { description: Current membership required }
+        '404': { description: Governance not enabled }
+  /assets/{id}/restore:
+    post:
+      summary: Restore a recoverable deletion cycle
+      description: Requires current asset management permission. Must be within the recovery window or a paused case. Does not create a file version or change the original uploader.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cycleId]
+              properties:
+                cycleId: { type: string, format: uuid }
+      responses:
+        '200': { description: Asset restored and deletion cycle ended }
+        '403': { description: Restore permission denied }
+        '409': { description: Recovery deadline passed or cleanup started }
+  /assets/{id}/object-and-restore:
+    post:
+      summary: Original uploader objects and restores atomically
+      description: Any current-member uploader may object, including after downgrade to Collaborator. No Owner approval. Old notifications cannot restore a subsequent deletion cycle.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cycleId]
+              properties:
+                cycleId: { type: string, format: uuid }
+                reason: { type: string, maxLength: 1000 }
+      responses:
+        '200': { description: Objection recorded and asset restored }
+        '403': { description: Only the current-member original uploader may object }
+        '409': { description: Recovery deadline passed or cleanup started }
+  /notifications:
+    get:
+      summary: List the authenticated member's notifications in the selected workspace
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200': { description: Notifications, unread count and pagination; no other member's messages }
+        '403': { description: Current workspace membership required }
+  /notifications/{id}/read:
+    patch:
+      summary: Mark an owned notification as read
+      description: Does not approve deletion, withdraw objections or change the recovery deadline.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Read state updated where notification belongs to this member }
+  /assets/upload:
+    post:
+      summary: Upload a supported asset, including bounded MP4 and WebM videos
+      description: >-
+        Owner or Manager. Video is probed and opening-decoded before persistence.
+        MP4, H.264 Baseline/Main/High up to level 4.2, 8-bit yuv420p, square pixels,
+        with optional AAC-LC mono/stereo audio; or WebM with VP8 / VP9 profile 0,
+        8-bit yuv420p and optional Opus/Vorbis mono/stereo audio. One video track,
+        no extra media tracks, no transparency or HDR, known finite duration required.
+        Maximum 100 MiB, 180 seconds, 1920 by 1080 in either orientation, 60 fps.
+        Non-video main files remain limited to 50 MiB; companion quotas are unchanged.
+        New jobs sample up to 45 frames using their immutable midpoint-v2 policy.
+        Upload returns processing.jobId for video; AI failure does not remove the file.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [asset]
+              properties:
+                asset: { type: string, format: binary }
+      responses:
+        '201': { description: Asset saved and processing requested }
+        '400': { description: Unsupported or invalid media; no asset or objects retained }
+        '403': { description: Upload permission denied }
+        '503': { description: Video uploads disabled or media tools unavailable }
+  /assets/{id}/ai-jobs/current:
+    get:
+      summary: Read current video analysis, candidates and review state
+      description: All workspace viewing roles. Pending candidates and raw scores are stored outside searchable Asset metadata. Private object keys and vocabulary snapshots are not returned.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Current analysis or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job: { $ref: '#/components/schemas/VideoJob' }
+        '403': { description: Workspace access denied }
+        '404': { description: Asset not found }
+  /assets/{id}/ai-jobs/{jobId}/review:
+    post:
+      summary: Atomically review video visual suggestions
+      description: Owner or original uploader Manager. Requires current file and current succeeded job. Accepted/edited decisions add repository tags idempotently. Rejection never deletes manual tags. Undo permits rejected to pending only. Conflicting old decisions return 409.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decisions]
+              properties:
+                decisions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [candidateId, decision]
+                    properties:
+                      candidateId: { type: string }
+                      decision: { type: string, enum: [accepted, edited, rejected, pending] }
+                      text: { type: string, maxLength: 80 }
+      responses:
+        '200': { description: Current job, metadata and repository tags }
+        '400': { description: Invalid decision or tag text }
+        '403': { description: Asset write permission denied }
+        '404': { description: Asset or job not found }
+        '409': { description: Replaced job or conflicting decision }
+        '410': { description: Deleted asset }
+  /assets/{id}/ai-jobs/{jobId}/frames/{frameId}:
+    get:
+      summary: Preview a private video evidence frame
+      description: All workspace viewing roles. The server resolves the frame ID through a current job or preserved Version reference; never accepts object keys from the client.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+        - in: path
+          name: frameId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Inline JPEG, private/no-store
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '403': { description: Workspace access denied }
+        '404': { description: Frame not found }
+        '409': { description: Job no longer referenced }
+  /assets/{id}/ai-jobs/{jobId}/claim:
+    post:
+      summary: Internal worker claim of fixed video input
+      security: [{ aiServiceToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceFilename]
+              properties:
+                sourceFilename: { type: string }
+      responses:
+        '200': { description: Fixed source, vocabulary, sampling parameters and new leaseToken }
+        '401': { description: Service credential required }
+        '403': { description: Invalid service credential }
+        '409': { description: Job already claimed or replaced }
+        '410': { description: Asset deleted }
+  /assets/{id}/ai-jobs/{jobId}/heartbeat:
+    post:
+      summary: Internal worker renewal of a valid lease
+      security: [{ aiServiceToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leaseToken]
+              properties:
+                leaseToken: { type: string, format: uuid }
+                stage: { type: string, enum: [downloading, extracting, tagging] }
+      responses:
+        '200': { description: Lease extended by 60 seconds within the 300 second task deadline }
+        '409': { description: Expired or superseded lease }
+  /assets/{id}/ai-jobs/{jobId}/result:
+    post:
+      summary: Internal idempotent result commit for a valid video lease
+      description: Up to 10 suggestions and 10 JPEG evidence frames, bounded base64 payload under the 4 MiB JSON limit. Server re-encodes private evidence. Retryable errors may requeue within three attempts. Results are never automatic repository tags.
+      security: [{ aiServiceToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/VideoJobId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leaseToken]
+              properties:
+                leaseToken: { type: string, format: uuid }
+                error: { type: boolean }
+                retryable: { type: boolean }
+                output: { type: object, description: 'candidates, frames (id/timeSeconds/jpegBase64), sampling (requestedCount/decodedCount/times), provenance and elapsedSeconds' }
+      responses:
+        '200': { description: Committed result or identical already-completed task }
+        '400': { description: Invalid or oversized output }
+        '409': { description: Expired job, file or lease }
+        '410': { description: Asset deleted }
+  /assets/download/{id}:
+    get:
+      summary: Download current asset
+      description: >-
+        Workspace Owner and Manager only, including another uploader's assets in the same workspace. Collaborator receives 403 before storage access. Model packages return ZIP unless main=true requests only the original main file.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: main
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Original file or package ZIP attachment
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Missing authentication }
+        '403': { description: Download permission or workspace access denied }
+        '404': { description: Asset or matching version not found }
+  /assets/{id}/versions/{versionId}/download:
+    get:
+      summary: Download historical asset
+      description: >-
+        Workspace Owner and Manager only, including another uploader's assets in the same workspace. Collaborator receives 403 before storage access. Model packages return ZIP unless main=true requests only the original main file.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: main
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Original file or package ZIP attachment
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Missing authentication }
+        '403': { description: Download permission or workspace access denied }
+        '404': { description: Asset or matching version not found }
+  /assets/{id}/versions/{versionId}/preview:
+    get:
+      summary: Preview historical main file
+      description: >-
+        Available to active workspace viewing roles, including Collaborator. Returns only the version main file inline; query parameters cannot request an attachment or ZIP. Versions are looked up by both asset ID and version ID.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Main file for inline preview with private no-store caching
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Missing authentication }
+        '403': { description: Workspace access denied }
+        '404': { description: Asset or matching version not found }
+  /assets/{id}/name:
+    patch:
+      summary: Rename asset display name
+      description: >-
+        Workspace Owner may rename any asset; Workspace Manager may rename only their own original uploads. Changes displayName only; source filenames, storage, packages, versions and AI are unaffected.
+        Names are trimmed, duplicates are allowed, length counts UTF-16 units.
+        Raw control characters U+0000–001F and U+007F–009F are rejected.
+        Missing, null and non-string names are rejected. Extra fields are ignored.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: Name saved; identical normalized name may skip database writes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset: { $ref: '#/components/schemas/Asset' }
+        '400':
+          description: Invalid token or validation failure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: Validation failed }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field: { type: string }
+                        location: { type: string, enum: [body] }
+                        message: { type: string }
+        '401':
+          description: Missing authentication token
+        '403':
+          description: Inactive account, forbidden role, missing membership or asset outside current workspace
+        '404':
+          description: Target not found
+        '500':
+          description: Server error
+  /teams/current/name:
+    patch:
+      summary: Rename current workspace
+      description: >-
+        Workspace Owner only. Changes the authenticated current workspace name only; IDs, invite code and memberships are unchanged.
+        Names are trimmed, duplicates are allowed, length counts UTF-16 units.
+        Raw control characters U+0000–001F and U+007F–009F are rejected.
+        Missing, null and non-string names are rejected. Extra fields are ignored.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        '200':
+          description: Name saved; identical normalized name may skip database writes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  team:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+                  role: { type: string, enum: [workspaceOwner] }
+        '400':
+          description: Invalid token or validation failure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: Validation failed }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field: { type: string }
+                        location: { type: string, enum: [body] }
+                        message: { type: string }
+        '401':
+          description: Missing authentication token
+        '403':
+          description: Inactive account, forbidden role, missing membership or asset outside current workspace
+        '404':
+          description: Target not found
+        '500':
+          description: Server error
   /auth/register:
     post:
       summary: Register a new user
@@ -33,7 +603,7 @@ paths:
           description: Successful login
   /auth/forgot-password:
     post:
-      summary: Create a password reset token
+      summary: Password recovery unavailable during trial
       requestBody:
         required: true
         content:
@@ -46,11 +616,11 @@ paths:
                   type: string
                   format: email
       responses:
-        '200':
-          description: Recovery request accepted
+        '503':
+          description: Email recovery is not configured; no reset credential is returned
   /auth/reset-password:
     post:
-      summary: Reset a password using a valid token
+      summary: Legacy password reset disabled during trial
       requestBody:
         required: true
         content:
@@ -63,10 +633,10 @@ paths:
                   type: string
                 password:
                   type: string
-                  minLength: 6
+                  minLength: 10
       responses:
-        '200':
-          description: Password reset successfully
+        '503':
+          description: Password reset is disabled until secure delivery is configured
   /teams:
     get:
       summary: List teams for the authenticated account
@@ -76,7 +646,7 @@ paths:
         '200':
           description: Team memberships
     post:
-      summary: Create a team; the creator becomes Owner
+      summary: Create a team; the creator becomes Workspace Owner
       security:
         - bearerAuth: []
       requestBody:
@@ -127,14 +697,25 @@ paths:
         required: true
         schema: { type: integer }
     patch:
-      summary: Change a member workspace role (Owner only)
+      summary: Change a member workspace role (Workspace Owner only)
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [workspaceOwner, workspaceManager, collaborator]
       responses:
         '200':
           description: Team role updated
     delete:
-      summary: Remove a team member (Owner only)
+      summary: Remove a team member (Workspace Owner only)
       security:
         - bearerAuth: []
       responses:
@@ -142,7 +723,7 @@ paths:
           description: Team member removed
   /teams/current/invite-code:
     post:
-      summary: Rotate the active team invite code (Owner only)
+      summary: Rotate the active team invite code (Workspace Owner only)
       security:
         - bearerAuth: []
       parameters:
@@ -165,8 +746,8 @@ paths:
           schema: { type: string, enum: [active, inactive] }
         - in: query
           name: role
-          schema: { type: string }
-          description: Account-level role. systemAdministrator also matches the legacy admin alias.
+          schema: { type: string, enum: [user, systemAdministrator] }
+          description: Account-level role.
       responses:
         '200':
           description: User list
@@ -234,7 +815,7 @@ paths:
         - in: query
           name: filename
           schema: { type: string }
-          description: Original upload name, with generated storage name as a compatibility fallback
+          description: Case-insensitive substring match across displayName, original upload name and storage filename within the current workspace
         - in: query
           name: metadata
           schema: { type: string }
@@ -262,6 +843,10 @@ paths:
           schema: { type: string }
           description: User ID or username text
         - in: query
+          name: sort
+          schema: { type: string, enum: [newest, name, size] }
+          description: Sort by latest upload, name (A–Z), or largest file first. Omit to keep the default order and AI relevance ranking.
+        - in: query
           name: page
           schema: { type: integer, minimum: 1, default: 1 }
         - in: query
@@ -286,21 +871,90 @@ paths:
           description: Asset tags
     post:
       summary: Add a repository tag
+      description: Workspace Owner or the original uploader with Workspace Manager membership; applies equally to the legacy /tags/{tagId} route.
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Tag added
+        '403':
+          description: Asset write permission denied
     delete:
       summary: Remove a repository tag
+      description: Removes only this asset's tag association; requires Workspace Owner or its original uploader with Workspace Manager membership. Legacy /tags/{tagId} follows the same rule.
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Tag removed
+        '403':
+          description: Asset write permission denied
+  /assets/{assetId}/vocabulary:
+    parameters:
+      - in: path
+        name: assetId
+        required: true
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/WorkspaceId'
+    get:
+      summary: List core and approved workspace visual concepts for this asset type
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Versioned vocabulary snapshot with prompts, aliases and concept scopes
+        '403':
+          description: Asset does not belong to the active workspace
+    post:
+      summary: Confirm a visual concept for future CLIP suggestions in this workspace
+      description: Requires workspaceOwner or workspaceManager in the current workspace, independently of the asset uploader. Repository tags are not automatically added to the vocabulary; approval does not modify this asset or enqueue regeneration.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisualConceptApproval'
+      responses:
+        '200':
+          description: Concept approved, extended to another asset type, or already available
+        '400':
+          description: Invalid visual concept, unsupported 3D appearance, or missing confirmation
+        '403':
+          description: Insufficient workspace permission
+        '409':
+          description: Name or alias conflicts with another concept
+  /assets/{assetId}/vocabulary/{entryId}:
+    delete:
+      summary: Remove a workspace concept from future suggestions while preserving existing asset tags
+      description: Workspace Owner or Manager, independently of the asset uploader; entryId must belong to the active workspace.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: assetId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Workspace vocabulary concept removed
+        '403':
+          description: Insufficient workspace permission
+        '404':
+          description: Concept not found in the active workspace
   /assets/{id}/versions/upload:
     post:
       summary: Upload a replacement file and preserve the previous current file in version history
+      description: Owner may replace any asset in the active workspace; Manager only their original uploads. Ownership is checked before multipart processing and again before storage changes. The original Asset.userId is preserved, including material/texture-only updates.
       security:
         - bearerAuth: []
       parameters:
@@ -329,9 +983,100 @@ paths:
         '400':
           description: Missing or unsupported replacement file
         '403':
-          description: Only the asset owner or an Administrator can replace the file
+          description: Requires Workspace Owner or the original uploader with Workspace Manager membership in the active workspace
         '404':
           description: Asset not found
+  /assets/{id}:
+    delete:
+      summary: Move an asset to the recycle bin when governance is enabled
+      description: Requires Workspace Owner or original-uploader Manager. Governance mode atomically retains files for seven days, notifies the original uploader, records audit and invalidates editing sessions. A reason is required for another uploader's asset. Another valid editing session blocks deletion; provide matching editing credentials if holding a session. Legacy mode retains direct physical deletion.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, maxLength: 1000 }
+      responses:
+        '200': { description: Deletion cycle and deadline in governance mode; deleted in legacy mode }
+        '400': { description: Missing or invalid deletion reason }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
+        '409': { description: Conflicting editing session or revision }
+        '410': { description: Asset already in recycle bin }
+  /assets/{id}/metadata:
+    put:
+      summary: Update editable metadata while retaining server-owned video information
+      description: Owner or original uploader Manager. A locked transaction retains the latest server-owned media and video AI projection, ignoring stale client copies. Video candidates use the dedicated review endpoint; other asset AI editing remains compatible.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metadata]
+              properties:
+                metadata: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Metadata saved }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
+  /assets/{id}/versions:
+    post:
+      summary: Preserve the current complete asset as a version snapshot
+      description: Requires Workspace Owner or the original uploader with Workspace Manager membership; does not transfer asset ownership.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '201': { description: Version preserved }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
+  /assets/ai/job:
+    post:
+      summary: Queue AI tagging through the authorized browser endpoint
+      description: Owner may regenerate any asset in the active workspace; Manager only their original uploads. Video returns a durable job ID and reuses an active task unless regenerate=true. New analysis clears the current videoTags projection but preserves repository tags. Direct FastAPI /jobs cannot enqueue videos.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assetId, jobType]
+              properties:
+                assetId: { type: integer }
+                jobType: { type: string }
+                regenerate: { type: boolean, default: false }
+      responses:
+        '201': { description: AI job queued }
+        '400': { description: Required fields missing }
+        '403': { description: Asset ownership or workspace permission denied }
+        '404': { description: Asset not found }
   /comments/{id}:
     parameters:
       - $ref: '#/components/parameters/WorkspaceId'
@@ -374,11 +1119,66 @@ paths:
           description: Comment not found in the active workspace
 components:
   securitySchemes:
+    aiServiceToken:
+      type: apiKey
+      in: header
+      name: X-AI-Service-Token
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    EditToken:
+      in: header
+      name: X-Asset-Edit-Token
+      required: true
+      schema: { type: string }
+    EditRevision:
+      in: header
+      name: X-Asset-Revision
+      required: true
+      schema: { type: integer, minimum: 0 }
+    AuditCursor:
+      in: query
+      name: cursor
+      schema: { type: string }
+      description: Opaque nextCursor from the previous response; keep the same filters.
+    AuditCategory:
+      in: query
+      name: category
+      schema: { type: string, enum: [workspace, content, versions, recycle, downloads, comments, locks] }
+    AuditPerson:
+      in: query
+      name: actorName
+      schema: { type: string, maxLength: 200 }
+      description: Literal case-insensitive substring of the recorded actor name.
+    AuditObject:
+      in: query
+      name: targetName
+      schema: { type: string, maxLength: 200 }
+      description: Literal case-insensitive substring of the recorded object name.
+    AuditResult:
+      in: query
+      name: result
+      schema: { type: string, enum: [success, requested, completed, interrupted, failed, denied] }
+    AuditFrom:
+      in: query
+      name: from
+      schema: { type: string, format: date-time }
+    AuditTo:
+      in: query
+      name: to
+      schema: { type: string, format: date-time }
+    AssetId:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer }
+    VideoJobId:
+      in: path
+      name: jobId
+      required: true
+      schema: { type: string, format: uuid }
     WorkspaceId:
       in: header
       name: X-Workspace-Id
@@ -387,6 +1187,73 @@ components:
       schema:
         type: integer
   schemas:
+    VideoJob:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [queued, processing, succeeded, failed, superseded, cancelled] }
+        stage: { type: string }
+        attempt: { type: integer, maximum: 3 }
+        candidates: { type: array, maxItems: 10, items: { type: object } }
+        frames: { type: array, maxItems: 10, items: { type: object } }
+        sampling: { type: object }
+        provenance: { type: object }
+        elapsedSeconds: { type: number, nullable: true }
+        errorCode: { type: string, nullable: true }
+        errorMessage: { type: string, nullable: true }
+    Asset:
+      type: object
+      description: Asset responses include displayName independently of source and storage filenames; existing rows default to null.
+      properties:
+        id: { type: integer }
+        displayName: { type: string, nullable: true, maxLength: 200 }
+        originalname: { type: string, description: Original upload filename used for file operations }
+        filename: { type: string, description: Storage object key }
+        mimetype: { type: string }
+        size: { type: integer }
+        userId: { type: integer }
+        workspaceId: { type: integer, nullable: true }
+        uploadedAt: { type: string, format: date-time }
+        package: { type: object, nullable: true }
+        media: { type: object, nullable: true, readOnly: true, description: Server-probed video technical metadata }
+        currentAiJobId: { type: string, format: uuid, nullable: true, readOnly: true }
+    VisualConceptApproval:
+      type: object
+      required: [name, confirmed]
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          example: katana
+        confirmed:
+          type: boolean
+          enum: [true]
+        description:
+          type: string
+          maxLength: 240
+          example: a Japanese katana sword
+        facet:
+          type: string
+          enum: [content, form, style, appearance]
+          default: content
+        assetTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [image, 3d]
+        aliases:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 80
+        category:
+          type: string
+          maxLength: 80
+          default: workspace-custom
     UserRegister:
       type: object
       required:
@@ -404,12 +1271,12 @@ components:
         password:
           type: string
           format: password
-          example: secret123
-        role:
+          minLength: 10
+          maxLength: 72
+          example: a-long-test-password
+        inviteCode:
           type: string
-          enum: [user]
-          default: user
-          description: Public registration always creates an unassigned User unless the legacy deployment override is explicitly enabled.
+          description: Optional shared trial access code; required only when registration mode is invite
     UserLogin:
       type: object
       required:
@@ -423,4 +1290,6 @@ components:
         password:
           type: string
           format: password
-          example: secret123
+          minLength: 10
+          maxLength: 72
+          example: a-long-test-password

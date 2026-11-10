@@ -1,5 +1,26 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import MetadataPanel from './MetadataPanel';
+import { assetService } from '../../services/assetService';
+
+jest.mock('../../services/assetService', () => ({ assetService: { updateMetadata: jest.fn(), getMetadata: jest.fn() } }));
+beforeEach(() => jest.clearAllMocks());
+
+test('a denied save preserves the draft when refreshed permissions remove editing access', async () => {
+  const user = userEvent.setup();
+  const props = { assetId: '8', metadata: { description: 'Original' }, repositoryTags: [], onMetadataChange: jest.fn(), onTagsChange: jest.fn() };
+  assetService.updateMetadata.mockRejectedValue({ response: { status: 403, data: { message: 'Only the uploader or a workspace owner can modify this asset.' } } });
+  const view = render(<MetadataPanel {...props} canEdit />);
+  await user.click(screen.getByRole('button', { name: 'Edit metadata' }));
+  await user.clear(screen.getByRole('textbox', { name: 'Metadata value' }));
+  await user.type(screen.getByRole('textbox', { name: 'Metadata value' }), 'Kept draft');
+  await user.click(screen.getByRole('button', { name: 'Save metadata' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Only the uploader');
+  view.rerender(<MetadataPanel {...props} canEdit={false} />);
+  expect(screen.getByRole('textbox', { name: 'Metadata value' })).toHaveValue('Kept draft');
+  expect(screen.getByRole('button', { name: 'Save metadata' })).toBeDisabled();
+  expect(props.onMetadataChange).not.toHaveBeenCalled();
+});
 
 test('displays generated YAMNet audio tags without changing existing AI fields', () => {
   render(
@@ -17,6 +38,43 @@ test('displays generated YAMNet audio tags without changing existing AI fields',
   expect(screen.getByText('speech')).toBeInTheDocument();
   expect(screen.getByText('music')).toBeInTheDocument();
   expect(screen.getByText('Hello team')).toBeInTheDocument();
+});
+
+test('shows a current pending audio result to a viewer and falls back to saved text when it becomes stale', async () => {
+  const user = userEvent.setup();
+  const props = { assetId: '8', governanceEnabled: true, repositoryTags: [], canEdit: false, canDownload: false,
+    metadata: { ai: { transcript: 'Previously saved text' } } };
+  const pending = { stale: false, tags: ['speech'], transcript: 'New pending transcript', summary: 'A short summary' };
+  const view = render(<MetadataPanel {...props} pendingAiResult={pending} />);
+  expect(screen.getByText('A short summary')).toBeInTheDocument();
+  expect(screen.getByText('speech')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Read full text' }));
+  const reader = screen.getByRole('dialog', { name: 'Audio transcript' });
+  expect(within(reader).getByText('New pending transcript')).toBeInTheDocument();
+  expect(within(reader).queryByRole('button', { name: 'Download TXT' })).not.toBeInTheDocument();
+  await user.click(within(reader).getByRole('button', { name: 'Done' }));
+  view.rerender(<MetadataPanel {...props} pendingAiResult={{ ...pending, stale: true }} />);
+  expect(screen.getByText('Previously saved text')).toBeInTheDocument();
+  expect(screen.queryByText('New pending transcript')).not.toBeInTheDocument();
+});
+
+test('removing existing fields requires confirmation and preserves other metadata', async () => {
+  const user = userEvent.setup();
+  const metadata = { description: 'Original', count: 3, enabled: true, nested: { keep: true }, ai: { type: 'audio', transcript: 'Keep original transcript' } };
+  const changed = jest.fn();
+  assetService.updateMetadata.mockImplementation(async (id, next) => ({ metadata: next }));
+  render(<MetadataPanel assetId="8" metadata={metadata} repositoryTags={[]} canEdit onMetadataChange={changed} onTagsChange={() => {}} />);
+  await user.click(screen.getByRole('button', { name: 'Edit metadata' }));
+  expect(screen.getByRole('button', { name: 'Refresh results' })).toBeDisabled();
+  await user.click(screen.getAllByRole('button', { name: 'Remove metadata field' })[0]);
+  await user.click(screen.getByRole('button', { name: 'Save metadata' }));
+  expect(assetService.updateMetadata).not.toHaveBeenCalled();
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+  expect(screen.getAllByRole('textbox', { name: 'Metadata field name' })).toHaveLength(2);
+  await user.click(screen.getByRole('button', { name: 'Save metadata' }));
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save changes' }));
+  expect(assetService.updateMetadata).toHaveBeenCalledWith('8', { count: 3, enabled: true, nested: { keep: true }, ai: metadata.ai });
+  expect(changed).toHaveBeenCalledTimes(1);
 });
 
 test('displays extracted 3D geometry and model tags', () => {
@@ -41,4 +99,11 @@ test('displays extracted 3D geometry and model tags', () => {
   expect(screen.getByText('CLIP Semantic Tags')).toBeInTheDocument();
   expect(screen.getByText('car')).toBeInTheDocument();
   expect(screen.getByText('vehicle')).toBeInTheDocument();
+});
+
+test.each([false, true])('transcript export receives independent download capability (%s)', async canDownload => {
+  render(<MetadataPanel assetId="8" metadata={{ ai: { type: 'audio', transcript: 'An accessible transcript.' } }} repositoryTags={[]} canEdit={false} canDownload={canDownload} />);
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Read full text' }));
+  expect(Boolean(screen.queryByRole('button', { name: 'Download TXT' }))).toBe(canDownload);
+  expect(screen.getByRole('button', { name: 'Copy full text' })).toBeEnabled();
 });

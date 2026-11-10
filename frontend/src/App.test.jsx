@@ -11,7 +11,7 @@ test('renders the login screen for signed-out users', () => {
   localStorage.clear();
   renderAt('/login');
   expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /sign in to aether/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument();
 });
 
 test('renders unassigned user registration fields', () => {
@@ -22,15 +22,16 @@ test('renders unassigned user registration fields', () => {
   expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled();
 });
 
-test('renders the password recovery form', () => {
+test('explains unavailable recovery without exposing a reset form', () => {
   localStorage.clear();
   renderAt('/forgot-password');
-  expect(screen.getByRole('heading', { name: /reset your password/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /password recovery/i })).toBeInTheDocument();
+  expect(screen.getByText(/email password recovery is not available/i)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
 });
 
-test('rejects reset links without a token', () => {
+test('legacy reset URLs cannot offer an unsafe password reset', () => {
   localStorage.clear();
   renderAt('/reset-password');
-  expect(screen.getByText(/missing its secure token/i)).toBeInTheDocument();
+  expect(screen.getByText(/email password recovery is not available/i)).toBeInTheDocument();
 });

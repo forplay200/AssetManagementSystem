@@ -72,7 +72,7 @@ test.beforeEach(() => {
 test('Owner can edit any comment without changing createdAt', async () => {
   const originalCreatedAt = currentComment.createdAt;
   const res = response();
-  await controller.updateComment(request('owner', 77, { content: '  Owner correction  ' }), res);
+  await controller.updateComment(request('workspaceOwner', 77, { content: '  Owner correction  ' }), res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(currentComment.content, 'Owner correction');
@@ -84,11 +84,11 @@ test('Owner can edit any comment without changing createdAt', async () => {
 test('Manager can edit and soft-delete only their own comment', async () => {
   currentComment = makeComment({ userId: 31 });
   const editRes = response();
-  await controller.updateComment(request('manager', 31, { content: 'Manager edit' }), editRes);
+  await controller.updateComment(request('workspaceManager', 31, { content: 'Manager edit' }), editRes);
   assert.equal(editRes.statusCode, 200);
 
   const deleteRes = response();
-  await controller.deleteComment(request('manager', 31), deleteRes);
+  await controller.deleteComment(request('workspaceManager', 31), deleteRes);
   assert.equal(deleteRes.statusCode, 200);
   assert.equal(currentComment.isDeleted, true);
   assert.equal(currentComment.content, 'Manager edit');
@@ -111,7 +111,7 @@ test('Collaborator can edit and soft-delete only their own comment', async () =>
 
 test('Manager and Collaborator cannot change another user comment', async () => {
   const managerEdit = response();
-  await controller.updateComment(request('manager', 99, { content: 'Not allowed' }), managerEdit);
+  await controller.updateComment(request('workspaceManager', 99, { content: 'Not allowed' }), managerEdit);
   assert.equal(managerEdit.statusCode, 403);
 
   const collaboratorDelete = response();
@@ -123,7 +123,7 @@ test('Manager and Collaborator cannot change another user comment', async () => 
 
 test('Owner can soft-delete another user comment', async () => {
   const res = response();
-  await controller.deleteComment(request('owner', 99), res);
+  await controller.deleteComment(request('workspaceOwner', 99), res);
   assert.equal(res.statusCode, 200);
   assert.equal(currentComment.isDeleted, true);
   assert.equal(saveCount, 1);
@@ -146,7 +146,7 @@ test('deleted comments use a placeholder and replies remain in history', async (
 
 test('comments from another workspace are not exposed', async () => {
   const res = response();
-  await controller.updateComment({ params: { id: '8' }, body: { content: 'Nope' }, user: { id: 20, workspaceId: 9, teamRole: 'owner' } }, res);
+  await controller.updateComment({ params: { id: '8' }, body: { content: 'Nope' }, user: { id: 20, workspaceId: 9, teamRole: 'workspaceOwner' } }, res);
   assert.equal(res.statusCode, 404);
   assert.equal(saveCount, 0);
 });

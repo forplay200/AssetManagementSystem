@@ -1,0 +1,28 @@
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import AssetDetailPage from './AssetDetailPage';
+import { assetService } from '../services/assetService';
+jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ token: 'token', user: { id: 1, team: { id: 8 }, teamRole: 'workspaceOwner' } }) }));
+jest.mock('../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
+jest.mock('../components/assets/AssetPreview', () => () => <div>Preview</div>);
+jest.mock('../components/metadata/MetadataPanel', () => () => <div>Metadata</div>);
+jest.mock('../components/versions/VersionHistory', () => ({ onCurrentVersionChanged, assetName }) => <><p>Version source: {assetName}</p><button onClick={() => onCurrentVersionChanged()}>Reload current version</button></>);
+jest.mock('../services/assetService', () => ({ assetService: { getInfo: jest.fn(), getMetadata: jest.fn(), getTags: jest.fn(), rename: jest.fn() } }));
+test('pre-rename load cannot undo saved name, while later fresh loads can reflect another rename', async () => {
+  const source = { id: 42, workspaceId: 8, userId: 2, originalname: 'model.obj', mimetype: 'model/obj', size: 20 };
+  assetService.getInfo.mockResolvedValue(source); assetService.getMetadata.mockResolvedValue({ metadata: {} }); assetService.getTags.mockResolvedValue({ tags: [] });
+  assetService.rename.mockResolvedValue({ asset: { ...source, displayName: 'My scene' } });
+  const user = userEvent.setup(); render(<MemoryRouter initialEntries={['/assets/42']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><Routes><Route path="/assets/:assetId" element={<AssetDetailPage />} /></Routes></MemoryRouter>);
+  await user.click(await screen.findByRole('tab', { name: 'Versions' }));
+  let resolve; assetService.getInfo.mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+  await user.click(screen.getByText('Reload current version'));
+  await user.click(screen.getByRole('button', { name: 'Rename asset' }));
+  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'My scene' } }); await user.click(screen.getByRole('button', { name: 'Save' }));
+  await act(async () => resolve({ ...source, displayName: null, originalname: 'new-source.fbx' }));
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My scene');
+  expect(screen.getByText('Version source: new-source.fbx')).toBeInTheDocument();
+  assetService.getInfo.mockResolvedValueOnce({ ...source, displayName: 'Another member renamed it' });
+  await user.click(screen.getByText('Reload current version'));
+  expect(await screen.findByText('Another member renamed it')).toBeInTheDocument();
+});

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import CommentThread, { canManageComment, wasEdited } from './CommentThread';
 import { assetService } from '../../services/assetService';
 
-let mockUser = { id: 7, username: 'owner', teamRole: 'owner' };
+let mockUser = { id: 7, username: 'owner', teamRole: 'workspaceOwner' };
 
 jest.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('../../services/assetService', () => ({
@@ -33,7 +33,7 @@ function history(comments) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockUser = { id: 7, username: 'owner', teamRole: 'owner' };
+  mockUser = { id: 7, username: 'owner', teamRole: 'workspaceOwner' };
   assetService.getComments.mockResolvedValue(history([baseComment]));
   assetService.updateComment.mockResolvedValue({});
   assetService.deleteComment.mockResolvedValue({});
@@ -41,8 +41,8 @@ beforeEach(() => {
 
 test('authorization allows Owners or authors and edited state uses timestamps', () => {
   expect(canManageComment(mockUser, baseComment)).toBe(true);
-  expect(canManageComment({ id: 8, teamRole: 'manager' }, baseComment)).toBe(true);
-  expect(canManageComment({ id: 9, teamRole: 'manager' }, baseComment)).toBe(false);
+  expect(canManageComment({ id: 8, teamRole: 'workspaceManager' }, baseComment)).toBe(true);
+  expect(canManageComment({ id: 9, teamRole: 'workspaceManager' }, baseComment)).toBe(false);
   expect(canManageComment({ id: 8, teamRole: 'collaborator' }, baseComment)).toBe(true);
   expect(canManageComment({ id: 9, teamRole: 'collaborator' }, baseComment)).toBe(false);
   expect(wasEdited(baseComment)).toBe(true);

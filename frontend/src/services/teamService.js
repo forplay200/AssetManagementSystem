@@ -1,6 +1,10 @@
 import api from './api';
 
 export const teamService = {
+  async rename(name) {
+    const { data } = await api.patch('/teams/current/name', { name });
+    return data;
+  },
   async list() {
     const { data } = await api.get('/teams');
     return data;

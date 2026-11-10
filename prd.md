@@ -22,12 +22,12 @@ Game development projects produce a large volume of digital assets including ima
 - Join a team with an invite code
 - Cannot access team assets before joining a team
 
-### Owner
+### Workspace Owner
 - Manage team members, roles, settings, projects, and assets
 - Invite and remove members
-- Assign Owner, Manager, and Collaborator roles
+- Assign Workspace Owner, Workspace Manager, and Collaborator roles
 
-### Manager
+### Workspace Manager
 - Upload, preview, download, search, and manage assets
 - Edit metadata, manage versions, approve assets, and participate in discussions
 - Cannot manage team membership or settings
@@ -45,7 +45,7 @@ Game development projects produce a large volume of digital assets including ima
 - Cannot manage workspace roles, invitations, assets, or user passwords
 - Is not a Workspace Owner
 
-Legacy Administrator, Developer, and Designer roles remain supported during migration. Developer and Designer capabilities map to Manager; Administrator remains a system-level role where required.
+Stored legacy Administrator accounts migrate to System Administrator. Stored Developer and Designer account roles migrate to User while keeping their existing workspace memberships.
 
 ---
 

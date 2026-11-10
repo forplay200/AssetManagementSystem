@@ -31,7 +31,7 @@ function response() {
 test('requires a validated active workspace for asset APIs', () => {
   const res = response();
   let nextCalled = false;
-  requireWorkspace({ user: { role: 'admin' } }, res, () => { nextCalled = true; });
+  requireWorkspace({ user: { role: 'systemAdministrator' } }, res, () => { nextCalled = true; });
   assert.equal(res.statusCode, 403);
   assert.equal(nextCalled, false);
 });
